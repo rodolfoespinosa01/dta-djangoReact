@@ -7,7 +7,7 @@ function HomePage() {
   const navigate = useNavigate();
 
   const handleCTA = () => {
-    navigate('/plans'); // We'll build this page next
+    navigate('/adminPlans'); // We'll build this page next
   };
 
   return (
