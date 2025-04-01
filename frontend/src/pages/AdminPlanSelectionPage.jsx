@@ -1,6 +1,6 @@
 import React from 'react';
 
-const plans = [
+const adminPlans = [
   {
     id: 'trial',
     name: 'Free Trial',
@@ -21,9 +21,9 @@ const plans = [
   },
 ];
 
-function PlanSelectionPage() {
-  const handleSelectPlan = (planId) => {
-    console.log(`Selected plan: ${planId}`);
+function AdminPlanSelectionPage() {
+  const handleSelectAdminPlan = (adminPlanId) => {
+    console.log(`Selected plan: ${adminPlanId}`);
     // Later we’ll redirect to checkout here
   };
 
@@ -31,9 +31,9 @@ function PlanSelectionPage() {
     <div style={{ padding: '2rem', textAlign: 'center' }}>
       <h2>Select a Plan</h2>
       <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', marginTop: '2rem' }}>
-        {plans.map((plan) => (
+        {adminPlans.map((adminPlan) => (
           <div
-            key={plan.id}
+            key={adminPlan.id}
             style={{
               border: '1px solid #ccc',
               borderRadius: '8px',
@@ -42,11 +42,11 @@ function PlanSelectionPage() {
               textAlign: 'left',
             }}
           >
-            <h3>{plan.name}</h3>
-            <p><strong>{plan.price}</strong></p>
-            <p>{plan.description}</p>
+            <h3>{adminPlan.name}</h3>
+            <p><strong>{adminPlan.price}</strong></p>
+            <p>{adminPlan.description}</p>
             <button
-              onClick={() => handleSelectPlan(plan.id)}
+              onClick={() => handleSelectAdminPlan(adminPlan.id)}
               style={{ marginTop: '1rem', width: '100%' }}
             >
               Continue to Checkout
@@ -58,4 +58,4 @@ function PlanSelectionPage() {
   );
 }
 
-export default PlanSelectionPage;
+export default AdminPlanSelectionPage;
