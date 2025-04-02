@@ -1,9 +1,7 @@
-// frontend/src/pages/HomePage.jsx
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
-function HomePage() {
+function AdminHomePage() {
   const navigate = useNavigate();
 
   const handleCTA = () => {
@@ -21,4 +19,4 @@ function HomePage() {
   );
 }
 
-export default HomePage;
+export default AdminHomePage;
