@@ -2,20 +2,20 @@ import React from 'react';
 
 const adminPlans = [
   {
-    id: 'trial',
-    name: 'Free Trial',
+    id: 'adminTrial',
+    name: 'Free Admin Trial',
     price: 'Free for 14 days',
     description: 'Start with up to 10 end users. No charge until trial ends.',
   },
   {
-    id: 'monthly',
-    name: 'Monthly Plan',
+    id: 'adminMonthly',
+    name: 'Monthly Admin Plan',
     price: '$29 / month',
     description: 'Unlimited users. Billed monthly.',
   },
   {
-    id: 'annual',
-    name: 'Annual Plan',
+    id: 'adminAnnual',
+    name: 'Annual Admin Plan',
     price: '$299 / year',
     description: 'Unlimited users. Save 14% compared to monthly.',
   },
