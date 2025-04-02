@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const adminPlans = [
   {
@@ -21,7 +22,14 @@ const adminPlans = [
   },
 ];
 
+
+
 function AdminPlanSelectionPage() {
+  const navigate = useNavigate();
+
+  const handleHomeCTA = () => {
+    navigate('/');
+  };
   const handleSelectAdminPlan = (adminPlanId) => {
     console.log(`Selected plan: ${adminPlanId}`);
     // Later we’ll redirect to checkout here
@@ -54,6 +62,10 @@ function AdminPlanSelectionPage() {
           </div>
         ))}
       </div>
+
+      <button onClick={handleHomeCTA} style={{ marginTop: '1rem', padding: '1rem 2rem', fontSize: '1rem' }}>
+        Back to Main Page
+      </button>
     </div>
   );
 }
