@@ -30,10 +30,28 @@ function AdminPlanSelectionPage() {
   const handleHomeCTA = () => {
     navigate('/');
   };
-  const handleSelectAdminPlan = (adminPlanId) => {
-    console.log(`Selected plan: ${adminPlanId}`);
-    // Later we’ll redirect to checkout here
+  const handleSelectAdminPlan = async (adminPlanId) => {
+    try {
+      const response = await fetch('http://localhost:8000/api/create-checkout-session/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ plan_name: adminPlanId }),
+      });
+  
+      const data = await response.json();
+  
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        console.error('Checkout session error:', data.error);
+      }
+    } catch (error) {
+      console.error('Error creating checkout session:', error);
+    }
   };
+  
 
   return (
     <div style={{ padding: '2rem', textAlign: 'center' }}>
