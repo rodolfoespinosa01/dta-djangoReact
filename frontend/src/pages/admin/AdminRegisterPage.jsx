@@ -21,7 +21,7 @@ function AdminRegisterPage() {
     const data = await response.json();
 
     if (response.ok) {
-      navigate('/admin-dashboard');
+      navigate('/admindashboard');
     } else {
       alert(data.error || 'Registration failed');
     }

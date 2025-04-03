@@ -34,3 +34,32 @@ def create_checkout_session(request):
         return JsonResponse({'error': 'Plan not found'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def register_admin(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST request required'}, status=400)
+
+    try:
+        data = json.loads(request.body)
+        email = data.get('email')
+        password = data.get('password')
+        session_id = data.get('session_id')
+
+        if not all([email, password, session_id]):
+            return JsonResponse({'error': 'Missing fields'}, status=400)
+
+        # Optional: Stripe session validation can go here
+        from django.contrib.auth.models import User
+
+        if User.objects.filter(username=email).exists():
+            return JsonResponse({'error': 'User already exists'}, status=400)
+
+        user = User.objects.create_user(username=email, email=email, password=password)
+        user.is_staff = True
+        user.save()
+
+        return JsonResponse({'success': True, 'message': 'Admin account created'})
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
