@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'adminplans',
+    'subscription',
 ]
 
 MIDDLEWARE = [
@@ -129,3 +130,9 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY')
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+}
