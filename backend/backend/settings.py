@@ -2,7 +2,10 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / '.env')  # explicitly loads backend/.env
+
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -32,7 +35,6 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'adminplans',
-    'subscription',
 ]
 
 MIDDLEWARE = [
@@ -73,13 +75,14 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'dta_db',
-        'USER': 'dta_user',
-        'PASSWORD': 'dta6914',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'NAME': os.getenv('DB_NAME'),
+        'USER': os.getenv('DB_USER'),
+        'PASSWORD': os.getenv('DB_PASSWORD'),
+        'HOST': os.getenv('DB_HOST'),
+        'PORT': os.getenv('DB_PORT'),
     }
 }
+
 
 
 
@@ -128,11 +131,3 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # React dev server
 ]
-
-STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY')
-
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ),
-}
