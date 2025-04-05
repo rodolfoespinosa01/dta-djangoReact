@@ -9,3 +9,8 @@ __pycache__/
 # Node
 node_modules/
 build/
+
+# Virtual environments
+backend/venv/  # <-- Add this line
+venv/
+env/
