@@ -4,5 +4,4 @@ from . import views
 
 urlpatterns = [
     path('create-checkout-session/', create_checkout_session),
-    path('register-admin/', views.register_admin, name='register_admin'),
 ]

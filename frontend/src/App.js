@@ -4,11 +4,15 @@ import { AuthProvider } from './context/AuthContext';
 
 import MainHomePage from './pages/MainHomePage';
 
+import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
+import SuperAdminLoginPage from './pages/superadmin/SuperAdminLoginPage';
+
 import AdminHomePage from './pages/admin/AdminHomePage';
 import AdminPlanSelectionPage from './pages/admin/AdminPlanSelectionPage';
 import AdminRegisterPage from './pages/admin/AdminRegisterPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminSettings from './pages/admin/AdminSettings';
+import AdminLoginPage from './pages/admin/AdminLoginPage';
 
 import UserHomePage from './pages/user/UserHomePage';
 import UserPlanSelectionPage from './pages/user/UserPlanSelectionPage';
@@ -20,6 +24,11 @@ function App() {
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<MainHomePage />} />
+
+          <Route path="/superadmindashboard" element={<SuperAdminDashboard />} />
+          <Route path="/superadminlogin" element={<SuperAdminLoginPage />} />
+
+          <Route path="/adminlogin" element={<AdminLoginPage />} />
           <Route path="/adminhomepage" element={<AdminHomePage />} />
           <Route path="/adminplans" element={<AdminPlanSelectionPage />} />
           <Route path="/adminregister" element={<AdminRegisterPage />} />

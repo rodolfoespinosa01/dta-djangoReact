@@ -7,8 +7,16 @@ class CustomUser(AbstractUser):
         ('client', 'Client'),
         ('superadmin', 'SuperAdmin'),
     )
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
-    subscription_status = models.CharField(max_length=20, default='inactive')  # or trial/active/etc.
 
-    def is_admin_user(self):
-        return self.role == 'admin'
+    SUBSCRIPTION_CHOICES = [
+        ('admin_trial', 'Admin Free Trial'),
+        ('admin_monthly', 'Admin Monthly'),
+        ('admin_annual', 'Admin Annual'),
+        ('admin_inactive', 'Admin Inactive'),
+    ]
+
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    subscription_status = models.CharField(max_length=30, choices=SUBSCRIPTION_CHOICES, default='admin_inactive')
+
+    def __str__(self):
+        return self.username
