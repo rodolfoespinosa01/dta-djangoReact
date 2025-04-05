@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
-
 function AdminRegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -10,42 +9,42 @@ function AdminRegisterPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-
-  const sessionId = searchParams.get('session_id');
+  const sessionId = searchParams.get('session_id'); // ✅ correct variable
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-  
+
     try {
-      // Step 1: Register the admin
-      const registerRes = await fetch('http://localhost:8000/api/register-admin/', {
+      // ✅ Step 1: Register the admin
+      const registerRes = await fetch('http://localhost:8000/api/users/register-admin/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, session_id: sessionId }),
+        body: JSON.stringify({ email, password, session_id: sessionId }), // ✅ fixed here
       });
-  
+
       const registerData = await registerRes.json();
-  
+
       if (!registerRes.ok) {
         alert(registerData.error || 'Registration failed');
         return;
       }
-  
-      // Step 2: Immediately log them in
+
+      // ✅ Step 2: Immediately log them in
       const loginRes = await fetch('http://localhost:8000/api/users/adminlogin/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-  
+
       const loginData = await loginRes.json();
-  
+
       if (!loginRes.ok) {
         alert(loginData.error || 'Login failed after registration');
         return;
       }
-  
-      login(loginData.access); // calls context login
+
+      // ✅ Store tokens and redirect
+      login(loginData.access); // use context
       localStorage.setItem('refresh_token', loginData.refresh);
       navigate('/admindashboard');
 
@@ -54,7 +53,6 @@ function AdminRegisterPage() {
       alert('Unexpected error occurred');
     }
   };
-  
 
   return (
     <div style={{ padding: '2rem' }}>

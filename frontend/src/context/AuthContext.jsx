@@ -25,7 +25,7 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       console.error('Failed to decode token in login()', err);
     }
-  };  
+  };
   
 
   useEffect(() => {
