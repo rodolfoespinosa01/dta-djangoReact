@@ -11,21 +11,47 @@ function AdminRegisterPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    const response = await fetch('http://localhost:8000/api/register-admin/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, session_id: sessionId }),
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
+  
+    try {
+      // Step 1: Register the admin
+      const registerRes = await fetch('http://localhost:8000/api/register-admin/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, session_id: sessionId }),
+      });
+  
+      const registerData = await registerRes.json();
+  
+      if (!registerRes.ok) {
+        alert(registerData.error || 'Registration failed');
+        return;
+      }
+  
+      // Step 2: Immediately log them in
+      const loginRes = await fetch('http://localhost:8000/api/users/adminlogin/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+  
+      const loginData = await loginRes.json();
+  
+      if (!loginRes.ok) {
+        alert(loginData.error || 'Login failed after registration');
+        return;
+      }
+  
+      // Step 3: Store tokens and redirect
+      localStorage.setItem('access_token', loginData.access);
+      localStorage.setItem('refresh_token', loginData.refresh);
+  
       navigate('/admindashboard');
-    } else {
-      alert(data.error || 'Registration failed');
+    } catch (err) {
+      console.error('Something went wrong:', err);
+      alert('Unexpected error occurred');
     }
   };
+  
 
   return (
     <div style={{ padding: '2rem' }}>

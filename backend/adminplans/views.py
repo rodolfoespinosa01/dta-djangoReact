@@ -4,6 +4,7 @@ import stripe
 import json
 from django.conf import settings
 from .models import AdminPlan
+from django.contrib.auth import get_user_model
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -34,7 +35,8 @@ def create_checkout_session(request):
         return JsonResponse({'error': 'Plan not found'}, status=404)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-
+    
+User = get_user_model()
 @csrf_exempt
 def register_admin(request):
     if request.method != 'POST':
@@ -49,14 +51,15 @@ def register_admin(request):
         if not all([email, password, session_id]):
             return JsonResponse({'error': 'Missing fields'}, status=400)
 
-        # Optional: Stripe session validation can go here
-        from django.contrib.auth.models import User
-
+        # Check if user already exists
         if User.objects.filter(username=email).exists():
             return JsonResponse({'error': 'User already exists'}, status=400)
 
+        # Create user using custom user model
         user = User.objects.create_user(username=email, email=email, password=password)
         user.is_staff = True
+        user.role = 'admin'  # ✅ Explicitly set admin role
+        user.subscription_status = 'trial'  # Optional: Set default plan
         user.save()
 
         return JsonResponse({'success': True, 'message': 'Admin account created'})
