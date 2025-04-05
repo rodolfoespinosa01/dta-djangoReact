@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+
 
 function AdminRegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { login } = useAuth();
+
 
   const sessionId = searchParams.get('session_id');
 
@@ -41,11 +45,10 @@ function AdminRegisterPage() {
         return;
       }
   
-      // Step 3: Store tokens and redirect
-      localStorage.setItem('access_token', loginData.access);
+      login(loginData.access); // calls context login
       localStorage.setItem('refresh_token', loginData.refresh);
-  
       navigate('/admindashboard');
+
     } catch (err) {
       console.error('Something went wrong:', err);
       alert('Unexpected error occurred');
