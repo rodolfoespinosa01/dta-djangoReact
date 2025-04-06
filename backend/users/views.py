@@ -6,7 +6,7 @@ from rest_framework import status
 from users.models import CustomUser
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, login
 from django.contrib.auth import get_user_model
 from django.conf import settings
 from adminplans.models import AdminPlan, PendingAdminSignup
@@ -210,3 +210,28 @@ def get_pending_signup(request, token):
         return JsonResponse({'email': pending.email})
     except PendingAdminSignup.DoesNotExist:
         return JsonResponse({'error': 'Invalid or expired token'}, status=404)
+
+@csrf_exempt
+def login_admin(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST request required'}, status=400)
+    
+    try:
+        data = json.loads(request.body)
+        email = data.get('email')
+        password = data.get('password')
+
+        user = authenticate(request, username=email, password=password)
+
+        if user is None:
+            return JsonResponse({'error': 'Invalid credentials'}, status=401)
+
+        if user.role != 'admin':
+            return JsonResponse({'error': 'Not an Admin account'}, status=403)
+
+        login(request, user)
+
+        return JsonResponse({'success': True, 'message': 'Logged in as admin'})
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

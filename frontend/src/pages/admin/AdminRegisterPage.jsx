@@ -22,18 +22,22 @@ function AdminRegisterPage() {
 
     setToken(tokenFromURL);
 
-    // Fetch pending signup info (email)
     const fetchPendingEmail = async () => {
       try {
         const res = await fetch(`http://localhost:8000/api/users/pending-signup/${tokenFromURL}/`);
-        const data = await res.json();
-
+        
+        // Try to parse JSON only if response is OK
         if (!res.ok) {
-          alert(data.error || 'Invalid or expired registration link.');
+          const text = await res.text();
+          console.error('Server responded with:', text);
+          alert('Invalid or expired registration link.');
           navigate('/');
-        } else {
-          setEmail(data.email);
+          return;
         }
+    
+        const data = await res.json();
+        setEmail(data.email);
+    
       } catch (err) {
         console.error('Error fetching pending signup:', err);
         alert('Something went wrong.');
@@ -42,6 +46,7 @@ function AdminRegisterPage() {
         setLoading(false);
       }
     };
+    
 
     fetchPendingEmail();
   }, [searchParams, navigate]);
@@ -70,8 +75,32 @@ function AdminRegisterPage() {
         return;
       }
 
-      alert('✅ Account created successfully! Logging in...');
-      navigate('/adminlogin');
+      alert('✅ Account created successfully! Logging you in...');
+
+      // 🔑 Auto-login via Admin endpoint
+      const loginRes = await fetch('http://localhost:8000/api/users/adminlogin/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ email, password }),
+      });
+
+      const loginData = await loginRes.json();
+
+      if (!loginRes.ok) {
+        alert(loginData.error || 'Auto-login failed. Please login manually.');
+        navigate('/adminlogin');
+        return;
+      }
+
+      // Set user context if available
+      login(loginData);
+
+      // ✅ Go to dashboard
+      navigate('/admindashboard');
+
     } catch (err) {
       console.error('Unexpected error:', err);
       alert('Something went wrong');
