@@ -9,3 +9,6 @@ class AdminPlanAdmin(admin.ModelAdmin):
     display_price.short_description = 'Price (USD)'
 
 admin.site.register(AdminPlan, AdminPlanAdmin)
+
+from .models import AdminProfile
+admin.site.register(AdminProfile)

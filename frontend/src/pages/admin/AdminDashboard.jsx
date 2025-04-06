@@ -3,17 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 function AdminDashboard() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, loading, logout } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!loading && !isAuthenticated) {
       navigate('/adminlogin');
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, loading, navigate]);
+
+  if (loading) {
+    return <p style={{ padding: '2rem' }}>Loading your dashboard...</p>;
+  }
 
   if (!isAuthenticated || !user) {
-    return <p style={{ padding: '2rem' }}>Loading your dashboard...</p>;
+    return <p style={{ padding: '2rem', color: 'red' }}>You are not authorized to view this page.</p>;
   }
 
   return (

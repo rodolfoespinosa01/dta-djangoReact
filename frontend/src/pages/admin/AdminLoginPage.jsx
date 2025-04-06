@@ -20,7 +20,7 @@ function AdminLoginPage() {
     const data = await response.json();
 
     if (response.ok) {
-      login(data.access);
+      login(data);
       localStorage.setItem('refresh_token', data.refresh);
       navigate('/admindashboard');
     } else {
