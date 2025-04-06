@@ -13,17 +13,18 @@ export const AuthProvider = ({ children }) => {
 
   const navigate = useNavigate();
 
-  const login = (token) => {
+  const login = (loginData) => {
     try {
-      const decoded = jwtDecode(token);
+      const decoded = jwtDecode(loginData.access);
       setAuth({
         user: decoded,
-        accessToken: token,
+        accessToken: loginData.access,
         isAuthenticated: true,
       });
-      localStorage.setItem('access_token', token);
+      localStorage.setItem('access_token', loginData.access);
+      localStorage.setItem('refresh_token', loginData.refresh);
     } catch (err) {
-      console.error('Failed to decode token in login()', err);
+      console.error('Failed to decode access token in login()', err);
     }
   };
   
