@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const adminPlans = [
@@ -22,40 +22,60 @@ const adminPlans = [
   },
 ];
 
-
-
 function AdminPlanSelectionPage() {
+  const [email, setEmail] = useState('');
   const navigate = useNavigate();
 
   const handleHomeCTA = () => {
     navigate('/');
   };
-  const handleSelectAdminPlan = async (adminPlanId) => {
+
+  const handleSelectAdminPlan = async (planId) => {
+    if (!email) {
+      alert('Please enter your email before continuing to checkout.');
+      return;
+    }
+
     try {
       const response = await fetch('http://localhost:8000/api/create-checkout-session/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ plan_name: adminPlanId }),
+        body: JSON.stringify({ plan_name: planId, email }),
       });
-  
+
       const data = await response.json();
-  
+
       if (data.url) {
         window.location.href = data.url;
       } else {
         console.error('Checkout session error:', data.error);
+        alert('Error starting checkout. See console for details.');
       }
-    } catch (error) {
-      console.error('Error creating checkout session:', error);
+    } catch (err) {
+      console.error('Error starting checkout:', err);
+      alert('Something went wrong.');
     }
   };
-  
 
   return (
     <div style={{ padding: '2rem', textAlign: 'center' }}>
       <h2>Select a Plan</h2>
+
+      <input
+        type="email"
+        placeholder="Enter your email"
+        required
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        style={{
+          marginBottom: '1rem',
+          padding: '0.5rem',
+          width: '300px',
+        }}
+      />
+
       <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', marginTop: '2rem' }}>
         {adminPlans.map((adminPlan) => (
           <div
@@ -81,7 +101,7 @@ function AdminPlanSelectionPage() {
         ))}
       </div>
 
-      <button onClick={handleHomeCTA} style={{ marginTop: '1rem', padding: '1rem 2rem', fontSize: '1rem' }}>
+      <button onClick={handleHomeCTA} style={{ marginTop: '2rem', padding: '1rem 2rem', fontSize: '1rem' }}>
         Back to Main Page
       </button>
     </div>

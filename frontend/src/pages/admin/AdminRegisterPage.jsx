@@ -1,80 +1,106 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 function AdminRegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [token, setToken] = useState('');
+  const [loading, setLoading] = useState(true);
+
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const sessionId = searchParams.get('session_id'); // ✅ correct variable
+  useEffect(() => {
+    const tokenFromURL = searchParams.get('token');
+    if (!tokenFromURL) {
+      alert('Missing registration token.');
+      navigate('/');
+      return;
+    }
+
+    setToken(tokenFromURL);
+
+    // Fetch pending signup info (email)
+    const fetchPendingEmail = async () => {
+      try {
+        const res = await fetch(`http://localhost:8000/api/users/pending-signup/${tokenFromURL}/`);
+        const data = await res.json();
+
+        if (!res.ok) {
+          alert(data.error || 'Invalid or expired registration link.');
+          navigate('/');
+        } else {
+          setEmail(data.email);
+        }
+      } catch (err) {
+        console.error('Error fetching pending signup:', err);
+        alert('Something went wrong.');
+        navigate('/');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPendingEmail();
+  }, [searchParams, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
-      // ✅ Step 1: Register the admin
-      const registerRes = await fetch('http://localhost:8000/api/users/register-admin/', {
+      const res = await fetch('http://localhost:8000/api/users/register-admin/', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, session_id: sessionId }), // ✅ fixed here
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          email,
+          password,
+          token,
+        }),
       });
 
-      const registerData = await registerRes.json();
+      const data = await res.json();
 
-      if (!registerRes.ok) {
-        alert(registerData.error || 'Registration failed');
+      if (!res.ok) {
+        alert(data.error || 'Registration failed');
         return;
       }
 
-      // ✅ Step 2: Immediately log them in
-      const loginRes = await fetch('http://localhost:8000/api/users/adminlogin/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const loginData = await loginRes.json();
-
-      if (!loginRes.ok) {
-        alert(loginData.error || 'Login failed after registration');
-        return;
-      }
-
-      // ✅ Store tokens and redirect
-      login(loginData.access); // use context
-      localStorage.setItem('refresh_token', loginData.refresh);
-      navigate('/admindashboard');
-
+      alert('✅ Account created successfully! Logging in...');
+      navigate('/adminlogin');
     } catch (err) {
-      console.error('Something went wrong:', err);
-      alert('Unexpected error occurred');
+      console.error('Unexpected error:', err);
+      alert('Something went wrong');
     }
   };
 
+  if (loading) return <p>Loading...</p>;
+
   return (
     <div style={{ padding: '2rem' }}>
-      <h2>Register Your Admin Account</h2>
+      <h2>Complete Your Admin Registration</h2>
       <form onSubmit={handleSubmit} style={{ maxWidth: '400px' }}>
         <input
           type="email"
-          placeholder="Email"
-          required
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          disabled
           style={{ display: 'block', marginBottom: '1rem', width: '100%' }}
         />
         <input
           type="password"
-          placeholder="Password"
+          placeholder="Choose a password"
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           style={{ display: 'block', marginBottom: '1rem', width: '100%' }}
         />
-        <button type="submit">Create Account</button>
+        <button type="submit" style={{ width: '100%' }}>
+          Create Account
+        </button>
       </form>
     </div>
   );

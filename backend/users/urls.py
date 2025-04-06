@@ -1,7 +1,7 @@
 from django.urls import path
 from .views import SuperAdminDashboardView, SuperAdminLoginView
 from .views import AdminLoginView, AdminDashboardView
-from .views import register_admin
+from .views import register_admin, get_pending_signup
 
 urlpatterns = [
     path('superadmin/dashboard/', SuperAdminDashboardView.as_view(), name='superadmin-dashboard'),
@@ -10,4 +10,5 @@ urlpatterns = [
     path('register-admin/', register_admin),
     path('adminlogin/', AdminLoginView.as_view(), name='admin-login'),
     path('admindashboard/', AdminDashboardView.as_view(), name='admin-dashboard'),
+    path('pending-signup/<str:token>/', get_pending_signup),
 ]
