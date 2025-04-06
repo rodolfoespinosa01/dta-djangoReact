@@ -2,6 +2,7 @@
 .DS_Store
 
 # Python
+backend/env/
 env/
 __pycache__/
 *.pyc
@@ -13,4 +14,3 @@ build/
 # Virtual environments
 backend/venv/  # <-- Add this line
 venv/
-env/
