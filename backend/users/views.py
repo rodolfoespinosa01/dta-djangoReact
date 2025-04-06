@@ -57,7 +57,7 @@ class SuperAdminDashboardView(APIView):
         total_revenue = 0
         projected_monthly_income = 0
 
-        # 🧠 Pull pricing dynamically from AdminPlan model (in cents)
+        # Pull pricing dynamically from AdminPlan model (in cents)
         try:
             monthly_plan = AdminPlan.objects.get(name='adminMonthly')
             annual_plan = AdminPlan.objects.get(name='adminAnnual')
@@ -141,14 +141,14 @@ def register_admin(request):
         if not all([email, password, token]):
             return JsonResponse({'error': 'Missing fields'}, status=400)
 
-        # 🔐 STEP 1: Get session_id using token
+        # STEP 1: Get session_id using token
         try:
             pending = PendingAdminSignup.objects.get(token=token)
             session_id = pending.session_id
         except PendingAdminSignup.DoesNotExist:
             return JsonResponse({'error': 'Invalid or expired token'}, status=404)
 
-        # ✅ STEP 2: Retrieve Stripe session using session_id
+        # STEP 2: Retrieve Stripe session using session_id
         try:
             print("📦 Attempting to fetch Stripe session...")
 
@@ -165,7 +165,7 @@ def register_admin(request):
             print("❌ Stripe error:", stripe_error)
             return JsonResponse({'error': 'Stripe session retrieval failed'}, status=400)
 
-        # ✅ STEP 3: Match Stripe price ID to AdminPlan
+        # STEP 3: Match Stripe price ID to AdminPlan
         try:
             plan = AdminPlan.objects.get(stripe_price_id=stripe_price_id)
             print("✅ Matched AdminPlan:", plan.name)
@@ -182,7 +182,7 @@ def register_admin(request):
             print("❌ Plan not found for price_id:", stripe_price_id)
             subscription_status = 'admin_trial'
 
-        # ✅ STEP 4: Create user
+        # STEP 4: Create user
         User = get_user_model()
         if User.objects.filter(username=email).exists():
             return JsonResponse({'error': 'User already exists'}, status=400)
@@ -195,7 +195,7 @@ def register_admin(request):
 
         print(f"✅ Admin {email} created with subscription_status: {subscription_status}")
 
-        # ✅ Optional cleanup
+        # Optional cleanup
         pending.delete()
 
         return JsonResponse({'success': True, 'message': f'Admin account created with {subscription_status} plan'})

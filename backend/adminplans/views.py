@@ -24,7 +24,7 @@ def create_checkout_session(request):
         session = stripe.checkout.Session.create(
             payment_method_types=['card'],
             mode='subscription',
-            customer_email=email,  # make sure you're passing email from frontend
+            customer_email=email,
             line_items=[{
                 'price': plan.stripe_price_id,
                 'quantity': 1,
@@ -33,7 +33,6 @@ def create_checkout_session(request):
 
             cancel_url='https://localhost:3000/cancel',
         )
-
 
         return JsonResponse({'url': session.url})
 
@@ -64,7 +63,6 @@ def stripe_webhook(request):
         print(f"📧 Email from session: {customer_email}")
 
         try:
-            # Fetch and expand line_items
             line_items = stripe.checkout.Session.list_line_items(
                 session_id,
                 expand=['data.price'],
@@ -92,7 +90,7 @@ def stripe_webhook(request):
             )
             print(f"✅ PendingAdminSignup created for {customer_email}")
 
-            # ✅ Simulated email logging
+            # Simulated email logging
             registration_link = f"http://localhost:3000/adminregister?token={token}"
             print("\n" + "=" * 60)
             print("📩 Registration email (simulated):")
