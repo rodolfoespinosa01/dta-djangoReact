@@ -8,6 +8,7 @@ import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
 import SuperAdminLoginPage from './pages/superadmin/SuperAdminLoginPage';
 
 import AdminHomePage from './pages/admin/AdminHomePage';
+import AdminThankYou from './pages/admin/AdminThankYou';
 import AdminPlanSelectionPage from './pages/admin/AdminPlanSelectionPage';
 import AdminRegisterPage from './pages/admin/AdminRegisterPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -28,6 +29,7 @@ function App() {
           <Route path="/superadmindashboard" element={<SuperAdminDashboard />} />
           <Route path="/superadminlogin" element={<SuperAdminLoginPage />} />
 
+          <Route path="/adminthankyou" element={<AdminThankYou />} />
           <Route path="/adminlogin" element={<AdminLoginPage />} />
           <Route path="/adminhomepage" element={<AdminHomePage />} />
           <Route path="/adminplans" element={<AdminPlanSelectionPage />} />

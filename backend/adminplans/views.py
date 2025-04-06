@@ -29,7 +29,7 @@ def create_checkout_session(request):
                 'price': plan.stripe_price_id,
                 'quantity': 1,
             }],
-            success_url='https://localhost:3000/thankyou',
+            success_url='http://localhost:3000/adminthankyou',
 
             cancel_url='https://localhost:3000/cancel',
         )
