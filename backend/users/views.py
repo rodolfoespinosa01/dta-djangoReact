@@ -235,3 +235,21 @@ def login_admin(request):
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+from .serializers import AdminForgotPasswordSerializer, AdminResetPasswordSerializer
+
+class AdminForgotPasswordView(APIView):
+    def post(self, request):
+        serializer = AdminForgotPasswordSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"detail": "Password reset link sent (check terminal)."})
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class AdminResetPasswordConfirmView(APIView):
+    def post(self, request):
+        serializer = AdminResetPasswordSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"detail": "Password has been reset successfully."})
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

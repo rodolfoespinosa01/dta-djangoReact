@@ -49,6 +49,12 @@ function AdminLoginPage() {
           style={{ display: 'block', marginBottom: '1rem', width: '100%' }}
         />
         <button type="submit">Log In</button>
+        <p style={{ marginTop: '1rem' }}>
+          <a href="/adminforgotpassword" style={{ color: 'blue', textDecoration: 'underline' }}>
+            Forgot your password?
+          </a>
+        </p>
+
       </form>
     </div>
   );
