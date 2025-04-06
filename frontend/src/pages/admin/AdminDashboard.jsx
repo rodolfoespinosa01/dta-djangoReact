@@ -25,7 +25,6 @@ function AdminDashboard() {
         <p><strong>Email:</strong> {user.email}</p>
         <p><strong>Role:</strong> {user.role}</p>
         <p><strong>User ID:</strong> {user.user_id}</p>
-        {/* You can display subscription status here too if it's in the token or fetch it */}
       </div>
 
       <button
