@@ -9,6 +9,7 @@ export const AuthProvider = ({ children }) => {
     user: null,
     accessToken: null,
     isAuthenticated: false,
+    loading: true,
   });
 
   const navigate = useNavigate();
@@ -27,31 +28,6 @@ export const AuthProvider = ({ children }) => {
       console.error('Failed to decode access token in login()', err);
     }
   };
-  
-
-  useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    if (!token) return;
-
-    try {
-      const decoded = jwtDecode(token);
-      const isExpired = decoded.exp * 1000 < Date.now();
-
-      if (isExpired) {
-        handleLogout();
-        return;
-      }
-
-      setAuth({
-        user: decoded,
-        accessToken: token,
-        isAuthenticated: true,
-      });
-    } catch (err) {
-      console.error('Error decoding token:', err);
-      handleLogout();
-    }
-  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('access_token');
@@ -59,6 +35,49 @@ export const AuthProvider = ({ children }) => {
     setAuth({ user: null, accessToken: null, isAuthenticated: false });
     navigate('/adminlogin');
   };
+
+  // ✅ Rehydrate session from localStorage on refresh
+  useEffect(() => {
+    const access = localStorage.getItem('access_token');
+    const refresh = localStorage.getItem('refresh_token');
+  
+    console.log('🧪 Checking for stored tokens...');
+    console.log('Access token:', access);
+    console.log('Refresh token:', refresh);
+  
+    if (!access || !refresh) {
+      console.warn('❌ No tokens found in localStorage');
+      setAuth({ user: null, accessToken: null, isAuthenticated: false, loading: false }); // ✅ Add loading: false
+      return;
+    }
+  
+    try {
+      const decoded = jwtDecode(access);
+      console.log('✅ Decoded access token:', decoded);
+  
+      const isExpired = decoded.exp * 1000 < Date.now();
+      console.log('Token expired?', isExpired);
+  
+      if (isExpired) {
+        console.warn('⏰ Access token is expired');
+        handleLogout();
+        return;
+      }
+  
+      setAuth({
+        user: decoded,
+        accessToken: access,
+        isAuthenticated: true,
+        loading: false, // ✅ important
+      });
+  
+      console.log('✅ Session restored on refresh');
+    } catch (err) {
+      console.error('❌ Error decoding token on refresh:', err);
+      setAuth({ user: null, accessToken: null, isAuthenticated: false, loading: false }); // ✅ ensure loading is updated here too
+    }
+  }, []);
+  
 
   const value = {
     ...auth,
@@ -68,7 +87,5 @@ export const AuthProvider = ({ children }) => {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
-
-
 
 export const useAuth = () => useContext(AuthContext);

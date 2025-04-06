@@ -2,14 +2,15 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from rest_framework import status
+from rest_framework import status, permissions
 from users.models import CustomUser
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import authenticate, login
 from django.contrib.auth import get_user_model
 from django.conf import settings
-from adminplans.models import AdminPlan, PendingAdminSignup
+from django.utils import timezone
+from adminplans.models import AdminPlan, PendingAdminSignup, AdminProfile
 import json
 import stripe
 
@@ -115,14 +116,31 @@ class AdminLoginView(APIView):
         return Response({'error': 'Invalid credentials or not an admin'}, status=status.HTTP_401_UNAUTHORIZED)
 
 class AdminDashboardView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         user = request.user
+
+        if user.role != 'admin':
+            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            profile = user.admin_profile
+        except AdminProfile.DoesNotExist:
+            return Response({"error": "Admin profile not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if profile.is_trial_expired():
+            user.subscription_status = 'admin_inactive'
+            user.save()
+            return Response({
+                "trial_active": False,
+                "redirect_to": "/admintrialended"
+            }, status=status.HTTP_403_FORBIDDEN)
+
         return Response({
-            "message": f"Welcome, {user.email}!",
-            "role": user.role,
-            "subscription_status": user.subscription_status
+            "trial_active": True,
+            "days_remaining": profile.trial_days_remaining(),
+            "message": f"Welcome back, {user.username}. You have {profile.trial_days_remaining()} day(s) left in your trial."
         })
     
 @csrf_exempt   
@@ -192,6 +210,20 @@ def register_admin(request):
         user.is_staff = True
         user.subscription_status = subscription_status
         user.save()
+
+        # ✅ Create AdminProfile for all admins
+        admin_profile_data = {
+            'user': user,
+            'subscription_started_at': timezone.now()
+        }
+
+        if subscription_status == 'admin_trial':
+            admin_profile_data['trial_start_date'] = timezone.now()
+            print(f"🕒 Trial started for {email}")
+        else:
+            print(f"💳 Subscription (paid) started for {email}")
+
+        AdminProfile.objects.create(**admin_profile_data)
 
         print(f"✅ Admin {email} created with subscription_status: {subscription_status}")
 

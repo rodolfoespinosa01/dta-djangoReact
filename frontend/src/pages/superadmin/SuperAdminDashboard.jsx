@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 function SuperAdminDashboard() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
 
   useEffect(() => {
-    // Protect route
+    // Don't check auth until loading is done
+    if (loading) return;
+
     if (!isAuthenticated || !user?.is_superuser) {
       navigate('/superadminlogin');
       return;
@@ -20,7 +22,6 @@ function SuperAdminDashboard() {
       return;
     }
 
-    // Fetch superadmin stats
     fetch('http://localhost:8000/api/users/superadmin/dashboard/', {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -32,9 +33,9 @@ function SuperAdminDashboard() {
         console.error('Failed to fetch dashboard data:', err);
         navigate('/superadminlogin');
       });
-  }, [isAuthenticated, user, navigate]);
+  }, [loading, isAuthenticated, user, navigate]);
 
-  if (!stats) {
+  if (loading || !stats) {
     return <p style={{ padding: '2rem' }}>Loading SuperAdmin dashboard...</p>;
   }
 
