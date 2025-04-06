@@ -9,7 +9,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import authenticate
 from django.contrib.auth import get_user_model
 from django.conf import settings
-from adminplans.models import AdminPlan
+from adminplans.models import AdminPlan, PendingAdminSignup
 import json
 import stripe
 
@@ -125,10 +125,10 @@ class AdminDashboardView(APIView):
             "subscription_status": user.subscription_status
         })
     
-    
-@csrf_exempt
+@csrf_exempt   
 def register_admin(request):
     print("📩 Incoming registration request received")
+
     if request.method != 'POST':
         return JsonResponse({'error': 'POST request required'}, status=400)
 
@@ -136,12 +136,19 @@ def register_admin(request):
         data = json.loads(request.body)
         email = data.get('email')
         password = data.get('password')
-        session_id = data.get('session_id')
+        token = data.get('token')
 
-        if not all([email, password, session_id]):
+        if not all([email, password, token]):
             return JsonResponse({'error': 'Missing fields'}, status=400)
 
-        # ✅ Step 1: Retrieve Stripe session
+        # 🔐 STEP 1: Get session_id using token
+        try:
+            pending = PendingAdminSignup.objects.get(token=token)
+            session_id = pending.session_id
+        except PendingAdminSignup.DoesNotExist:
+            return JsonResponse({'error': 'Invalid or expired token'}, status=404)
+
+        # ✅ STEP 2: Retrieve Stripe session using session_id
         try:
             print("📦 Attempting to fetch Stripe session...")
 
@@ -155,10 +162,10 @@ def register_admin(request):
             print("✅ Stripe price ID:", stripe_price_id)
 
         except Exception as stripe_error:
-            print("❌ Final error handler hit:", str(e))
+            print("❌ Stripe error:", stripe_error)
             return JsonResponse({'error': 'Stripe session retrieval failed'}, status=400)
 
-        # ✅ Step 2: Match Stripe price ID to AdminPlan
+        # ✅ STEP 3: Match Stripe price ID to AdminPlan
         try:
             plan = AdminPlan.objects.get(stripe_price_id=stripe_price_id)
             print("✅ Matched AdminPlan:", plan.name)
@@ -169,13 +176,13 @@ def register_admin(request):
                 'adminAnnual': 'admin_annual',
             }
 
-            subscription_status = plan_mapping.get(plan.name, 'trial')
+            subscription_status = plan_mapping.get(plan.name, 'admin_trial')
 
         except AdminPlan.DoesNotExist:
             print("❌ Plan not found for price_id:", stripe_price_id)
-            subscription_status = 'trial'
+            subscription_status = 'admin_trial'
 
-        # ✅ Step 3: Create user
+        # ✅ STEP 4: Create user
         User = get_user_model()
         if User.objects.filter(username=email).exists():
             return JsonResponse({'error': 'User already exists'}, status=400)
@@ -183,14 +190,23 @@ def register_admin(request):
         user = User.objects.create_user(username=email, email=email, password=password)
         user.role = 'admin'
         user.is_staff = True
-        user.subscription_status = plan_mapping.get(plan.name, 'admin_trial')
+        user.subscription_status = subscription_status
         user.save()
 
         print(f"✅ Admin {email} created with subscription_status: {subscription_status}")
+
+        # ✅ Optional cleanup
+        pending.delete()
+
         return JsonResponse({'success': True, 'message': f'Admin account created with {subscription_status} plan'})
 
     except Exception as e:
         print("❌ Error during admin registration:", e)
         return JsonResponse({'error': str(e)}, status=500)
 
-
+def get_pending_signup(request, token):
+    try:
+        pending = PendingAdminSignup.objects.get(token=token)
+        return JsonResponse({'email': pending.email})
+    except PendingAdminSignup.DoesNotExist:
+        return JsonResponse({'error': 'Invalid or expired token'}, status=404)
