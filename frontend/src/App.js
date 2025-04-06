@@ -14,6 +14,8 @@ import AdminRegisterPage from './pages/admin/AdminRegisterPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminSettings from './pages/admin/AdminSettings';
 import AdminLoginPage from './pages/admin/AdminLoginPage';
+import AdminForgotPasswordPage from './pages/admin/AdminForgotPasswordPage';
+import AdminResetPasswordPage from './pages/admin/AdminResetPasswordPage';
 
 import UserHomePage from './pages/user/UserHomePage';
 import UserPlanSelectionPage from './pages/user/UserPlanSelectionPage';
@@ -34,6 +36,8 @@ function App() {
           <Route path="/adminhomepage" element={<AdminHomePage />} />
           <Route path="/adminplans" element={<AdminPlanSelectionPage />} />
           <Route path="/adminregister" element={<AdminRegisterPage />} />
+          <Route path="/adminforgotpassword" element={<AdminForgotPasswordPage />} />
+          <Route path="/adminresetpassword" element={<AdminResetPasswordPage />} />
 
           <Route path="/userhomepage" element={<UserHomePage />} />
           <Route path="/userplans" element={<UserPlanSelectionPage />} />
