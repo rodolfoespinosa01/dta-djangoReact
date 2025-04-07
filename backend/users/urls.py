@@ -1,7 +1,7 @@
 from django.urls import path
 from .views import SuperAdminDashboardView, SuperAdminLoginView
 from .views import AdminLoginView, AdminDashboardView, AdminForgotPasswordView, AdminResetPasswordConfirmView
-from .views import register_admin, get_pending_signup
+from .views import register_admin, get_pending_signup, cancel_admin_trial_auto_renew
 
 urlpatterns = [
     path('superadmin/dashboard/', SuperAdminDashboardView.as_view(), name='superadmin-dashboard'),
@@ -13,4 +13,5 @@ urlpatterns = [
     path('pending-signup/<str:token>/', get_pending_signup),
     path('admin/forgot-password/', AdminForgotPasswordView.as_view(), name='admin-forgot-password'),
     path('admin/reset-password/confirm/', AdminResetPasswordConfirmView.as_view(), name='admin-reset-password-confirm'),
+    path('admin/cancel-auto-renew/', cancel_admin_trial_auto_renew),
 ]

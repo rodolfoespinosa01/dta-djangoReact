@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
@@ -6,11 +6,33 @@ function AdminDashboard() {
   const { user, isAuthenticated, loading, logout } = useAuth();
   const navigate = useNavigate();
 
+  const [cancelled, setCancelled] = useState(false);
+  const [cancelMessage, setCancelMessage] = useState('');
+
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       navigate('/adminlogin');
     }
   }, [isAuthenticated, loading, navigate]);
+
+  const handleCancelAutoRenew = async () => {
+    const token = localStorage.getItem('access_token');
+    const response = await fetch('http://localhost:8000/api/users/admin/cancel-auto-renew/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json();
+    if (response.ok) {
+      setCancelled(true);
+      setCancelMessage(data.message);
+    } else {
+      setCancelMessage(data.error || 'Failed to cancel auto-renewal.');
+    }
+  };
 
   if (loading) {
     return <p style={{ padding: '2rem' }}>Loading your dashboard...</p>;
@@ -30,6 +52,29 @@ function AdminDashboard() {
         <p><strong>Role:</strong> {user.role}</p>
         <p><strong>User ID:</strong> {user.user_id}</p>
       </div>
+
+      {/* Cancel Auto-Renewal Button for Trial Admins */}
+      {user?.role === 'admin' && user?.subscription_status === 'admin_trial' && !cancelled && (
+        <div style={{ marginTop: '2rem' }}>
+          <button
+            onClick={handleCancelAutoRenew}
+            style={{
+              padding: '0.75rem 1.5rem',
+              backgroundColor: '#fbbf24',
+              color: 'black',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+            }}
+          >
+            Cancel Auto-Renewal
+          </button>
+        </div>
+      )}
+
+      {cancelMessage && (
+        <p style={{ marginTop: '1rem', color: cancelled ? 'green' : 'red' }}>{cancelMessage}</p>
+      )}
 
       <button
         onClick={logout}
