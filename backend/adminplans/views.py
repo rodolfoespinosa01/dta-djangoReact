@@ -18,27 +18,44 @@ def create_checkout_session(request):
     try:
         data = json.loads(request.body)
         plan_name = data.get('plan_name')
-        plan = AdminPlan.objects.get(name=plan_name)
         email = data.get('email')
 
-        session = stripe.checkout.Session.create(
-            payment_method_types=['card'],
-            mode='subscription',
-            customer_email=email,
-            line_items=[{
-                'price': plan.stripe_price_id,
-                'quantity': 1,
-            }],
-            success_url='http://localhost:3000/adminthankyou',
+        plan = AdminPlan.objects.get(name=plan_name)
 
-            cancel_url='https://localhost:3000/cancel',
-        )
+        # ✅ Always create a Stripe Customer ahead of time
+        customer = stripe.Customer.create(email=email)
+
+        if plan.name == 'adminTrial':
+            # 🧪 Setup-only flow (collect card, no charge)
+            session = stripe.checkout.Session.create(
+                mode='setup',
+                payment_method_types=['card'],
+                customer=customer.id,
+                metadata={'plan_name': plan.name},
+                success_url='http://localhost:3000/adminthankyou?session_id={CHECKOUT_SESSION_ID}',
+                cancel_url='http://localhost:3000/adminplans',
+            )
+        else:
+            # 💳 Immediate subscription (monthly/annual)
+            session = stripe.checkout.Session.create(
+                mode='subscription',
+                payment_method_types=['card'],
+                customer=customer.id,
+                line_items=[{
+                    'price': plan.stripe_price_id,
+                    'quantity': 1,
+                }],
+                metadata={'plan_name': plan.name},
+                success_url='http://localhost:3000/adminthankyou?session_id={CHECKOUT_SESSION_ID}',
+                cancel_url='http://localhost:3000/adminplans',
+            )
 
         return JsonResponse({'url': session.url})
 
     except AdminPlan.DoesNotExist:
         return JsonResponse({'error': 'Plan not found'}, status=404)
     except Exception as e:
+        print("❌ Error creating checkout session:", str(e))
         return JsonResponse({'error': str(e)}, status=500)
 
 
@@ -57,28 +74,26 @@ def stripe_webhook(request):
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
         customer_email = session.get('customer_email')
-        session_id = session.get('id')
+        # Fallback: fetch from expanded customer object if needed
+        if not customer_email:
+            customer_id = session.get('customer')
+            if customer_id:
+                customer = stripe.Customer.retrieve(customer_id)
+                customer_email = customer.get('email')
+                session_id = session.get('id')
 
         print(f"🔍 Webhook triggered for session: {session_id}")
         print(f"📧 Email from session: {customer_email}")
 
-        try:
-            line_items = stripe.checkout.Session.list_line_items(
-                session_id,
-                expand=['data.price'],
-                limit=1
-            )
-            price_id = line_items.data[0].price.id
-            print(f"📦 Price ID from session: {price_id}")
-        except Exception as e:
-            print(f"❌ Error fetching line_items: {str(e)}")
+        plan_name = session.get('metadata', {}).get('plan_name')
+        if not plan_name:
+            print("❌ Missing plan name in session metadata")
             return HttpResponse(status=500)
 
         try:
-            plan = AdminPlan.objects.get(stripe_price_id=price_id)
-            plan_name = plan.name
+            plan = AdminPlan.objects.get(name=plan_name)
         except AdminPlan.DoesNotExist:
-            print("❌ No AdminPlan matched price ID")
+            print(f"❌ AdminPlan not found for plan name: {plan_name}")
             return HttpResponse(status=500)
 
         try:
@@ -106,6 +121,3 @@ def stripe_webhook(request):
             return HttpResponse(status=500)
 
     return HttpResponse(status=200)
-
-
-
