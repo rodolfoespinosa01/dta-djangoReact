@@ -32,7 +32,7 @@ def create_checkout_session(request):
                 payment_method_types=['card'],
                 customer=customer.id,
                 metadata={'plan_name': plan.name},
-                success_url='http://localhost:3000/adminthankyou?session_id={CHECKOUT_SESSION_ID}',
+                success_url='http://localhost:3000/adminthankyou',
                 cancel_url='http://localhost:3000/adminplans',
             )
         else:
@@ -46,7 +46,7 @@ def create_checkout_session(request):
                     'quantity': 1,
                 }],
                 metadata={'plan_name': plan.name},
-                success_url='http://localhost:3000/adminthankyou?session_id={CHECKOUT_SESSION_ID}',
+                success_url='http://localhost:3000/adminthankyou',
                 cancel_url='http://localhost:3000/adminplans',
             )
 
