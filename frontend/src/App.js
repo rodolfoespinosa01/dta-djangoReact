@@ -37,6 +37,7 @@ function App() {
           <Route path="/adminregister" element={<AdminRegisterPage />} />
           <Route path="/adminlogin" element={<AdminLoginPage />} />
           <Route path="/adminforgotpassword" element={<AdminForgotPasswordPage />} />
+          <Route path="/adminthankyou" element={<AdminThankYou />} />
           <Route path="/adminresetpassword" element={<AdminResetPasswordPage />} />
           <Route path="/superadminlogin" element={<SuperAdminLoginPage />} />
           <Route path="/userhomepage" element={<UserHomePage />} />
@@ -59,15 +60,6 @@ function App() {
               </AdminProtectedRoute>
             }
           />
-          <Route
-            path="/adminthankyou"
-            element={
-              <ThankYouRoute role="admin">
-                <AdminThankYou />
-              </ThankYouRoute>
-            }
-          />
-
           {/* Protected Super Admin Routes */}
           <Route
             path="/superadmindashboard"
