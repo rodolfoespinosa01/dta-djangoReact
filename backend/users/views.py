@@ -3,6 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status, permissions
+from rest_framework.decorators import api_view, permission_classes
 from users.models import CustomUser
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -11,6 +12,7 @@ from django.contrib.auth import get_user_model
 from django.conf import settings
 from django.utils import timezone
 from adminplans.models import AdminPlan, PendingAdminSignup, AdminProfile
+from adminplans.tasks import auto_upgrade_admin_trial
 import json
 import stripe
 
@@ -142,8 +144,26 @@ class AdminDashboardView(APIView):
             "days_remaining": profile.trial_days_remaining(),
             "message": f"Welcome back, {user.username}. You have {profile.trial_days_remaining()} day(s) left in your trial."
         })
+
+from .serializers import AdminForgotPasswordSerializer, AdminResetPasswordSerializer
+
+class AdminForgotPasswordView(APIView):
+    def post(self, request):
+        serializer = AdminForgotPasswordSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"detail": "Password reset link sent (check terminal)."})
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class AdminResetPasswordConfirmView(APIView):
+    def post(self, request):
+        serializer = AdminResetPasswordSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"detail": "Password has been reset successfully."})
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-@csrf_exempt   
+@csrf_exempt
 def register_admin(request):
     print("📩 Incoming registration request received")
 
@@ -156,51 +176,42 @@ def register_admin(request):
         password = data.get('password')
         token = data.get('token')
 
+        print(f"📥 Incoming data: email={email}, password={'✅' if password else '❌'}, token={token}")
+
         if not all([email, password, token]):
             return JsonResponse({'error': 'Missing fields'}, status=400)
 
-        # STEP 1: Get session_id using token
-        try:
-            pending = PendingAdminSignup.objects.get(token=token)
-            session_id = pending.session_id
-        except PendingAdminSignup.DoesNotExist:
-            return JsonResponse({'error': 'Invalid or expired token'}, status=404)
+        pending = PendingAdminSignup.objects.get(token=token)
+        session_id = pending.session_id
 
-        # STEP 2: Retrieve Stripe session using session_id
-        try:
-            print("📦 Attempting to fetch Stripe session...")
+        # 🔄 Expand customer + setup_intent
+        checkout_session = stripe.checkout.Session.retrieve(
+            session_id,
+            expand=['customer', 'setup_intent']
+        )
 
-            checkout_session = stripe.checkout.Session.retrieve(session_id)
-            print("✅ Stripe session:", checkout_session)
+        # ✅ Handle both expanded object and string customer ID
+        customer = checkout_session.get("customer")
+        customer_id = customer.id if hasattr(customer, 'id') else customer
 
-            line_items = stripe.checkout.Session.list_line_items(session_id, limit=1)
-            print("✅ Line items:", line_items)
+        customer_email = checkout_session.get("customer_email")
 
-            stripe_price_id = line_items.data[0].price.id
-            print("✅ Stripe price ID:", stripe_price_id)
+        if not customer_email and customer_id:
+            customer_obj = stripe.Customer.retrieve(customer_id)
+            customer_email = customer_obj.get("email")
 
-        except Exception as stripe_error:
-            print("❌ Stripe error:", stripe_error)
-            return JsonResponse({'error': 'Stripe session retrieval failed'}, status=400)
+        plan_name = checkout_session.get('metadata', {}).get('plan_name')
+        plan = AdminPlan.objects.get(name=plan_name)
 
-        # STEP 3: Match Stripe price ID to AdminPlan
-        try:
-            plan = AdminPlan.objects.get(stripe_price_id=stripe_price_id)
-            print("✅ Matched AdminPlan:", plan.name)
+        plan_mapping = {
+            'adminTrial': 'admin_trial',
+            'adminMonthly': 'admin_monthly',
+            'adminAnnual': 'admin_annual',
+        }
 
-            plan_mapping = {
-                'adminTrial': 'admin_trial',
-                'adminMonthly': 'admin_monthly',
-                'adminAnnual': 'admin_annual',
-            }
+        subscription_status = plan_mapping.get(plan.name, 'admin_trial')
 
-            subscription_status = plan_mapping.get(plan.name, 'admin_trial')
-
-        except AdminPlan.DoesNotExist:
-            print("❌ Plan not found for price_id:", stripe_price_id)
-            subscription_status = 'admin_trial'
-
-        # STEP 4: Create user
+        # ✅ Create user
         User = get_user_model()
         if User.objects.filter(username=email).exists():
             return JsonResponse({'error': 'User already exists'}, status=400)
@@ -211,30 +222,55 @@ def register_admin(request):
         user.subscription_status = subscription_status
         user.save()
 
-        # ✅ Create AdminProfile for all admins
-        admin_profile_data = {
-            'user': user,
-            'subscription_started_at': timezone.now()
+        # ✅ AdminProfile
+        profile_data = {
+            'admin_stripe_customer_id': customer_id,
         }
 
         if subscription_status == 'admin_trial':
-            admin_profile_data['trial_start_date'] = timezone.now()
-            print(f"🕒 Trial started for {email}")
+            profile_data['trial_start_date'] = timezone.now()
         else:
-            print(f"💳 Subscription (paid) started for {email}")
+            profile_data['subscription_started_at'] = timezone.now()
 
-        AdminProfile.objects.create(**admin_profile_data)
+        profile, created = AdminProfile.objects.get_or_create(
+            user=user,
+            defaults=profile_data
+        )
 
-        print(f"✅ Admin {email} created with subscription_status: {subscription_status}")
+        if created:
+            print(f"🧾 AdminProfile created for {email}")
+        else:
+            print(f"⚠️ AdminProfile already existed for {email}")
 
-        # Optional cleanup
+        # ✅ Attach payment method if setup_intent exists
+        if checkout_session.mode == 'setup':
+            setup_intent = checkout_session.get('setup_intent')
+            if setup_intent and setup_intent.get('payment_method'):
+                payment_method = setup_intent['payment_method']
+                stripe.PaymentMethod.attach(payment_method, customer=customer_id)
+                stripe.Customer.modify(customer_id, invoice_settings={
+                    'default_payment_method': payment_method
+                })
+                print(f"✅ Attached and set default payment method for {email}")
+            else:
+                print(f"⚠️ No payment method found in setup intent")
+
+        # ✅ Schedule upgrade task for free trials
+        if subscription_status == 'admin_trial':
+            from adminplans.tasks import auto_upgrade_admin_trial
+            auto_upgrade_admin_trial.apply_async((user.id,), countdown=60)  # Use 60*60*24*14 in prod
+            print(f"🕒 Trial upgrade scheduled for {email}")
+
         pending.delete()
-
         return JsonResponse({'success': True, 'message': f'Admin account created with {subscription_status} plan'})
+
+    except PendingAdminSignup.DoesNotExist:
+        return JsonResponse({'error': 'Invalid or expired token'}, status=404)
 
     except Exception as e:
         print("❌ Error during admin registration:", e)
         return JsonResponse({'error': str(e)}, status=500)
+
 
 def get_pending_signup(request, token):
     try:
@@ -268,20 +304,15 @@ def login_admin(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
-from .serializers import AdminForgotPasswordSerializer, AdminResetPasswordSerializer
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def cancel_admin_trial_auto_renew(request):
+    user = request.user
+    if user.role != 'admin' or user.subscription_status != 'admin_trial':
+        return Response({'error': 'Unauthorized or not a trial admin'}, status=403)
 
-class AdminForgotPasswordView(APIView):
-    def post(self, request):
-        serializer = AdminForgotPasswordSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({"detail": "Password reset link sent (check terminal)."})
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    profile = user.admin_profile
+    profile.auto_renew_cancelled = True
+    profile.save()
 
-class AdminResetPasswordConfirmView(APIView):
-    def post(self, request):
-        serializer = AdminResetPasswordSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({"detail": "Password has been reset successfully."})
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    return Response({'success': True, 'message': 'Auto-renewal cancelled. You will not be charged.'})
