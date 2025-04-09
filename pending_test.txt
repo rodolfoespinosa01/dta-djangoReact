@@ -1,9 +1,9 @@
 🧪 MASTER TEST LIST FOR DTA PLATFORM (Backend + Frontend + Stripe + Celery)
 
 🔐 Auth & Access Control
- Admin login with correct credentials
- Admin login with invalid credentials
- Admin cannot access dashboard if not logged in
+ Admin login with correct credentials - DONE
+ Admin login with invalid credentials - DONE
+ Admin cannot access dashboard if not logged in - DONE
  Admin session persists after page refresh
  SuperAdmin login and access to /superadmindashboard
  Invalid users cannot access SuperAdmin routes
