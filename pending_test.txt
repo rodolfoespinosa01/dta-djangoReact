@@ -1,96 +1,62 @@
-🧪 MASTER TEST LIST FOR DTA PLATFORM (Backend + Frontend + Stripe + Celery)
+🧪 DTA MASTER BACKEND TEST LIST (Backend Only)
 
 🔐 Auth & Access Control
- Admin login with correct credentials - DONE
- Admin login with invalid credentials - DONE
- Admin cannot access dashboard if not logged in - DONE
- Admin session persists after page refresh
- SuperAdmin login and access to /superadmindashboard
- Invalid users cannot access SuperAdmin routes
- Token auto-refresh logic for long sessions (optional)
-
+✅ Admin login with correct credentials - done
+✅ Admin login with invalid credentials - done
+✅ Admin cannot access dashboard if not logged in - done
+🔲 Admin session persists after page refresh (via token)
+🔲 SuperAdmin login and access to /superadmindashboard
+🔲 Invalid users cannot access SuperAdmin routes
+🔲 Token auto-refresh logic (optional)
 👨‍💼 Admin Free Trial Flow
- Stripe checkout for free trial creates a session
- Webhook receives event and saves PendingAdminSignup
- Registration works from email token (admin register page)
- Trial user created with:
-Correct subscription status: admin_trial
+✅ Stripe webhook creates PendingAdminSignup
+✅ Token-based admin registration succeeds
+✅ Free trial user created with:
+subscription_status = admin_trial
 AdminProfile auto-created
 trial_start_date is set
 subscription_started_at is null
 admin_stripe_customer_id is stored
- Celery auto-upgrades them to monthly in 60s (dev)
- After 60s:
-subscription_status = admin_monthly
+🔲 Celery task upgrades to monthly:
+subscription_status becomes admin_monthly
 subscription_started_at is set
-admin_stripe_subscription_id is populated
-
-💸 Stripe Billing Logic
- Free trial user has setup_intent to save payment method
- Monthly subscription triggers charge after trial
- Monthly subscription respects auto_renew_cancelled
- Admin can cancel subscription in dashboard
- Annual plan registration works (same as above but yearly)
- Stripe webhooks properly populate DB
-
-📬 PendingAdminSignup / Email Token Flow
- Token is generated and saved in DB
- Email (simulated) is shown in terminal
- Token expires after first use
- Re-using expired/used token returns an error
- Email pre-fills registration form properly
-
-📊 SuperAdmin Dashboard
- Shows all registered admins (trial, monthly, annual)
- Shows total revenue correctly
- Projected monthly revenue is accurate
- Links work for admin detail views in Django admin
-
-🧪 Password Reset (Admin)
- Admin can request reset
- Reset link is emailed (simulated in terminal)
- Password can be successfully changed
- Old password no longer works
-
-🧠 Admin Dashboard UX
- Email and role show in dashboard
- Logout button works
- Refreshing page keeps user logged in
- Cancel subscription button works (for paid admins)
- Settings page is reachable from dashboard
-
-🧹 System Reset & Developer Scripts
- reset_all removes all test users, resets DB
- machineupdate.sh ensures migrations, installs, npm
- startapp.sh launches 4 terminals:
+admin_stripe_subscription_id is saved
+💸 Stripe Billing & Subscription Logic
+🔲 Setup Intent correctly stores payment method
+🔲 Stripe triggers charge on monthly plan post-trial
+🔲 auto_renew_cancelled=True skips upgrade
+🔲 Annual plan sets correct Stripe subscription ID
+🔲 Stripe webhook updates DB correctly
+📬 Pending Signup Token Flow
+🔲 Token is generated and stored on webhook
+🔲 Token becomes invalid after one use
+🔲 Invalid or reused token errors gracefully
+🔲 Registration pulls email from token record
+📊 SuperAdmin Dashboard Logic
+🔲 Shows all Admins grouped by plan (trial/monthly/annual)
+🔲 Revenue totals are correct
+🔲 Projected monthly income is correct
+🔲 Trial countdown / expiration logic is correct
+🔑 Admin Password Reset
+🔲 Password reset request saves token
+🔲 Simulated email prints reset URL
+🔲 Password can be changed
+🔲 Old password fails, new one works
+⚙️ Celery Task Health
+🔲 Celery worker starts and connects to Redis
+🔲 Logs show trial upgrade task execution
+🔲 Upgrade skipped if auto_renew_cancelled=True
+🔲 Graceful error if Stripe payment method is missing
+🧹 Developer Scripts
+✅ reset_all clears test users and resets DB
+✅ machineupdate.sh pulls latest, installs backend/frontend deps, and runs migrations
+✅ startapp.sh launches 4-terminal environment:
 Django
 React
 Celery
 Stripe webhook
- Works the same on multiple machines
-
-⚙️ Celery + Redis Health
- Worker starts properly
- Logs show task execution (upgrade after 60s)
- Task fails gracefully if auto_renew_cancelled=True
- Stripe call fails gracefully if payment method is missing
-
-🌍 Environment & Config
- .env values load correctly
- Stripe keys work in test mode
- PostgreSQL connection is valid
- Redis is running and reachable
-
-✅ What To Work On First?
-Let’s go one at a time. Here’s a suggested order:
-
-Admin Trial Signup Flow (Stripe → Register → Celery upgrade) ✅
-Admin Login + Dashboard Access
-Cancel Subscription UX + Backend
-Monthly & Annual Plan Flow
-SuperAdmin Dashboard Accuracy
-Password Reset Flow
-Developer Tools (reset, scripts)
-Error Edge Cases (bad tokens, expired trials, etc.)
-Stripe Webhook Robustness
-React Tests (later)
+🌍 Environment Health Checks
+✅ .env Stripe + DB variables load properly
+✅ PostgreSQL connection succeeds
+✅ Redis is installed and reachable
+✅ Stripe keys valid (test mode)
