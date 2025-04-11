@@ -5,7 +5,7 @@
 ✅ Admin login with invalid credentials - done
 ✅ Admin cannot access dashboard if not logged in - done
 🔲 Admin session persists after page refresh (via token) - done
-🔲 SuperAdmin login and access to /superadmindashboard
+🔲 SuperAdmin login and access to /superadmindashboard - done
 🔲 Invalid users cannot access SuperAdmin routes
 🔲 Token auto-refresh logic (optional)
 👨‍💼 Admin Free Trial Flow
