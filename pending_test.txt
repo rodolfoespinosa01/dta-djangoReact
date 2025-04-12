@@ -7,8 +7,8 @@
 🔲 Admin session persists after page refresh (via token) - done
 🔲 SuperAdmin login and access to /superadmindashboard - done
 🔲 Invalid users cannot access SuperAdmin routes - done
-🔲 Token auto-refresh logic (SuperAdmin)
-🔲 Token auto-refresh logic (Admin)
+🔲 Token auto-refresh logic (SuperAdmin) - done
+🔲 Token auto-refresh logic (Admin) - done
 👨‍💼 Admin Free Trial Flow
 ✅ Stripe webhook creates PendingAdminSignup
 ✅ Token-based admin registration succeeds
