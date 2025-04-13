@@ -3,6 +3,6 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 
-urlpatterns = [
+test_superadmin_urls = [
     path("token/refresh/", TokenRefreshView.as_view(), name="test-superadmin-token-refresh"),
 ]
