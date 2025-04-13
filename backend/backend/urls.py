@@ -1,6 +1,6 @@
+import os
 from django.contrib import admin
 from django.urls import path, include
-import os
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -8,9 +8,10 @@ urlpatterns = [
     path('api/users/', include('users.urls')),
 ]
 
-# ✅ TEST-ONLY ROUTES
+# ✅ Include test-only routes when testing
 if os.environ.get("DJANGO_TEST_MODE") == "true":
-    from users import test_admin_urls, test_superadmin_urls
+    from users.tests.admin.test_admin_urls import test_admin_urls
+    from users.tests.superadmin.test_superadmin_urls import test_superadmin_urls
 
     urlpatterns += [
         path("api/test-admin/", include(test_admin_urls)),

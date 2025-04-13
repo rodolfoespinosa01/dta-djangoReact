@@ -3,13 +3,14 @@
 import os
 import sys
 
+
 def main():
     """Run administrative tasks."""
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
 
-    # ✅ Auto-enable test mode
+    # ✅ Automatically enable test routes during test runs
     if 'test' in sys.argv:
-        os.environ['DJANGO_TEST_MODE'] = 'true'
+        os.environ["DJANGO_TEST_MODE"] = "true"
 
     try:
         from django.core.management import execute_from_command_line
@@ -19,7 +20,9 @@ def main():
             "available on your PYTHONPATH environment variable? Did you "
             "forget to activate a virtual environment?"
         ) from exc
+
     execute_from_command_line(sys.argv)
+
 
 if __name__ == '__main__':
     main()
