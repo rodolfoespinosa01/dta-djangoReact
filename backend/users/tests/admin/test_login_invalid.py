@@ -21,9 +21,9 @@ class AdminLoginInvalidTest(APITestCase):
 
         response = self.client.post(
             reverse('admin-login'),
-            data={'email': self.email, 'password': 'wrongpassword'},
+            data={'username': self.email, 'password': 'wrongpassword'},  
             content_type='application/json'
         )
 
         self.assertEqual(response.status_code, 401)
-        self.assertIn("error", response.json())
+        self.assertIn("detail", response.json())  # Token view returns 'detail' not 'error'
