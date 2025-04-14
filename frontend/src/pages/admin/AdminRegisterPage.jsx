@@ -84,7 +84,7 @@ function AdminRegisterPage() {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ username: email, password }),
       });
 
       const loginData = await loginRes.json();

@@ -1,87 +1,69 @@
 # 🥗 DTA – Diet Generator Platform (Django + React)
 
-**DTA** is a scalable diet plan generator designed to support both **B2C** (direct to consumer) and **B2B** (fitness influencers & coaches) models. Built using Django (backend) and React (frontend), this platform enables personalized meal plan delivery based on lifestyle goals and algorithmic precision.
+**DTA** is a scalable AI-powered diet plan generator designed for both **B2C** (individual clients) and **B2B** (fitness influencers & coaches). Built with Django + React, the platform delivers personalized meal plans based on lifestyle goals and algorithmic precision.
 
 ---
 
 ## 🚀 Project Structure
 
-```
-dta-djangoReact/
-├── backend/                # Django backend (Custom User, API, Logic)
-│   ├── manage.py
-│   └── backend/            # Django settings, URLs, celery, wsgi
-├── frontend/               # React frontend (UI/UX for users)
-├── backend/venv/           # Python virtual environment (ignored)
-├── startapp.sh             # Script to start all services
-├── machineupdate.sh        # Script to update project on new machine
-├── .gitignore
-├── README.md
-└── requirements.txt
-```
-
 ---
 
 ## 🌐 User Types & Flows
 
-### 👤 End Users (B2C)
-- Sign up via Google, Facebook, or Email
-- Choose a plan (Free Trial or Paid)
-- Complete questionnaire
-- Receive AI-generated meal plans
-- View/Download weekly nutrition plans
+### 👤 End Users (Clients)
+- Coming soon: Questionnaire + Meal Plan UI
 
-### 👩‍💼 Admins (B2B)
-- Sign up for a 2-week trial (max 10 clients)
-- Upgrade to Monthly or Annual subscription
-- Manage their own clients & dashboards
-- Invite clients via unique referral link
-- White-label options (branding, logos)
+### 👩‍💼 Admins (Fitness Coaches)
+- Sign up via Stripe checkout (Free Trial, Monthly, or Annual)
+- Receive email link to complete registration
+- Get 14-day trial (1-time only)
+- Can cancel trial auto-upgrade from `/adminsettings`
+- After 14 days: upgraded to paid plan via Celery
+- Access dashboard, client tools, settings
 
-### 👑 SuperAdmin (You)
-- View/manage all Admins and End Users
-- Adjust subscriptions and access
-- Configure global system settings
+### 👑 SuperAdmin (Platform Owner)
+- Full visibility into admin accounts and billing
+- View revenue, control admin statuses
+- Access protected dashboard `/superadmindashboard`
 
 ---
 
 ## 🛠 Tech Stack
 
-| Layer     | Tech                           |
-|-----------|----------------------------------|
-| Backend   | Django + DRF                     |
-| Frontend  | React + Axios                    |
-| Database  | PostgreSQL                       |
-| Auth      | Custom User Model                |
-| Payments  | Stripe, PayPal, Apple Pay (planned) |
-| Queueing  | Celery + Redis                   |
-| Deploy    | (Planned: Docker, Heroku, AWS)   |
+| Layer     | Tech                     |
+|-----------|--------------------------|
+| Backend   | Django, Django REST      |
+| Frontend  | React + Axios            |
+| Database  | PostgreSQL               |
+| Auth      | Custom User Model (JWT)  |
+| Payments  | Stripe (webhooks)        |
+| Queueing  | Celery + Redis           |
+| Testing   | Django `unittest`, Cypress (planned) |
 
 ---
 
-## 🧱 Key Features (in progress)
+## 🧱 Key Features
 
-- [x] Custom User Model with roles (SuperAdmin, Admin, EndUser)
-- [x] Admin trial logic (2 weeks)
-- [x] Stripe + webhook integration
-- [x] Task queues with Celery & Redis
-- [x] Protected dashboard routing (React)
-- [ ] Questionnaire & AI meal engine
-- [ ] PDF export of meal plans
-- [ ] White-label dashboards
-- [ ] End user invite + onboarding
+- ✅ Admin trial flow w/ Stripe checkout
+- ✅ Celery-powered auto-upgrade to paid
+- ✅ Cancel auto-renew during trial
+- ✅ SuperAdmin dashboard w/ revenue
+- ✅ JWT auth, protected routes, role logic
+- ✅ Test structure (admin/superadmin/unit)
+- 🧠 AI meal engine (upcoming)
+- 🖼️ White-label client dashboards (upcoming)
 
 ---
 
 ## 📦 Setup Instructions
 
 ### 🔧 Prerequisites
-Install these first:
 ```bash
 brew install redis
 brew install postgresql
 brew services start redis
 brew services start postgresql
+
 ```
 
 Install Python 3.11.9 (via pyenv or system Python):
@@ -148,25 +130,39 @@ Each in its own Terminal window.
 
 ---
 
-### 🔐 Environment Variables
-Make sure to add your Stripe keys, database URL, etc. in your `.env` files in:
-- `backend/.env`
-- `frontend/.env`
+### Backend Testing
+Run all tests (admin/superadmin)
+- `python manage.py test`
 
-Example:
-```env
-# backend/.env
-STRIPE_SECRET_KEY=sk_test_xxxx
-STRIPE_WEBHOOK_SECRET=whsec_xxxx
-```
+Test Includes:
+- Auth and login access
+- SuperAdmin protection
+- Trial-to-paid logic
+- Token refresh logic
+- Cancel trial logic
+- Dashboard protection
+
+
+### Backend Testing
+STRIPE_SECRET_KEY=sk_test_XXXX
+STRIPE_WEBHOOK_SECRET=whsec_XXXX
+
 
 ---
 
 ## 🧠 B2B License Model
-Admins (fitness influencers, coaches) can:
-- Start with a 2-week trial
-- Upgrade to monthly or annual
-- White-label dashboard (coming soon)
+🧠 License Logic
+
+Admins can:
+
+Start 1 trial
+Cancel auto-upgrade
+Upgrade via Stripe
+Manage dashboard
+Once trial is canceled or expired:
+
+They see inactive status
+Must upgrade to resume access
 
 ---
 
