@@ -1,4 +1,5 @@
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -13,6 +14,7 @@ from django.conf import settings
 from django.utils import timezone
 from adminplans.models import AdminPlan, PendingAdminSignup, AdminProfile
 from adminplans.tasks import auto_upgrade_admin_trial
+from .serializers import CustomTokenObtainPairSerializer
 import json
 import stripe
 
@@ -93,29 +95,8 @@ class SuperAdminDashboardView(APIView):
 
 
 
-class AdminLoginView(APIView):
-    def post(self, request):
-        email = request.data.get('email')
-        password = request.data.get('password')
-
-        user = authenticate(request, username=email, password=password)
-
-        if user and getattr(user, 'role', '') == 'admin':
-            refresh = RefreshToken.for_user(user)
-
-            # Add only relevant admin fields
-            refresh['email'] = user.email
-            refresh['role'] = user.role
-
-            return Response({
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
-                'user_id': user.id,
-                'email': user.email,
-                'role': user.role
-            })
-
-        return Response({'error': 'Invalid credentials or not an admin'}, status=status.HTTP_401_UNAUTHORIZED)
+class AdminLoginView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer
 
 class AdminDashboardView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -131,6 +112,15 @@ class AdminDashboardView(APIView):
         except AdminProfile.DoesNotExist:
             return Response({"error": "Admin profile not found."}, status=status.HTTP_404_NOT_FOUND)
 
+        if profile.auto_renew_cancelled:
+            user.subscription_status = 'admin_inactive'
+            user.save()
+            return Response({
+                "trial_active": False,
+                "redirect_to": "/admintrialended",
+                "message": "Your trial was cancelled and will not auto-renew."
+            }, status=status.HTTP_403_FORBIDDEN)
+
         if profile.is_trial_expired():
             user.subscription_status = 'admin_inactive'
             user.save()
@@ -144,6 +134,7 @@ class AdminDashboardView(APIView):
             "days_remaining": profile.trial_days_remaining(),
             "message": f"Welcome back, {user.username}. You have {profile.trial_days_remaining()} day(s) left in your trial."
         })
+
 
 from .serializers import AdminForgotPasswordSerializer, AdminResetPasswordSerializer
 
@@ -258,11 +249,28 @@ def register_admin(request):
         # ✅ Schedule upgrade task for free trials
         if subscription_status == 'admin_trial':
             from adminplans.tasks import auto_upgrade_admin_trial
-            auto_upgrade_admin_trial.apply_async((user.id,), countdown=60)  # Use 60*60*24*14 in prod
+            auto_upgrade_admin_trial.apply_async((user.id,), countdown=60 * 60 * 24 * 14)
             print(f"🕒 Trial upgrade scheduled for {email}")
 
         pending.delete()
-        return JsonResponse({'success': True, 'message': f'Admin account created with {subscription_status} plan'})
+
+        # ✅ Generate JWT for auto-login
+        from rest_framework_simplejwt.tokens import RefreshToken
+        refresh = RefreshToken.for_user(user)
+        refresh['email'] = user.email
+        refresh['role'] = user.role
+        refresh['subscription_status'] = user.subscription_status
+
+        return JsonResponse({
+            'success': True,
+            'message': f'Admin account created with {subscription_status} plan',
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+            'user_id': user.id,
+            'email': user.email,
+            'role': user.role,
+            'subscription_status': user.subscription_status,
+        })
 
     except PendingAdminSignup.DoesNotExist:
         return JsonResponse({'error': 'Invalid or expired token'}, status=404)
@@ -270,6 +278,7 @@ def register_admin(request):
     except Exception as e:
         print("❌ Error during admin registration:", e)
         return JsonResponse({'error': str(e)}, status=500)
+
 
 
 def get_pending_signup(request, token):

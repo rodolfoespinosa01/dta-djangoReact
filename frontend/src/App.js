@@ -11,6 +11,8 @@ import AdminRegisterPage from './pages/admin/AdminRegisterPage';
 import AdminLoginPage from './pages/admin/AdminLoginPage';
 import AdminForgotPasswordPage from './pages/admin/AdminForgotPasswordPage';
 import AdminResetPasswordPage from './pages/admin/AdminResetPasswordPage';
+import AdminTrialEnded from './pages/admin/AdminTrialEnded';
+
 import UserHomePage from './pages/user/UserHomePage';
 import UserPlanSelectionPage from './pages/user/UserPlanSelectionPage';
 
@@ -60,6 +62,15 @@ function App() {
               </AdminProtectedRoute>
             }
           />
+          <Route
+            path="/admintrialended"
+            element={
+              <AdminProtectedRoute>
+                <AdminTrialEnded />
+              </AdminProtectedRoute>
+            }
+          />
+
           {/* Protected Super Admin Routes */}
           <Route
             path="/superadmindashboard"
