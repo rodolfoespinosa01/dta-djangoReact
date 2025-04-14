@@ -29,7 +29,7 @@ class AdminSessionPersistenceTest(APITestCase):
         # Step 3: Login to get token
         login_response = self.client.post(
             reverse('admin-login'),
-            data={'email': 'admin2@example.com', 'password': 'strongpass456'},
+            data={'username': 'admin2@example.com', 'password': 'strongpass456'},
             content_type='application/json'
         )
         token = login_response.json().get('access')
