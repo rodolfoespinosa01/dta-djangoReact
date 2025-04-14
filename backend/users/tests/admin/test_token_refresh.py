@@ -28,7 +28,7 @@ class AdminTokenRefreshTests(APITestCase):
         # Step 1: Login to get refresh token
         login_response = self.client.post(
             reverse("admin-login"),
-            data={"email": self.email, "password": self.password},
+            data={"username": self.email, "password": self.password},
             content_type="application/json"
         )
         self.assertEqual(login_response.status_code, 200)
