@@ -175,7 +175,7 @@ def register_admin(request):
 
         pending = PendingAdminSignup.objects.get(token=token)
         session_id = pending.session_id
-        subscription_id = pending.subscription_id  # ✅ Needed for monthly logic
+        subscription_id = pending.subscription_id
 
         # 🔄 Expand customer + setup_intent
         checkout_session = stripe.checkout.Session.retrieve(
@@ -221,21 +221,18 @@ def register_admin(request):
 
         if subscription_status == 'admin_trial':
             profile_data['trial_start_date'] = timezone.now()
-        else:
-            profile_data['subscription_started_at'] = timezone.now()
-
-            # ✅ Add billing date for admin_monthly
-            if subscription_status == 'admin_trial':
-                profile_data['trial_start_date'] = timezone.now()
-            elif subscription_status == 'admin_monthly':
-                subscription_started = timezone.now()
-                next_billing = subscription_started + relativedelta(months=1)
-                profile_data['subscription_started_at'] = subscription_started
-                profile_data['next_billing_date'] = next_billing
-                print(f"📅 Next billing date (calculated): {next_billing}")
-            else:
-                profile_data['subscription_started_at'] = timezone.now()
-
+        elif subscription_status == 'admin_monthly':
+            subscription_started = timezone.now()
+            next_billing = subscription_started + relativedelta(months=1)
+            profile_data['subscription_started_at'] = subscription_started
+            profile_data['next_billing_date'] = next_billing
+            print(f"📅 Monthly next billing date: {next_billing}")
+        elif subscription_status == 'admin_annual':
+            subscription_started = timezone.now()
+            next_billing = subscription_started + relativedelta(months=12)
+            profile_data['subscription_started_at'] = subscription_started
+            profile_data['next_billing_date'] = next_billing
+            print(f"📅 Annual next billing date: {next_billing}")
 
         profile, created = AdminProfile.objects.get_or_create(user=user, defaults=profile_data)
 
