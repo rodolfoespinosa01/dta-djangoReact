@@ -20,18 +20,31 @@ def create_checkout_session(request):
         plan_name = data.get('plan_name')
         email = data.get('email')
 
+        # 🚫 Check if user already exists and has a completed account
+        from users.models import CustomUser
+        existing_user = CustomUser.objects.filter(email=email).first()
+        if existing_user:
+            if existing_user.subscription_status in ['admin_trial', 'admin_monthly', 'admin_annual', 'admin_inactive']:
+                return JsonResponse({
+                    'error': 'This email is already associated with an account. Please log in to manage or upgrade your plan.'
+                }, status=403)
+
         # 🚫 Prevent reusing free trial for same email
         if plan_name == 'adminTrial':
-            from users.models import CustomUser
-            existing_user = CustomUser.objects.filter(email=email).first()
+            if existing_user and hasattr(existing_user, 'admin_profile'):
+                if existing_user.admin_profile.trial_start_date:
+                    return JsonResponse({
+                        'error': 'This email has already used the free trial. Please choose a paid plan.'
+                    }, status=403)
 
-            if existing_user:
-                if existing_user.subscription_status in ['admin_trial', 'admin_inactive']:
-                    if hasattr(existing_user, 'admin_profile') and existing_user.admin_profile.trial_start_date:
-                        return JsonResponse({
-                            'error': 'This email has already used the free trial. Please choose a paid plan.'
-                        }, status=403)
+        # 🚫 Block if a pending signup already exists for this email
+        from adminplans.models import PendingAdminSignup
+        if PendingAdminSignup.objects.filter(email=email, is_used=False).exists():
+            return JsonResponse({
+                'error': 'A registration link has already been generated for this email. Please complete your registration or wait for it to expire.'
+            }, status=403)
 
+        # ✅ Create Stripe Customer and Checkout Session
         plan = AdminPlan.objects.get(name=plan_name)
         customer = stripe.Customer.create(email=email)
 
@@ -65,8 +78,6 @@ def create_checkout_session(request):
     except Exception as e:
         print("❌ Error creating checkout session:", str(e))
         return JsonResponse({'error': str(e)}, status=500)
-
-
 
 @csrf_exempt
 def stripe_webhook(request):
