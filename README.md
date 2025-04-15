@@ -177,5 +177,79 @@ Must upgrade to resume access
 ## 📬 Questions / Feedback?
 Feel free to open an issue or submit a PR if you're contributing.
 
-# LATEST DEVELOPMENT
-We are calculating the next billing date for both admin free trial to monthly and admin monthly. we now have to refactor the code to store the subscription id in the admin profile
+## 🚧 Pending Features and Refactor Checklist
+
+### ✅ Account History Tracking
+- [ ] Create `AdminAccountHistory` model to track:
+  - Trial start
+  - Plan upgrade/downgrade
+  - Cancellation
+  - Reactivation
+  - Timestamps and status changes
+- [ ] Log history entries in:
+  - `register_admin()`
+  - `auto_upgrade_admin_trial()`
+  - Cancel views (monthly/annual)
+  - Reactivation & transitions
+
+---
+
+### 🔐 Protected Plan Purchase Flow for Existing Admins
+- [ ] Create a new **authenticated page** for logged-in admins to:
+  - Upgrade from monthly to annual
+  - Downgrade from annual to monthly
+  - Reactivate after becoming inactive
+- [ ] Restrict **Free Trial** to first-time users only
+- [ ] Validate all plan transitions with Stripe
+
+---
+
+### ⚠️ Prevent Duplicate Stripe Sessions
+- [ ] If `PendingAdminSignup` already exists:
+  - Show message: "You have a pending registration. Please check your email."
+- [ ] If user already exists:
+  - Require login before purchasing new plans
+
+---
+
+### 🔁 Scheduled Plan Switching Logic
+- [ ] Allow:
+  - Monthly → Annual (scheduled at end of billing cycle)
+  - Annual → Monthly (downgrade after annual term ends)
+- [ ] Add `pending_plan_change` field to `AdminProfile`
+- [ ] Trigger updates via webhook or scheduled task
+
+---
+
+## 🧹 Codebase Cleanup & Refactor
+
+### 🗂 Backend File Structure
+- [ ] Split `views.py` into:
+  - `views/auth.py`
+  - `views/billing.py`
+  - `views/dashboard.py`
+- [ ] Create logical folders (e.g. `adminplans/stripe/`)
+- [ ] Rename generic files (e.g. `tasks.py` → `billing_tasks.py`)
+
+---
+
+### ⚙️ Django Admin Panel Enhancements
+- [ ] Improve `AdminProfile` and `PendingAdminSignup` layouts
+- [ ] Add filters for:
+  - Active/inactive status
+  - Subscription type
+  - Cancelled accounts
+- [ ] Enable email & Stripe ID search
+
+---
+
+### 🧪 Developer & Testing Tools
+- [ ] Add `AdminAccountHistory` reset tool in `reset_all.py`
+- [ ] Create test accounts:
+  - `trial_test@`, `monthly_test@`, `annual_test@`
+- [ ] Add log printouts:
+  - "⏳ Scheduled downgrade"
+  - "✅ Billing update recorded"
+
+---
+
