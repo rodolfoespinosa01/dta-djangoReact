@@ -82,17 +82,20 @@ def stripe_webhook(request):
 
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
+        session_id = session.get('id')
         customer_email = session.get('customer_email')
-        # Fallback: fetch from expanded customer object if needed
+        subscription_id = session.get('subscription')  # ✅ Extract subscription ID for paid plans
+
+        # Fallback for missing email
         if not customer_email:
             customer_id = session.get('customer')
             if customer_id:
                 customer = stripe.Customer.retrieve(customer_id)
                 customer_email = customer.get('email')
-                session_id = session.get('id')
 
         print(f"🔍 Webhook triggered for session: {session_id}")
-        print(f"📧 Email from session: {customer_email}")
+        print(f"📧 Email: {customer_email}")
+        print(f"🧾 Subscription ID: {subscription_id}")
 
         plan_name = session.get('metadata', {}).get('plan_name')
         if not plan_name:
@@ -102,7 +105,7 @@ def stripe_webhook(request):
         try:
             plan = AdminPlan.objects.get(name=plan_name)
         except AdminPlan.DoesNotExist:
-            print(f"❌ AdminPlan not found for plan name: {plan_name}")
+            print(f"❌ AdminPlan not found for: {plan_name}")
             return HttpResponse(status=500)
 
         try:
@@ -110,19 +113,18 @@ def stripe_webhook(request):
                 email=customer_email,
                 session_id=session_id,
                 token=token,
-                plan=plan_name
+                plan=plan_name,
+                subscription_id=subscription_id  # ✅ Store it here
             )
-            print(f"✅ PendingAdminSignup created for {customer_email}")
+            print(f"✅ PendingAdminSignup saved for {customer_email}")
 
-            # Simulated email logging
             registration_link = f"http://localhost:3000/adminregister?token={token}"
             print("\n" + "=" * 60)
             print("📩 Registration email (simulated):")
             print(f"To: {customer_email}")
             print("Subject: Finish setting up your Admin Account")
             print("Body:")
-            print("Thanks for your payment!")
-            print(f"➡️  Click here to complete registration:\n{registration_link}")
+            print(f"➡️ Click to register:\n{registration_link}")
             print("=" * 60 + "\n")
 
         except Exception as e:
