@@ -249,7 +249,7 @@ def register_admin(request):
         # ✅ Schedule upgrade task for free trials
         if subscription_status == 'admin_trial':
             from adminplans.tasks import auto_upgrade_admin_trial
-            auto_upgrade_admin_trial.apply_async((user.id,), countdown=60 * 60 * 24 * 14)
+            auto_upgrade_admin_trial.apply_async((user.id,), countdown=45)
             print(f"🕒 Trial upgrade scheduled for {email}")
 
         pending.delete()
