@@ -24,6 +24,8 @@ const adminPlans = [
 
 function AdminPlanSelectionPage() {
   const [email, setEmail] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleHomeCTA = () => {
@@ -32,30 +34,37 @@ function AdminPlanSelectionPage() {
 
   const handleSelectAdminPlan = async (planId) => {
     if (!email) {
-      alert('Please enter your email before continuing to checkout.');
+      setError('Please enter your email before continuing to checkout.');
       return;
     }
+
+    setError('');
+    setLoading(true);
 
     try {
       const response = await fetch('http://localhost:8000/api/create-checkout-session/', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plan_name: planId, email }),
       });
 
       const data = await response.json();
 
+      if (!response.ok) {
+        setError(data?.error || 'Something went wrong.');
+        return;
+      }
+
       if (data.url) {
         window.location.href = data.url;
       } else {
-        console.error('Checkout session error:', data.error);
-        alert('Error starting checkout. See console for details.');
+        setError('Could not initiate checkout session.');
       }
     } catch (err) {
       console.error('Error starting checkout:', err);
-      alert('Something went wrong.');
+      setError('Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -70,11 +79,14 @@ function AdminPlanSelectionPage() {
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         style={{
-          marginBottom: '1rem',
+          marginBottom: '0.5rem',
           padding: '0.5rem',
           width: '300px',
         }}
       />
+      {error && (
+        <p style={{ color: 'red', marginBottom: '1rem' }}>{error}</p>
+      )}
 
       <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', marginTop: '2rem' }}>
         {adminPlans.map((adminPlan) => (
@@ -93,15 +105,19 @@ function AdminPlanSelectionPage() {
             <p>{adminPlan.description}</p>
             <button
               onClick={() => handleSelectAdminPlan(adminPlan.id)}
+              disabled={loading}
               style={{ marginTop: '1rem', width: '100%' }}
             >
-              Continue to Checkout
+              {loading ? 'Processing...' : 'Continue to Checkout'}
             </button>
           </div>
         ))}
       </div>
 
-      <button onClick={handleHomeCTA} style={{ marginTop: '2rem', padding: '1rem 2rem', fontSize: '1rem' }}>
+      <button
+        onClick={handleHomeCTA}
+        style={{ marginTop: '2rem', padding: '1rem 2rem', fontSize: '1rem' }}
+      >
         Back to Main Page
       </button>
     </div>

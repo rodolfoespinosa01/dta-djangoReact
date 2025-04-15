@@ -20,13 +20,22 @@ def create_checkout_session(request):
         plan_name = data.get('plan_name')
         email = data.get('email')
 
-        plan = AdminPlan.objects.get(name=plan_name)
+        # 🚫 Prevent reusing free trial for same email
+        if plan_name == 'adminTrial':
+            from users.models import CustomUser
+            existing_user = CustomUser.objects.filter(email=email).first()
 
-        # ✅ Always create a Stripe Customer ahead of time
+            if existing_user:
+                if existing_user.subscription_status in ['admin_trial', 'admin_inactive']:
+                    if hasattr(existing_user, 'admin_profile') and existing_user.admin_profile.trial_start_date:
+                        return JsonResponse({
+                            'error': 'This email has already used the free trial. Please choose a paid plan.'
+                        }, status=403)
+
+        plan = AdminPlan.objects.get(name=plan_name)
         customer = stripe.Customer.create(email=email)
 
         if plan.name == 'adminTrial':
-            # 🧪 Setup-only flow (collect card, no charge)
             session = stripe.checkout.Session.create(
                 mode='setup',
                 payment_method_types=['card'],
@@ -36,7 +45,6 @@ def create_checkout_session(request):
                 cancel_url='http://localhost:3000/adminplans',
             )
         else:
-            # 💳 Immediate subscription (monthly/annual)
             session = stripe.checkout.Session.create(
                 mode='subscription',
                 payment_method_types=['card'],
@@ -57,6 +65,7 @@ def create_checkout_session(request):
     except Exception as e:
         print("❌ Error creating checkout session:", str(e))
         return JsonResponse({'error': str(e)}, status=500)
+
 
 
 @csrf_exempt
