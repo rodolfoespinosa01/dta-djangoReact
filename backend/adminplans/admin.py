@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import AdminPlan
+from .models import AdminPlan, AdminProfile, PendingAdminSignup
 
 class AdminPlanAdmin(admin.ModelAdmin):
     list_display = ('name', 'description', 'display_price', 'stripe_price_id')
@@ -9,6 +9,5 @@ class AdminPlanAdmin(admin.ModelAdmin):
     display_price.short_description = 'Price (USD)'
 
 admin.site.register(AdminPlan, AdminPlanAdmin)
-
-from .models import AdminProfile
 admin.site.register(AdminProfile)
+admin.site.register(PendingAdminSignup)
