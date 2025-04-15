@@ -252,4 +252,75 @@ Feel free to open an issue or submit a PR if you're contributing.
   - "✅ Billing update recorded"
 
 ---
+## 🧪 DTA MASTER BACKEND TEST LIST (Backend Only)
+
+### 🔐 Auth & Access Control
+- [x] Admin login with correct credentials
+- [x] Admin login with invalid credentials
+- [x] Admin cannot access dashboard if not logged in
+- [x] Admin session persists after page refresh (via token)
+- [x] SuperAdmin login and access to `/superadmindashboard`
+- [x] Invalid users cannot access SuperAdmin routes
+- [x] Token auto-refresh logic (SuperAdmin)
+- [x] Token auto-refresh logic (Admin)
+
+### 👨‍💼 Admin Free Trial Flow
+- [x] Stripe webhook creates `PendingAdminSignup`
+- [x] Token-based admin registration succeeds
+- [x] Free trial user created with:
+  - `subscription_status = admin_trial`
+  - `AdminProfile` auto-created
+  - `trial_start_date` is set
+  - `subscription_started_at` is null
+  - `admin_stripe_customer_id` is stored
+- [ ] Celery task upgrades to monthly:
+  - `subscription_status` becomes `admin_monthly`
+  - `subscription_started_at` is set
+  - `admin_stripe_subscription_id` is saved
+
+### 💸 Stripe Billing & Subscription Logic
+- [ ] Setup Intent correctly stores payment method
+- [ ] Stripe triggers charge on monthly plan post-trial
+- [ ] `auto_renew_cancelled=True` skips upgrade
+- [ ] Annual plan sets correct Stripe subscription ID
+- [ ] Stripe webhook updates DB correctly
+
+### 📬 Pending Signup Token Flow
+- [ ] Token is generated and stored on webhook
+- [ ] Token becomes invalid after one use
+- [ ] Invalid or reused token errors gracefully
+- [ ] Registration pulls email from token record
+
+### 📊 SuperAdmin Dashboard Logic
+- [ ] Shows all Admins grouped by plan (trial/monthly/annual)
+- [ ] Revenue totals are correct
+- [ ] Projected monthly income is correct
+- [ ] Trial countdown / expiration logic is correct
+
+### 🔑 Admin Password Reset
+- [ ] Password reset request saves token
+- [ ] Simulated email prints reset URL
+- [ ] Password can be changed
+- [ ] Old password fails, new one works
+
+### ⚙️ Celery Task Health
+- [ ] Celery worker starts and connects to Redis
+- [ ] Logs show trial upgrade task execution
+- [ ] Upgrade skipped if `auto_renew_cancelled=True`
+- [ ] Graceful error if Stripe payment method is missing
+
+### 🧹 Developer Scripts
+- [x] `reset_all` clears test users and resets DB
+- [x] `machineupdate.sh` pulls latest, installs backend/frontend deps, and runs migrations
+- [x] `startapp.sh` launches 4-terminal environment:
+  - Django
+  - React
+  - Celery
+  - Stripe webhook
+
+### 🌍 Environment Health Checks
+- [x] `.env` Stripe + DB variables load properly
+- [x] PostgreSQL connection succeeds
+- [x] Redis is installed and reachable
+- [x] Stripe keys valid (test mode)
 

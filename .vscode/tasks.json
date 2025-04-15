@@ -1,0 +1,87 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    // 🐍 Django Server
+    {
+      "label": "Run Django Server",
+      "type": "shell",
+      "command": "source venv/bin/activate && python manage.py runserver",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      }
+    },
+
+    // ⚛️ React App
+    {
+      "label": "Run React App",
+      "type": "shell",
+      "command": "npm start",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      }
+    },
+
+    // 🐇 Celery Worker
+    {
+      "label": "Run Celery Worker",
+      "type": "shell",
+      "command": "source venv/bin/activate && celery -A backend worker --loglevel=info",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      }
+    },
+
+    // 💳 Stripe Webhook
+    {
+      "label": "Run Stripe Webhook",
+      "type": "shell",
+      "command": "stripe listen --forward-to localhost:8000/api/stripe-webhook/",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      }
+    },
+
+    // 🚀 Start All
+    {
+      "label": "Start All Services",
+      "dependsOn": [
+        "Run Django Server",
+        "Run React App",
+        "Run Celery Worker",
+        "Run Stripe Webhook"
+      ],
+      "dependsOrder": "parallel"
+    },
+
+    // 🔄 Machine Update
+    {
+      "label": "Run Machine Update Script",
+      "type": "shell",
+      "command": "./machineupdate.sh",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+
+    {
+      "label": "Run Django Tests",
+      "type": "shell",
+      "command": "source venv/bin/activate && python manage.py test",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Reset All",
+      "type": "shell",
+      "command": "source venv/bin/activate && python manage.py reset_all",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": []
+    }
+    
+  ]
+}
