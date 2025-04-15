@@ -1,7 +1,9 @@
 from celery import shared_task
+from dateutil import parser
 from django.utils import timezone
 from users.models import CustomUser
 from adminplans.models import AdminProfile, AdminPlan
+from dateutil.relativedelta import relativedelta
 import stripe
 import logging
 
@@ -11,6 +13,8 @@ logger = logging.getLogger(__name__)
 def test_celery():
     print("🔥 Celery is working!")
     return "success"
+
+logger = logging.getLogger(__name__)
 
 @shared_task
 def auto_upgrade_admin_trial(user_id):
@@ -22,10 +26,10 @@ def auto_upgrade_admin_trial(user_id):
 
         profile = user.admin_profile
         if profile.auto_renew_cancelled:
-            logger.info(f"❌ Auto-renew was cancelled by {user.email}. No upgrade will occur.")
+            print(f"❌ Auto-renew was cancelled by {user.email}. No upgrade will occur.")
             return
-        customer_id = profile.admin_stripe_customer_id
 
+        customer_id = profile.admin_stripe_customer_id
         if not customer_id:
             print(f"❌ No Stripe customer ID for {user.email}")
             return
@@ -37,21 +41,34 @@ def auto_upgrade_admin_trial(user_id):
             print("❌ AdminMonthly plan not found in DB")
             return
 
-        # ✅ Use the correct dynamic price ID
+        # ✅ Create subscription
         subscription = stripe.Subscription.create(
             customer=customer_id,
             items=[{"price": monthly_plan.stripe_price_id}],
             trial_period_days=0
         )
 
-        profile.admin_stripe_subscription_id = subscription.id
-        profile.subscription_started_at = timezone.now()
+        subscription_id = subscription.id
+        subscription_started = timezone.now()
+        next_billing = subscription_started + relativedelta(months=1)
+
+        # ✅ Log confirmation
+        print(f"✅ Stripe subscription created for {user.email}")
+        print(f"📅 Subscription started: {subscription_started}")
+        print(f"📅 Next billing (manually calculated): {next_billing}")
+
+        # ✅ Update AdminProfile
+        profile.admin_stripe_subscription_id = subscription_id
+        profile.subscription_started_at = subscription_started
+        profile.next_billing_date = next_billing
         profile.save()
 
         user.subscription_status = 'admin_monthly'
         user.save()
 
         print(f"✅ {user.email} upgraded from trial to monthly!")
+        print(f"🧾 AdminProfile updated: Subscription ID = {subscription_id}, Next Billing Date = {next_billing}")
 
     except Exception as e:
         print(f"❌ Failed to auto-upgrade user {user_id}: {str(e)}")
+
