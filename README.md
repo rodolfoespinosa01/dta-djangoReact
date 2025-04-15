@@ -176,3 +176,6 @@ Must upgrade to resume access
 
 ## 📬 Questions / Feedback?
 Feel free to open an issue or submit a PR if you're contributing.
+
+# LATEST DEVELOPMENT
+We are calculating the next billing date for both admin free trial to monthly and admin monthly. we now have to refactor the code to store the subscription id in the admin profile
