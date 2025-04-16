@@ -8,12 +8,7 @@ urlpatterns = [
     path('api/users/', include('users.urls')),
 ]
 
-# ✅ Include test-only routes when testing
+# 🧪 Only include test routes if DJANGO_TEST_MODE is enabled
 if os.environ.get("DJANGO_TEST_MODE") == "true":
-    from users.tests.admin.test_admin_urls import test_admin_urls
-    from users.tests.superadmin.test_superadmin_urls import test_superadmin_urls
-
-    urlpatterns += [
-        path("api/test-admin/", include(test_admin_urls)),
-        path("api/test-superadmin/", include(test_superadmin_urls)),
-    ]
+    from tests.test_urls import test_urlpatterns
+    urlpatterns += test_urlpatterns
