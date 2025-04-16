@@ -1,25 +1,9 @@
-# --- Token serializer for login ---
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-
-class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
-    @classmethod
-    def get_token(cls, user):
-        token = super().get_token(user)
-
-        # Add custom claims
-        token['email'] = user.email
-        token['role'] = user.role
-        token['is_superuser'] = user.is_superuser
-        token['subscription_status'] = user.subscription_status
-
-        return token
-
 # --- Admin Password Reset Serializers ---
 from rest_framework import serializers
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
-from .models import CustomUser, AdminPasswordResetToken
+from users.models import CustomUser, AdminPasswordResetToken
 from django.contrib.auth.hashers import make_password
 
 class AdminForgotPasswordSerializer(serializers.Serializer):

@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'adminplans',
     'users',
+    'utility',
 ]
 
 MIDDLEWARE = [
