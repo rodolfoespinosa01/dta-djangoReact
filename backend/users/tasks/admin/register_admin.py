@@ -117,7 +117,7 @@ def register_admin(request):
 
         # ✅ Schedule auto-upgrade task for trials
         if subscription_status == 'admin_trial':
-            from adminplans.tasks import auto_upgrade_admin_trial
+            from users.tasks.admin.auto_upgrade_admin_trial import auto_upgrade_admin_trial
             auto_upgrade_admin_trial.apply_async((user.id,), countdown=45)
             print(f"🕒 Trial upgrade scheduled for {email}")
 

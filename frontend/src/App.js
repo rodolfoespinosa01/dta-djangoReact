@@ -25,7 +25,6 @@ import AdminThankYou from './pages/admin/AdminThankYou';
 // Route Guards
 import AdminProtectedRoute from './routes/AdminProtectedRoute';
 import SuperAdminProtectedRoute from './routes/SuperAdminProtectedRoute';
-import ThankYouRoute from './routes/ThankYouRoute';
 
 function App() {
   return (
