@@ -11,7 +11,7 @@ function SuperAdminLoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const response = await fetch('http://localhost:8000/api/users/superadminlogin/', {
+    const response = await fetch('http://localhost:8000/api/users/superadmin-login/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
@@ -22,7 +22,7 @@ function SuperAdminLoginPage() {
     if (response.ok) {
       login(data);
       localStorage.setItem('refresh_token', data.refresh);
-      navigate('/superadmindashboard');
+      navigate('/superadmin-dashboard');
     } else {
       alert(data.error || 'Login failed');
     }

@@ -5,6 +5,7 @@ import stripe
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from dateutil.relativedelta import relativedelta
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -12,6 +13,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from adminplans.models import AdminPlan
 from adminplans.models import AdminProfile, PendingAdminSignup
 
+stripe.api_key = settings.STRIPE_SECRET_KEY
+User = get_user_model()
 
 @csrf_exempt
 def register_admin(request):

@@ -11,7 +11,7 @@ function AdminLoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const response = await fetch('http://localhost:8000/api/users/adminlogin/', {
+    const response = await fetch('http://localhost:8000/api/users/admin-login/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: email, password }),
@@ -22,7 +22,7 @@ function AdminLoginPage() {
     if (response.ok) {
       login(data);
       localStorage.setItem('refresh_token', data.refresh);
-      navigate('/admindashboard');
+      navigate('/admin-dashboard');
     } else {
       alert(data.error || 'Login failed');
     }

@@ -5,11 +5,11 @@ function MainHomePage() {
   const navigate = useNavigate();
 
   const handleAdminCTA = () => {
-    navigate('/adminhomepage'); 
+    navigate('/admin-homepage'); 
   };
 
   const handleUserCTA = () => {
-    navigate('/userhomepage'); 
+    navigate('/user-homepage'); 
   };
 
   return (

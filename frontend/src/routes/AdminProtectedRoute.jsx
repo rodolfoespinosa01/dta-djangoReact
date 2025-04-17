@@ -7,7 +7,7 @@ function AdminProtectedRoute({ children }) {
 
   if (loading) return <p>Loading...</p>;
   if (!isAuthenticated || user?.role !== 'admin') {
-    return <Navigate to="/adminlogin" />;
+    return <Navigate to="/admin-login" />;
   }
 
   return children;
