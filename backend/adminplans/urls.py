@@ -1,7 +1,8 @@
 from django.urls import path
-from .views import create_checkout_session, stripe_webhook
+from users.tasks.admin.create_admin_checkout_session import create_admin_checkout_session
+from users.tasks.admin.admin_stripe_webhook import admin_stripe_webhook
 
 urlpatterns = [
-    path('create-checkout-session/', create_checkout_session),
-    path('stripe-webhook/', stripe_webhook),
+    path('create-checkout-session/', create_admin_checkout_session),
+    path('stripe-webhook/', admin_stripe_webhook),
 ]

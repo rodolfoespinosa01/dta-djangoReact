@@ -1,27 +1,35 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 function MainHomePage() {
+  const { user, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
 
-  const handleAdminCTA = () => {
-    navigate('/admin-homepage'); 
-  };
+  useEffect(() => {
+    if (loading) return; // ⏳ Wait for auth to finish loading
 
-  const handleUserCTA = () => {
-    navigate('/user-homepage'); 
-  };
+    if (isAuthenticated && user?.role) {
+      switch (user.role) {
+        case 'admin':
+          navigate('/admin-dashboard');
+          break;
+        case 'superadmin':
+          navigate('/superadmin-dashboard');
+          break;
+        case 'client':
+          navigate('/client-dashboard'); // 🔁 Adjust this if needed
+          break;
+        default:
+          break;
+      }
+    }
+  }, [loading, isAuthenticated, user, navigate]);
 
   return (
-    <div style={{ padding: '2rem', textAlign: 'center' }}>
-      <h1>Welcome to DTA</h1>
-      <p>Your all-in-one platform for creating personalized diet plans.</p>
-      <button onClick={handleAdminCTA} style={{ marginTop: '1rem', padding: '1rem 2rem', fontSize: '1rem' }}>
-        Admin Home Page
-      </button>
-      <button onClick={handleUserCTA} style={{ marginTop: '1rem', padding: '1rem 2rem', fontSize: '1rem' }}>
-        User Home Page
-      </button>
+    <div style={{ textAlign: 'center', padding: '3rem' }}>
+      <h1>Welcome to the Best Diet Generator</h1>
+      <p>This is your white label development platform for next-gen meal plans.</p>
     </div>
   );
 }

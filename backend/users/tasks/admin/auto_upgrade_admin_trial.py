@@ -1,20 +1,11 @@
 from celery import shared_task
-from dateutil import parser
 from django.utils import timezone
-from users.models import CustomUser
-from adminplans.models import AdminProfile, AdminPlan
 from dateutil.relativedelta import relativedelta
 import stripe
-import logging
 
-logger = logging.getLogger(__name__)
+from users.models import CustomUser
+from adminplans.models import AdminProfile, AdminPlan
 
-@shared_task
-def test_celery():
-    print("🔥 Celery is working!")
-    return "success"
-
-logger = logging.getLogger(__name__)
 
 @shared_task
 def auto_upgrade_admin_trial(user_id):
@@ -71,4 +62,3 @@ def auto_upgrade_admin_trial(user_id):
 
     except Exception as e:
         print(f"❌ Failed to auto-upgrade user {user_id}: {str(e)}")
-

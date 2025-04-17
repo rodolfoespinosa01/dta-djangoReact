@@ -1,17 +1,15 @@
 {
   "version": "2.0.0",
   "tasks": [
-    // 🐍 Django Server
     {
       "label": "Run Django Server",
       "type": "shell",
       "command": "source venv/bin/activate && python manage.py runserver",
       "options": {
         "cwd": "${workspaceFolder}/backend"
-      }
+      },
+      "problemMatcher": []
     },
-
-    // ⚛️ React App
     {
       "label": "Run React App",
       "type": "shell",
@@ -20,8 +18,6 @@
         "cwd": "${workspaceFolder}/frontend"
       }
     },
-
-    // 🐇 Celery Worker
     {
       "label": "Run Celery Worker",
       "type": "shell",
@@ -30,8 +26,6 @@
         "cwd": "${workspaceFolder}/backend"
       }
     },
-
-    // 💳 Stripe Webhook
     {
       "label": "Run Stripe Webhook",
       "type": "shell",
@@ -40,8 +34,6 @@
         "cwd": "${workspaceFolder}"
       }
     },
-
-    // 🚀 Start All
     {
       "label": "Start All Services",
       "dependsOn": [
@@ -52,8 +44,6 @@
       ],
       "dependsOrder": "parallel"
     },
-
-    // 🔄 Machine Update
     {
       "label": "Run Machine Update Script",
       "type": "shell",
@@ -63,7 +53,6 @@
       },
       "problemMatcher": []
     },
-
     {
       "label": "Run Django Tests",
       "type": "shell",
@@ -82,6 +71,5 @@
       },
       "problemMatcher": []
     }
-    
   ]
 }
