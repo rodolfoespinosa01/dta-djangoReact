@@ -54,8 +54,8 @@ def create_checkout_session(request):
                 payment_method_types=['card'],
                 customer=customer.id,
                 metadata={'plan_name': plan.name},
-                success_url='http://localhost:3000/adminthankyou',
-                cancel_url='http://localhost:3000/adminplans',
+                success_url='http://localhost:3000/admin-thankyou',
+                cancel_url='http://localhost:3000/admin-plans',
             )
         else:
             session = stripe.checkout.Session.create(
@@ -67,8 +67,8 @@ def create_checkout_session(request):
                     'quantity': 1,
                 }],
                 metadata={'plan_name': plan.name},
-                success_url='http://localhost:3000/adminthankyou',
-                cancel_url='http://localhost:3000/adminplans',
+                success_url='http://localhost:3000/admin-thankyou',
+                cancel_url='http://localhost:3000/admin-plans',
             )
 
         return JsonResponse({'url': session.url})
@@ -129,7 +129,7 @@ def stripe_webhook(request):
             )
             print(f"✅ PendingAdminSignup saved for {customer_email}")
 
-            registration_link = f"http://localhost:3000/adminregister?token={token}"
+            registration_link = f"http://localhost:3000/admin-register?token={token}"
             print("\n" + "=" * 60)
             print("📩 Registration email (simulated):")
             print(f"To: {customer_email}")

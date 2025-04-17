@@ -12,13 +12,13 @@ function AdminSettings() {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      navigate('/adminlogin');
+      navigate('/admin-login');
       return;
     }
 
     const fetchTrialStatus = async () => {
       try {
-        const res = await fetch('http://localhost:8000/api/users/admindashboard/', {
+        const res = await fetch('http://localhost:8000/api/users/admin-dashboard/', {
           headers: {
             Authorization: `Bearer ${accessToken}`
           }
@@ -55,7 +55,7 @@ function AdminSettings() {
         setCancelMessage(data.message);
 
         // Re-fetch dashboard to reflect new trial state
-        const refreshRes = await fetch('http://localhost:8000/api/users/admindashboard/', {
+        const refreshRes = await fetch('http://localhost:8000/api/users/admin-dashboard/', {
           headers: {
             Authorization: `Bearer ${accessToken}`
           }

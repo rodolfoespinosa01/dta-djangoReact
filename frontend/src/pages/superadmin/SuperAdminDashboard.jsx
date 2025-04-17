@@ -12,13 +12,13 @@ function SuperAdminDashboard() {
     if (loading) return;
 
     if (!isAuthenticated || !user?.is_superuser) {
-      navigate('/superadminlogin');
+      navigate('/superadmin-login');
       return;
     }
 
     const token = localStorage.getItem('access_token');
     if (!token) {
-      navigate('/superadminlogin');
+      navigate('/superadmin-login');
       return;
     }
 
@@ -77,7 +77,7 @@ function SuperAdminDashboard() {
         onClick={() => {
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
-          navigate('/superadminlogin');
+          navigate('/superadmin-login');
         }}
         style={{
           marginTop: '2rem',

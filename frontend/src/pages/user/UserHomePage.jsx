@@ -5,7 +5,7 @@ function UserHomePage() {
   const navigate = useNavigate();
 
   const handleCTA = () => {
-    navigate('/userPlans');
+    navigate('/user-plans');
   };
 
   const handleHomeCTA = () => {
