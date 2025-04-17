@@ -5,7 +5,7 @@ function AdminHomePage() {
   const navigate = useNavigate();
 
   const handleCTA = () => {
-    navigate('/adminPlans');
+    navigate('/admin-plans');
   };
 
   const handleHomeCTA = () => {
