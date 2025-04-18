@@ -7,6 +7,7 @@ class AdminPlan(models.Model):
     PLAN_CHOICES = [
         ('adminTrial', 'Free Admin Trial'),
         ('adminMonthly', 'Monthly Admin Plan'),
+        ('adminQuarterly', 'Quarterly Admin Plan'),  # ✅ Added
         ('adminAnnual', 'Annual Admin Plan'),
     ]
 
@@ -20,6 +21,7 @@ class AdminPlan(models.Model):
 
     def price_dollars(self):
         return round(self.price_cents / 100, 2)
+
 
 class PendingAdminSignup(models.Model):
     email = models.EmailField()

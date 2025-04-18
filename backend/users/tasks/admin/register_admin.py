@@ -1,5 +1,3 @@
-# backend/users/tasks/admin/register_admin.py
-
 import json
 import stripe
 from django.http import JsonResponse
@@ -10,8 +8,7 @@ from django.contrib.auth import get_user_model
 from dateutil.relativedelta import relativedelta
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from adminplans.models import AdminPlan
-from adminplans.models import AdminProfile, PendingAdminSignup
+from adminplans.models import AdminPlan, AdminProfile, PendingAdminSignup
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 User = get_user_model()
@@ -30,18 +27,17 @@ def register_admin(request):
         token = data.get('token')
 
         print(f"📥 Incoming data: email={email}, password={'✅' if password else '❌'}, token={token}")
-
         if not all([email, password, token]):
             return JsonResponse({'error': 'Missing fields'}, status=400)
 
+        # 🔐 Retrieve pending signup and Stripe session
         pending = PendingAdminSignup.objects.get(token=token)
         session_id = pending.session_id
         subscription_id = pending.subscription_id
 
-        # 🔄 Expand customer + setup_intent
         checkout_session = stripe.checkout.Session.retrieve(
             session_id,
-            expand=['customer', 'setup_intent']
+            expand=['customer', 'subscription']
         )
 
         customer = checkout_session.get("customer")
@@ -53,18 +49,17 @@ def register_admin(request):
             customer_email = customer_obj.get("email")
 
         plan_name = checkout_session.get('metadata', {}).get('plan_name')
-        plan = AdminPlan.objects.get(name=plan_name)
+        plan = AdminPlan.objects.get(name='adminMonthly' if plan_name == 'adminTrial' else plan_name)
 
         plan_mapping = {
             'adminTrial': 'admin_trial',
             'adminMonthly': 'admin_monthly',
+            'adminQuarterly': 'admin_quarterly',
             'adminAnnual': 'admin_annual',
         }
+        subscription_status = plan_mapping.get(plan_name, 'admin_trial')
 
-        subscription_status = plan_mapping.get(plan.name, 'admin_trial')
-
-        # ✅ Create user
-        User = get_user_model()
+        # ✅ Create User
         if User.objects.filter(username=email).exists():
             return JsonResponse({'error': 'User already exists'}, status=400)
 
@@ -74,7 +69,7 @@ def register_admin(request):
         user.subscription_status = subscription_status
         user.save()
 
-        # ✅ Prepare AdminProfile fields
+        # ✅ Build AdminProfile
         profile_data = {
             'admin_stripe_customer_id': customer_id,
             'admin_stripe_subscription_id': subscription_id,
@@ -82,44 +77,27 @@ def register_admin(request):
 
         if subscription_status == 'admin_trial':
             profile_data['trial_start_date'] = timezone.now()
-        elif subscription_status == 'admin_monthly':
-            subscription_started = timezone.now()
-            next_billing = subscription_started + relativedelta(months=1)
-            profile_data['subscription_started_at'] = subscription_started
+        else:
+            # Estimate subscription start based on plan interval
+            start = timezone.now()
+            if subscription_status == 'admin_monthly':
+                next_billing = start + relativedelta(months=1)
+            elif subscription_status == 'admin_quarterly':
+                next_billing = start + relativedelta(months=3)
+            elif subscription_status == 'admin_annual':
+                next_billing = start + relativedelta(months=12)
+            else:
+                next_billing = None
+
+            profile_data['subscription_started_at'] = start
             profile_data['next_billing_date'] = next_billing
-            print(f"📅 Monthly next billing date: {next_billing}")
-        elif subscription_status == 'admin_annual':
-            subscription_started = timezone.now()
-            next_billing = subscription_started + relativedelta(months=12)
-            profile_data['subscription_started_at'] = subscription_started
-            profile_data['next_billing_date'] = next_billing
-            print(f"📅 Annual next billing date: {next_billing}")
+            print(f"📅 Billing Date for {subscription_status}: {next_billing}")
 
         profile, created = AdminProfile.objects.get_or_create(user=user, defaults=profile_data)
-
         if created:
             print(f"🧾 AdminProfile created for {email}")
         else:
             print(f"⚠️ AdminProfile already existed for {email}")
-
-        # ✅ Attach payment method for trial accounts
-        if checkout_session.mode == 'setup':
-            setup_intent = checkout_session.get('setup_intent')
-            if setup_intent and setup_intent.get('payment_method'):
-                payment_method = setup_intent['payment_method']
-                stripe.PaymentMethod.attach(payment_method, customer=customer_id)
-                stripe.Customer.modify(customer_id, invoice_settings={
-                    'default_payment_method': payment_method
-                })
-                print(f"✅ Attached and set default payment method for {email}")
-            else:
-                print(f"⚠️ No payment method found in setup intent")
-
-        # ✅ Schedule auto-upgrade task for trials
-        if subscription_status == 'admin_trial':
-            from users.tasks.admin.auto_upgrade_admin_trial import auto_upgrade_admin_trial
-            auto_upgrade_admin_trial.apply_async((user.id,), countdown=45)
-            print(f"🕒 Trial upgrade scheduled for {email}")
 
         pending.delete()
 
@@ -142,7 +120,6 @@ def register_admin(request):
 
     except PendingAdminSignup.DoesNotExist:
         return JsonResponse({'error': 'Invalid or expired token'}, status=404)
-
     except Exception as e:
         print("❌ Error during admin registration:", e)
         return JsonResponse({'error': str(e)}, status=500)

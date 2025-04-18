@@ -39,7 +39,6 @@
       "dependsOn": [
         "Run Django Server",
         "Run React App",
-        "Run Celery Worker",
         "Run Stripe Webhook"
       ],
       "dependsOrder": "parallel"

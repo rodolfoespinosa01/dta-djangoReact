@@ -52,3 +52,37 @@ def cancel_admin_trial_auto_renew(request):
     profile.save()
 
     return Response({'success': True, 'message': 'Auto-renewal cancelled. You will not be charged.'})
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def cancel_admin_subscription(request):
+    user = request.user
+
+    # Ensure user is an admin and on a paid plan
+    if user.role != 'admin' or user.subscription_status not in ['admin_monthly', 'admin_quarterly', 'admin_annual']:
+        return Response({'error': 'Unauthorized or not on a paid admin plan'}, status=403)
+
+    profile = user.admin_profile
+    subscription_id = profile.admin_stripe_subscription_id
+
+    if not subscription_id:
+        return Response({'error': 'No active Stripe subscription found'}, status=400)
+
+    try:
+        # Cancel at period end (retains access until current cycle ends)
+        stripe.Subscription.modify(
+            subscription_id,
+            cancel_at_period_end=True
+        )
+
+        # Update flag in profile
+        profile.auto_renew_cancelled = True
+        profile.save()
+
+        return Response({
+            'success': True,
+            'message': 'Subscription cancellation scheduled. You will retain access until the end of the current billing cycle.'
+        })
+
+    except stripe.error.StripeError as e:
+        return Response({'error': str(e)}, status=500)

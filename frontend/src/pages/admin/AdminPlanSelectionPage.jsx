@@ -6,7 +6,7 @@ const adminPlans = [
     id: 'adminTrial',
     name: 'Free Admin Trial',
     price: 'Free for 14 days',
-    description: 'Start with up to 10 end users. No charge until trial ends.',
+    description: 'Start with up to 10 clients. No charge until trial ends.',
   },
   {
     id: 'adminMonthly',
@@ -15,10 +15,16 @@ const adminPlans = [
     description: 'Unlimited users. Billed monthly.',
   },
   {
+    id: 'adminQuarterly',
+    name: 'Quarterly Admin Plan',
+    price: '$79 / 3 months',
+    description: 'Save 10% with quarterly billing.',
+  },
+  {
     id: 'adminAnnual',
     name: 'Annual Admin Plan',
     price: '$299 / year',
-    description: 'Unlimited users. Save 14% compared to monthly.',
+    description: 'Best value. Save 14% annually.',
   },
 ];
 
@@ -70,7 +76,7 @@ function AdminPlanSelectionPage() {
 
   return (
     <div style={{ padding: '2rem', textAlign: 'center' }}>
-      <h2>Select a Plan</h2>
+      <h2>Select Your Admin Plan</h2>
 
       <input
         type="email"
@@ -84,11 +90,9 @@ function AdminPlanSelectionPage() {
           width: '300px',
         }}
       />
-      {error && (
-        <p style={{ color: 'red', marginBottom: '1rem' }}>{error}</p>
-      )}
+      {error && <p style={{ color: 'red', marginBottom: '1rem' }}>{error}</p>}
 
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', marginTop: '2rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', flexWrap: 'wrap', marginTop: '2rem' }}>
         {adminPlans.map((adminPlan) => (
           <div
             key={adminPlan.id}
@@ -106,7 +110,16 @@ function AdminPlanSelectionPage() {
             <button
               onClick={() => handleSelectAdminPlan(adminPlan.id)}
               disabled={loading}
-              style={{ marginTop: '1rem', width: '100%' }}
+              style={{
+                marginTop: '1rem',
+                width: '100%',
+                padding: '0.75rem',
+                backgroundColor: '#007bff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '5px',
+                cursor: 'pointer',
+              }}
             >
               {loading ? 'Processing...' : 'Continue to Checkout'}
             </button>
