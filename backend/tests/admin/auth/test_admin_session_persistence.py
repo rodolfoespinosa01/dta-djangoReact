@@ -1,10 +1,10 @@
-from rest_framework.test import APITestCase
+from tests.base.base_admin_test import BaseAdminTest
 from django.urls import reverse
 from django.utils import timezone
 from users.models import CustomUser
 from adminplans.models import AdminProfile
 
-class AdminSessionPersistenceTest(APITestCase):
+class AdminSessionPersistenceTest(BaseAdminTest):
     def test_admin_session_persists_via_token(self):
         print("🔁 Test: Admin session persists after refresh with valid token")
 

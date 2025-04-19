@@ -1,8 +1,8 @@
-from rest_framework.test import APITestCase
+from tests.base.base_admin_test import BaseAdminTest
 from django.urls import reverse
 from users.models import CustomUser
 
-class AdminLoginValidTest(APITestCase):
+class AdminLoginValidTest(BaseAdminTest):
     def setUp(self):
         self.email = "validadmin@test.com"
         self.password = "strongpass123"

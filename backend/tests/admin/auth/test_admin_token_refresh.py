@@ -1,10 +1,10 @@
-from rest_framework.test import APITestCase
+from tests.base.base_admin_test import BaseAdminTest
 from django.urls import reverse
 from users.models import CustomUser
 from adminplans.models import AdminProfile
 from django.utils import timezone
 
-class AdminTokenRefreshTests(APITestCase):
+class AdminTokenRefreshTests(BaseAdminTest):
     def setUp(self):
         self.email = "tokenadmin@test.com"
         self.password = "securepass123"

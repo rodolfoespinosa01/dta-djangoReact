@@ -177,6 +177,9 @@ Must upgrade to resume access
 ## 📬 Questions / Feedback?
 Feel free to open an issue or submit a PR if you're contributing.
 
+
+
+
 ## 🚧 Pending Features and Refactor Checklist
 
 ### ✅ Account History Tracking
@@ -252,75 +255,103 @@ Feel free to open an issue or submit a PR if you're contributing.
   - "✅ Billing update recorded"
 
 ---
-## 🧪 DTA MASTER BACKEND TEST LIST (Backend Only)
 
-### 🔐 Auth & Access Control
-- [x] Admin login with correct credentials
-- [x] Admin login with invalid credentials
-- [x] Admin cannot access dashboard if not logged in
-- [x] Admin session persists after page refresh (via token)
-- [x] SuperAdmin login and access to `/superadmindashboard`
-- [x] Invalid users cannot access SuperAdmin routes
-- [x] Token auto-refresh logic (SuperAdmin)
-- [x] Token auto-refresh logic (Admin)
 
-### 👨‍💼 Admin Free Trial Flow
-- [x] Stripe webhook creates `PendingAdminSignup`
-- [x] Token-based admin registration succeeds
-- [x] Free trial user created with:
-  - `subscription_status = admin_trial`
-  - `AdminProfile` auto-created
-  - `trial_start_date` is set
-  - `subscription_started_at` is null
-  - `admin_stripe_customer_id` is stored
-- [ ] Celery task upgrades to monthly:
-  - `subscription_status` becomes `admin_monthly`
-  - `subscription_started_at` is set
-  - `admin_stripe_subscription_id` is saved
 
-### 💸 Stripe Billing & Subscription Logic
-- [ ] Setup Intent correctly stores payment method
-- [ ] Stripe triggers charge on monthly plan post-trial
-- [ ] `auto_renew_cancelled=True` skips upgrade
-- [ ] Annual plan sets correct Stripe subscription ID
-- [ ] Stripe webhook updates DB correctly
 
-### 📬 Pending Signup Token Flow
-- [ ] Token is generated and stored on webhook
-- [ ] Token becomes invalid after one use
-- [ ] Invalid or reused token errors gracefully
-- [ ] Registration pulls email from token record
+✅ DTA MASTER BACKEND TEST LIST – VERIFIED FEATURES ONLY
 
-### 📊 SuperAdmin Dashboard Logic
-- [ ] Shows all Admins grouped by plan (trial/monthly/annual)
-- [ ] Revenue totals are correct
-- [ ] Projected monthly income is correct
-- [ ] Trial countdown / expiration logic is correct
+🔐 Auth & Access Control
+✅ Admin login with correct credentials
+✅ Admin login with invalid credentials
+✅ Admin cannot access dashboard if not logged in
+✅ Admin session persists after page refresh (via token)
+✅ Token auto-refresh logic (Admin)
+✅ SuperAdmin login and access to /superadmin/dashboard
+✅ Token auto-refresh logic (SuperAdmin)
+✅ Admin cannot access SuperAdmin routes
 
-### 🔑 Admin Password Reset
-- [ ] Password reset request saves token
-- [ ] Simulated email prints reset URL
-- [ ] Password can be changed
-- [ ] Old password fails, new one works
+👨‍💼 Admin Registration & Free Trial
+✅ Stripe webhook creates PendingAdminSignup
+✅ Token-based admin registration succeeds
+✅ Free trial user created with:
 
-### ⚙️ Celery Task Health
-- [ ] Celery worker starts and connects to Redis
-- [ ] Logs show trial upgrade task execution
-- [ ] Upgrade skipped if `auto_renew_cancelled=True`
-- [ ] Graceful error if Stripe payment method is missing
+✅ subscription_status = admin_trial
+✅ AdminProfile auto-created
+✅ trial_start_date is set
+✅ subscription_started_at is null
+✅ admin_stripe_customer_id is stored
+💸 Stripe Billing & Plan Management
+✅ Paid plan registration (monthly/annual) stores:
 
-### 🧹 Developer Scripts
-- [x] `reset_all` clears test users and resets DB
-- [x] `machineupdate.sh` pulls latest, installs backend/frontend deps, and runs migrations
-- [x] `startapp.sh` launches 4-terminal environment:
-  - Django
-  - React
-  - Celery
-  - Stripe webhook
+✅ subscription_status = admin_monthly/admin_annual
+✅ admin_stripe_subscription_id
+✅ subscription_started_at and next_billing_date
+✅ Admin cancels subscription during trial or paid plan
+✅ auto_renew_cancelled=True is respected
 
-### 🌍 Environment Health Checks
-- [x] `.env` Stripe + DB variables load properly
-- [x] PostgreSQL connection succeeds
-- [x] Redis is installed and reachable
-- [x] Stripe keys valid (test mode)
+📬 Token & Signup Flow
+✅ Token is generated and stored on webhook
+✅ Token becomes invalid after one use
+✅ Invalid or reused token errors gracefully
+✅ Registration pulls email from token record
 
+📊 SuperAdmin Dashboard
+✅ Displays trial, monthly, annual, and inactive admins
+✅ Shows amount paid per admin and next billing date
+✅ Highlights inactive admins in red
+
+🔑 Admin Password Reset (Confirmed in Flow)
+✅ Forgot password request saves token
+✅ Reset URL simulates email print
+✅ Password can be changed
+✅ Old password fails, new one works
+
+🧹 Dev Scripts / Environment Health
+✅ reset_all clears users and resets DB
+✅ machineupdate.sh pulls latest, installs deps, runs migrations
+✅ startapp.sh launches backend, frontend, webhook, celery (if used)
+✅ .env variables load (Stripe, DB)
+✅ PostgreSQL + Redis connection verified
+✅ Stripe keys work (test mode)
+
+
+👨‍💼 Admin Registration & Free Trial
+🛠️ test_admin_token_cannot_be_reused.py
+(Token should only be usable once for registration)
+
+🛠️ test_admin_invalid_or_expired_token.py
+(Invalid or expired token returns error on registration)
+
+
+💸 Stripe & Billing
+🛠️ test_admin_paid_plan_registration_monthly.py
+(Registers monthly plan, saves subscription ID + dates)
+
+🛠️ test_admin_paid_plan_registration_annual.py
+(Same logic as monthly, different duration)
+
+🛠️ test_admin_auto_renew_cancel_trial.py
+(Cancels trial, prevents auto-upgrade)
+
+🛠️ test_admin_auto_renew_cancel_paid.py
+(Cancels paid plan, retains access until next billing date)
+
+
+🔐 Password Reset Flow
+🛠️ test_admin_forgot_password_token_created.py
+(Request generates reset token, simulates email print)
+
+🛠️ test_admin_reset_password_success.py
+(Successfully updates password)
+
+🛠️ test_admin_old_password_fails_new_pass_works.py
+(Confirm old password no longer works after reset)
+
+
+📊 SuperAdmin Dashboard
+🛠️ test_superadmin_dashboard_admin_grouping.py
+(Trial, Monthly, Annual, Inactive admins are grouped properly)
+
+🛠️ test_superadmin_dashboard_amounts_render.py
+(Displays payment amount and billing date for each admin)

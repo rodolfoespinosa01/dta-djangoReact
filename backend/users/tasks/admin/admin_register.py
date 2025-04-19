@@ -47,6 +47,10 @@ def register_admin(request):
     customer_id = checkout_session.get("customer")
     customer_email = checkout_session.get("customer_email") or stripe.Customer.retrieve(customer_id).get("email")
     plan_name = checkout_session.get('metadata', {}).get('plan_name')
+    print("📦 All available plans:", list(AdminPlan.objects.values_list('name', flat=True)))
+    print("🔎 Reached plan lookup. Plan name from session:", plan_name)
+    print("📦 All available plans:", list(AdminPlan.objects.values_list('name', flat=True)))
+    plan = AdminPlan.objects.get(name=plan_name)
 
     try:
         plan = AdminPlan.objects.get(name=plan_name)
