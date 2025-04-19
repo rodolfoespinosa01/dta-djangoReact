@@ -1,4 +1,5 @@
 import json
+import stripe
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import authenticate, login
@@ -48,10 +49,25 @@ def cancel_admin_trial_auto_renew(request):
         return Response({'error': 'Unauthorized or not a trial admin'}, status=403)
 
     profile = user.admin_profile
-    profile.auto_renew_cancelled = True
-    profile.save()
+    subscription_id = profile.admin_stripe_subscription_id
 
-    return Response({'success': True, 'message': 'Auto-renewal cancelled. You will not be charged.'})
+    if not subscription_id:
+        return Response({'error': 'No Stripe subscription found'}, status=400)
+
+    try:
+        # ❗ This is what actually stops Stripe from charging the user
+        stripe.Subscription.modify(
+            subscription_id,
+            cancel_at_period_end=True
+        )
+        profile.auto_renew_cancelled = True
+        profile.save()
+
+        return Response({'success': True, 'message': 'Trial cancellation confirmed. You will not be charged after your 14-day trial ends.'})
+    except stripe.error.StripeError as e:
+        return Response({'error': str(e)}, status=500)
+
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
