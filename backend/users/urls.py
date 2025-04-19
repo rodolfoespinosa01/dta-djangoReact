@@ -1,6 +1,6 @@
 from django.urls import path
 
-from users.views.superadmin.SuperAdminDashboardView import SuperAdminDashboardView
+from users.views.superadmin.superadmin_dashboard import superadmin_dashboard
 from users.views.superadmin.SuperAdminLoginView import SuperAdminLoginView
 
 from users.views.admin.AdminDashboardView import AdminDashboardView
@@ -19,7 +19,7 @@ from users.tasks.admin.auth_admin import (
 )
 
 urlpatterns = [
-    path('superadmin/dashboard/', SuperAdminDashboardView.as_view(), name='superadmin-dashboard'),
+    path('superadmin/dashboard/', superadmin_dashboard, name='superadmin-dashboard'),
     path('superadmin-login/', SuperAdminLoginView.as_view(), name='superadmin-login'),
 
     path('register-admin/', register_admin),
