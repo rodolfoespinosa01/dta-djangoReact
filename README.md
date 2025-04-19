@@ -323,20 +323,12 @@ Feel free to open an issue or submit a PR if you're contributing.
 ✅ test_admin_invalid_or_expired_token.py
 
 💸 Stripe & Billing
-🛠️ test_admin_paid_plan_registration_monthly.py
-(Registers monthly plan, saves subscription ID + dates)
-
-🛠️ test_admin_paid_plan_registration_annual.py
-(Same logic as monthly, different duration)
-
-🛠️ test_admin_auto_renew_cancel_trial.py
-(Cancels trial, prevents auto-upgrade)
-
-🛠️ test_admin_auto_renew_cancel_paid.py
-(Cancels paid plan, retains access until next billing date)
-
+✅ test_admin_paid_plan_registration_monthly.py
+✅ test_admin_paid_plan_registration_annual.py
 
 🔐 Password Reset Flow
+✅ test_admin_forgot_password_token_created.py
+✅
 🛠️ test_admin_forgot_password_token_created.py
 (Request generates reset token, simulates email print)
 
