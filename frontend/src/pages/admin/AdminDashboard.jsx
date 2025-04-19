@@ -21,7 +21,7 @@ function AdminDashboard() {
             Authorization: `Bearer ${accessToken}`
           }
         });
-    
+
         if (res.status === 403) {
           const data = await res.json();
           if (data.redirect_to) {
@@ -29,7 +29,7 @@ function AdminDashboard() {
           }
           return;
         }
-    
+
         const data = await res.json();
         if (res.ok && data.trial_active) {
           setDaysLeft(data.days_remaining);
@@ -48,30 +48,16 @@ function AdminDashboard() {
       <p>Your all-in-one platform for creating personalized diet plans for your clients.</p>
 
       <div style={{ marginTop: '2rem' }}>
-        <p><strong>Email:</strong> {user?.email}</p>
-        <p><strong>Role:</strong> {user?.role}</p>
-        <p><strong>User ID:</strong> {user?.user_id}</p>
+        <p style={{ fontSize: '1.1rem', color: '#16a34a' }}>
+          ✅ Your admin account is currently active.
+        </p>
+
         {user?.subscription_status === 'admin_trial' && daysLeft !== null && (
-          <p style={{ marginTop: '1rem' }}>⏳ Trial Days Left: <strong>{daysLeft}</strong></p>
+          <p style={{ marginTop: '1rem' }}>
+            ⏳ Trial Days Left: <strong>{daysLeft}</strong>
+          </p>
         )}
       </div>
-
-      <button
-        onClick={logout}
-        style={{
-          marginTop: '2rem',
-          padding: '0.75rem 1.5rem',
-          backgroundColor: '#dc2626',
-          color: 'white',
-          border: 'none',
-          borderRadius: '6px',
-          cursor: 'pointer'
-        }}
-      >
-        Logout
-      </button>
-
-      <br />
 
       <button
         onClick={() => navigate('/admin-settings')}
@@ -85,7 +71,24 @@ function AdminDashboard() {
           cursor: 'pointer'
         }}
       >
-        Go to Settings
+        Account Settings
+      </button>
+
+      <br />
+
+      <button
+        onClick={logout}
+        style={{
+          marginTop: '1.5rem',
+          padding: '0.75rem 1.5rem',
+          backgroundColor: '#dc2626',
+          color: 'white',
+          border: 'none',
+          borderRadius: '6px',
+          cursor: 'pointer'
+        }}
+      >
+        Logout
       </button>
     </div>
   );
