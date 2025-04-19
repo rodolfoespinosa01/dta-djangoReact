@@ -1,6 +1,7 @@
 from tests.base.base_admin_test import BaseAdminTest
 from django.urls import reverse
-from users.models import CustomUser, AdminPasswordResetToken
+from users.models.custom_user import CustomUser
+from users.models.admin_password_reset_token import AdminPasswordResetToken
 from unittest.mock import patch
 from rest_framework import status
 

@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 
-from users.models import CustomUser
+from users.models.custom_user import CustomUser
 from adminplans.models import AdminProfile, AdminPlan
 
 @api_view(['GET'])

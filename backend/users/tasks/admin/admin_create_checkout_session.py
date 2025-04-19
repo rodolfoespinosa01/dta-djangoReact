@@ -8,7 +8,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 
-from users.models import CustomUser
+from users.models.custom_user import CustomUser
 from adminplans.models import AdminPlan, PendingAdminSignup
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
