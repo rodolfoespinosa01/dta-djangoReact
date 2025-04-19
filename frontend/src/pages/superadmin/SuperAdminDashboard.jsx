@@ -43,54 +43,28 @@ function SuperAdminDashboard() {
     <div style={{ padding: '2rem' }}>
       <h2>SuperAdmin Dashboard</h2>
 
-      <h3>Active Admins</h3>
+      <h3>All Admins</h3>
+<table style={{ width: '100%', marginTop: '1rem', borderCollapse: 'collapse' }}>
+  <thead>
+    <tr>
+      <th style={{ borderBottom: '1px solid #ccc', padding: '0.5rem' }}>Email</th>
+      <th style={{ borderBottom: '1px solid #ccc', padding: '0.5rem' }}>Plan</th>
+      <th style={{ borderBottom: '1px solid #ccc', padding: '0.5rem' }}>Price</th>
+      <th style={{ borderBottom: '1px solid #ccc', padding: '0.5rem' }}>Next Billing Date</th>
+    </tr>
+  </thead>
+  <tbody>
+    {stats.admins.map((admin, idx) => (
+      <tr key={idx}>
+        <td style={{ padding: '0.5rem' }}>{admin.email}</td>
+        <td style={{ padding: '0.5rem' }}>{admin.plan}</td>
+        <td style={{ padding: '0.5rem' }}>{admin.price}</td>
+        <td style={{ padding: '0.5rem' }}>{admin.next_billing_date}</td>
+      </tr>
+    ))}
+  </tbody>
+</table>
 
-      <div>
-        <h4>🧪 Free Trial</h4>
-        <ul>
-          {stats.trial_admins.map(email => (
-            <li key={email}>{email}</li>
-          ))}
-        </ul>
-
-        <h4>💳 Monthly</h4>
-        <ul>
-          {stats.monthly_admins.map(email => (
-            <li key={email}>{email}</li>
-          ))}
-        </ul>
-
-        <h4>📅 Annual</h4>
-        <ul>
-          {stats.annual_admins.map(email => (
-            <li key={email}>{email}</li>
-          ))}
-        </ul>
-      </div>
-
-      <hr />
-
-      <p><strong>💰 Total Revenue Generated:</strong> {stats.total_revenue}</p>
-      <p><strong>📈 Projected Next Month Income:</strong> {stats.projected_monthly_income}</p>
-
-      <button
-        onClick={() => {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-          navigate('/superadmin-login');
-        }}
-        style={{
-          marginTop: '2rem',
-          padding: '0.75rem 1.5rem',
-          backgroundColor: '#dc2626',
-          color: 'white',
-          border: 'none',
-          borderRadius: '6px',
-          cursor: 'pointer'
-        }}
-      >
-        Logout
-      </button>
     </div>
   );
 }
