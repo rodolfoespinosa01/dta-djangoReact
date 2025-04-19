@@ -332,8 +332,5 @@ Feel free to open an issue or submit a PR if you're contributing.
 ✅ test_admin_old_password_fails_new_pass_works.py
 
 📊 SuperAdmin Dashboard
-🛠️ test_superadmin_dashboard_admin_grouping.py
-(Trial, Monthly, Annual, Inactive admins are grouped properly)
-
-🛠️ test_superadmin_dashboard_amounts_render.py
-(Displays payment amount and billing date for each admin)
+✅ test_superadmin_dashboard_admin_grouping.py
+✅ test_superadmin_dashboard_amounts_render.py
