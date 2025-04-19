@@ -1,7 +1,7 @@
 from tests.base.base_admin_test import BaseAdminTest
 from django.urls import reverse
 from django.utils import timezone
-from users.models import CustomUser
+from users.models.custom_user import CustomUser
 from adminplans.models import AdminProfile
 
 class AdminSessionPersistenceTest(BaseAdminTest):
@@ -42,4 +42,6 @@ class AdminSessionPersistenceTest(BaseAdminTest):
         )
 
         self.assertEqual(dashboard_response.status_code, 200)
-        self.assertIn('trial_active', dashboard_response.data)
+        self.assertTrue(dashboard_response.data.get('subscription_active'))
+        self.assertEqual(dashboard_response.data.get('days_remaining'), 14)
+
