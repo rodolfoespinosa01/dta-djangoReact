@@ -1,10 +1,8 @@
-# backend/tests/superadmin/test_invalid_access.py
-
-from rest_framework.test import APITestCase
+from tests.base.base_admin_test import BaseAdminTest
 from django.urls import reverse
 from users.models import CustomUser
 
-class SuperAdminRouteProtectionTests(APITestCase):
+class SuperAdminRouteProtectionTests(BaseAdminTest):
     def setUp(self):
         self.admin_username = "admin_regular"
         self.admin_password = "badpass123"

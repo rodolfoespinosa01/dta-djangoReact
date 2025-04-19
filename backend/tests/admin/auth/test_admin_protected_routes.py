@@ -1,7 +1,7 @@
-from rest_framework.test import APITestCase
+from tests.base.base_admin_test import BaseAdminTest
 from django.urls import reverse
 
-class AdminProtectedRouteTest(APITestCase):
+class AdminProtectedRouteTest(BaseAdminTest):
     def test_admin_dashboard_requires_auth(self):
         print("🔒 Test: Admin cannot access dashboard if not logged in")
 

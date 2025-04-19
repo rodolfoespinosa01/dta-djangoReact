@@ -3,7 +3,7 @@
 from django.urls import path, include
 
 # 🧪 Test routes per role
-from tests.admin.test_admin_urls import test_admin_urls
+from tests.admin.auth.test_admin_urls import test_admin_urls
 from tests.superadmin.test_superadmin_urls import test_superadmin_urls
 # from tests.client.test_client_urls import test_client_urls
 
