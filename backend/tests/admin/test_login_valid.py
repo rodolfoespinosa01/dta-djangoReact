@@ -8,7 +8,7 @@ class AdminLoginValidTest(APITestCase):
         self.password = "strongpass123"
 
         self.admin = CustomUser.objects.create_user(
-            username=self.email,  # ✅ TokenObtainPairView uses this
+            username=self.email,
             email=self.email,
             password=self.password,
             role='admin',
@@ -26,4 +26,4 @@ class AdminLoginValidTest(APITestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn("access", response.json())
+        self.assertIn("access", response.data)

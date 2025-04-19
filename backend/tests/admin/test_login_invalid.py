@@ -26,4 +26,6 @@ class AdminLoginInvalidTest(APITestCase):
         )
 
         self.assertEqual(response.status_code, 401)
-        self.assertIn("detail", response.json())  # Token view returns 'detail' not 'error'
+
+        # DRF's default TokenObtainPairView returns a 'detail' field on error
+        self.assertIn("detail", response.data)
