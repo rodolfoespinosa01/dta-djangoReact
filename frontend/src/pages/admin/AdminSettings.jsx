@@ -6,7 +6,7 @@ function AdminSettings() {
   const { user, isAuthenticated, accessToken } = useAuth();
   const navigate = useNavigate();
 
-  const [daysLeft, setDaysLeft] = useState(null);
+  const [dashboardData, setDashboardData] = useState(null);
   const [cancelled, setCancelled] = useState(false);
   const [cancelMessage, setCancelMessage] = useState('');
 
@@ -16,7 +16,7 @@ function AdminSettings() {
       return;
     }
 
-    const fetchTrialStatus = async () => {
+    const fetchDashboardData = async () => {
       try {
         const res = await fetch('http://localhost:8000/api/users/admin-dashboard/', {
           headers: {
@@ -25,17 +25,19 @@ function AdminSettings() {
         });
 
         const data = await res.json();
-        if (res.ok && data.trial_active) {
-          setDaysLeft(data.days_remaining);
-        } else if (res.status === 403) {
-          setDaysLeft(null);
+        console.log("DASHBOARD DATA:", data);
+        if (res.ok) {
+          setDashboardData(data);
+        } else {
+          setDashboardData(null);
         }
       } catch (err) {
-        console.error('Error fetching trial info:', err);
+        console.error('Error fetching dashboard info:', err);
+        setDashboardData(null);
       }
     };
 
-    fetchTrialStatus();
+    fetchDashboardData();
   }, [accessToken, isAuthenticated, navigate]);
 
   const handleCancelAutoRenew = async () => {
@@ -54,7 +56,7 @@ function AdminSettings() {
         setCancelled(true);
         setCancelMessage(data.message);
 
-        // Re-fetch dashboard to reflect new trial state
+        // Refresh dashboard state
         const refreshRes = await fetch('http://localhost:8000/api/users/admin-dashboard/', {
           headers: {
             Authorization: `Bearer ${accessToken}`
@@ -62,9 +64,7 @@ function AdminSettings() {
         });
 
         const refreshData = await refreshRes.json();
-        if (!refreshData.trial_active) {
-          setDaysLeft(null);
-        }
+        setDashboardData(refreshData);
       } else {
         setCancelMessage(data.error || 'Failed to cancel auto-renew.');
       }
@@ -74,24 +74,72 @@ function AdminSettings() {
     }
   };
 
+  const formatDate = (dateStr) => {
+    return dateStr ? new Date(dateStr).toLocaleDateString() : null;
+  };
+
+  const renderStartDate = () => {
+    const plan = dashboardData?.subscription_status;
+    const starts = {
+      admin_trial: dashboardData?.trial_start,
+      admin_monthly: dashboardData?.monthly_start,
+      admin_quarterly: dashboardData?.quarterly_start,
+      admin_annual: dashboardData?.annual_start,
+    };
+
+    const labelMap = {
+      admin_trial: 'Trial Start Date',
+      admin_monthly: 'Monthly Plan Start Date',
+      admin_quarterly: 'Quarterly Plan Start Date',
+      admin_annual: 'Annual Plan Start Date',
+    };
+
+    const startDate = formatDate(starts[plan]);
+    const label = labelMap[plan];
+
+    return startDate && label ? (
+      <p><strong>{label}:</strong> {startDate}</p>
+    ) : null;
+  };
+
   return (
     <div style={{ padding: '2rem' }}>
       <h2>Admin Settings</h2>
-      {user && <p>Settings for: {user.email}</p>}
 
-      {/* Show Trial Details + Cancel Option */}
-      {user?.subscription_status === 'admin_trial' && (
+      {/* Show Admin Email */}
+      {user?.email && <p>Settings for: <strong>{user.email}</strong></p>}
+
+      {/* Only render when we have data */}
+      {dashboardData && (
         <>
-          {daysLeft !== null && (
-            <p style={{ marginTop: '1rem' }}>⏳ Trial Days Left: <strong>{daysLeft}</strong></p>
+          {/* Start Date */}
+          {renderStartDate()}
+
+          {/* Trial Days Remaining */}
+          {dashboardData.subscription_status === 'admin_trial' && dashboardData.days_remaining !== null && (
+            <p>⏳ Trial Days Left: <strong>{dashboardData.days_remaining}</strong></p>
           )}
 
+          {/* Next Billing Date */}
+          {dashboardData.subscription_active && dashboardData.next_billing_date && (
+            <p><strong>Next Billing Date:</strong> {formatDate(dashboardData.next_billing_date)}</p>
+          )}
+
+          {/* Cancel Subscription */}
           {!cancelled ? (
             <button
               onClick={handleCancelAutoRenew}
-              style={{ marginTop: '1rem', backgroundColor: '#fbbf24', padding: '0.5rem 1rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+              style={{
+                marginTop: '1rem',
+                backgroundColor: '#ef4444',
+                color: 'white',
+                padding: '0.5rem 1rem',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
             >
-              Cancel Trial Auto-Renewal
+              Cancel Subscription
             </button>
           ) : (
             <p style={{ marginTop: '1rem', color: 'green' }}>{cancelMessage}</p>
@@ -99,10 +147,9 @@ function AdminSettings() {
         </>
       )}
 
-      {/* Fallback message for non-trial users */}
-      {user?.subscription_status !== 'admin_trial' && (
+      {!dashboardData && (
         <p style={{ marginTop: '1rem', color: 'gray' }}>
-          You are not currently on a free trial. To reactivate your account, please purchase a monthly or annual plan.
+          Unable to load subscription details.
         </p>
       )}
     </div>
