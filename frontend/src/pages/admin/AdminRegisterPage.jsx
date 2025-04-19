@@ -51,61 +51,59 @@ function AdminRegisterPage() {
     fetchPendingEmail();
   }, [searchParams, navigate]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+    const handleSubmit = async (e) => {
+      e.preventDefault();
+    
+      try {
+        const res = await fetch('http://localhost:8000/api/users/register-admin/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ email, password, token }),
+        });
+    
+        let data;
+        try {
+          data = await res.json();
+        } catch (jsonErr) {
+          const text = await res.text(); // Try to read as plain text
+          console.error('❌ Response not JSON:', text);
+          alert('Server error during registration. Check logs.');
+          return;
+        }
+    
+        if (!res.ok) {
+          alert(data.error || 'Registration failed');
+          return;
+        }
+    
+        alert('✅ Account created successfully! Logging you in...');
+    
+        const loginRes = await fetch('http://localhost:8000/api/users/admin-login/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ username: email, password }),
+        });
+    
+        const loginData = await loginRes.json();
+    
+        if (!loginRes.ok) {
+          alert(loginData.error || 'Auto-login failed. Please login manually.');
+          navigate('/admin-login');
+          return;
+        }
+        console.log('✅ loginData from /admin-login:', loginData);
+        login(loginData);
 
-    try {
-      const res = await fetch('http://localhost:8000/api/users/register-admin/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          email,
-          password,
-          token,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        alert(data.error || 'Registration failed');
-        return;
+        navigate('/admin-dashboard');
+    
+      } catch (err) {
+        console.error('Unexpected error:', err);
+        alert('Unexpected error. Check console.');
       }
-
-      alert('✅ Account created successfully! Logging you in...');
-
-      // 🔑 Auto-login via Admin endpoint
-      const loginRes = await fetch('http://localhost:8000/api/users/admin-login/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ username: email, password }),
-      });
-
-      const loginData = await loginRes.json();
-
-      if (!loginRes.ok) {
-        alert(loginData.error || 'Auto-login failed. Please login manually.');
-        navigate('/admin-login');
-        return;
-      }
-
-      // Set user context if available
-      login(loginData);
-
-      // ✅ Go to dashboard
-      navigate('/admin-dashboard');
-
-    } catch (err) {
-      console.error('Unexpected error:', err);
-      alert('Something went wrong');
-    }
-  };
+    };
+  
 
   if (loading) return <p>Loading...</p>;
 

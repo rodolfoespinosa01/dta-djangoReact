@@ -52,7 +52,7 @@ def create_admin_checkout_session(request):
 
         if plan.name == 'adminTrial':
             session = stripe.checkout.Session.create(
-                mode='subscription',
+                mode='setup',
                 payment_method_types=['card'],
                 customer=customer.id,
                 metadata={'plan_name': plan.name},

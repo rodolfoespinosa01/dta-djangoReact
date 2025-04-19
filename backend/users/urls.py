@@ -8,7 +8,7 @@ from users.views.superadmin.superadmin_token_login import SuperAdminTokenObtainP
 from users.views.admin.admin_dashboard import AdminDashboardView
 from users.views.admin.admin_forgot_password import AdminForgotPasswordView
 from users.views.admin.admin_reset_password_confirm import AdminResetPasswordConfirmView
-from users.views.admin.admin_token_login import AdminTokenObtainPairView as AdminTokenLoginView
+from users.views.admin.admin_login import AdminLoginView
 
 # Admin Tasks (logic outside DRF views)
 from users.tasks.admin.admin_register import register_admin
@@ -21,7 +21,7 @@ urlpatterns = [
     path('superadmin-login/', SuperAdminTokenObtainPairView.as_view(), name='superadmin-login'),
 
     # Admin Auth & Dashboard
-    path('admin-login/', AdminTokenLoginView.as_view(), name='admin-login'),
+    path('admin-login/', AdminLoginView.as_view(), name='admin_login'),
     path('admin-dashboard/', AdminDashboardView.as_view(), name='admin-dashboard'),
 
     # Admin Registration

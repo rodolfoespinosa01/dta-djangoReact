@@ -7,7 +7,7 @@ class AdminPlan(models.Model):
     PLAN_CHOICES = [
         ('adminTrial', 'Free Admin Trial'),
         ('adminMonthly', 'Monthly Admin Plan'),
-        ('adminQuarterly', 'Quarterly Admin Plan'),  # ✅ Added
+        ('adminQuarterly', 'Quarterly Admin Plan'),
         ('adminAnnual', 'Annual Admin Plan'),
     ]
 

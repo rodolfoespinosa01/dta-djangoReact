@@ -40,8 +40,10 @@ def register_admin(request):
     except stripe.error.StripeError as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    customer_id = checkout_session.get("customer")
-    customer_email = checkout_session.get("customer_email") or stripe.Customer.retrieve(customer_id).get("email")
+    customer_obj = checkout_session.get("customer")
+    customer_id = customer_obj["id"] if isinstance(customer_obj, dict) else customer_obj  # Fallback if not expanded
+    customer_email = checkout_session.get("customer_email") or customer_obj.get("email")
+
     plan_name = checkout_session.get('metadata', {}).get('plan_name')
     plan = AdminPlan.objects.get(name=plan_name)
 
