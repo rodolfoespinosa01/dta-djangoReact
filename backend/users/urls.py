@@ -21,7 +21,7 @@ urlpatterns = [
     path('superadmin-login/', SuperAdminTokenObtainPairView.as_view(), name='superadmin-login'),
 
     # Admin Auth & Dashboard
-    path('admin-login/', AdminLoginView.as_view(), name='admin_login'),
+    path('admin-login/', AdminLoginView.as_view(), name='admin-login'),
     path('admin-dashboard/', AdminDashboardView.as_view(), name='admin-dashboard'),
 
     # Admin Registration
