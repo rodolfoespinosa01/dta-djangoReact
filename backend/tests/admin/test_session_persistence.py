@@ -32,10 +32,10 @@ class AdminSessionPersistenceTest(APITestCase):
             data={'username': 'admin2@example.com', 'password': 'strongpass456'},
             content_type='application/json'
         )
-        token = login_response.json().get('access')
+        token = login_response.data.get('access')  # ✅ use DRF .data
         self.assertIsNotNone(token)
 
-        # Step 4: Simulate refresh using token to hit dashboard
+        # Step 4: Use token to access admin dashboard
         dashboard_response = self.client.get(
             reverse('admin-dashboard'),
             HTTP_AUTHORIZATION=f'Bearer {token}'

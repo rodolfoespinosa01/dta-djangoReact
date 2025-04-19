@@ -33,7 +33,7 @@ class AdminTokenRefreshTests(APITestCase):
         )
         self.assertEqual(login_response.status_code, 200)
 
-        refresh_token = login_response.json().get("refresh")
+        refresh_token = login_response.data.get("refresh")  # ✅ updated
         self.assertIsNotNone(refresh_token)
 
         # Step 2: Use refresh token to get a new access token
@@ -44,7 +44,7 @@ class AdminTokenRefreshTests(APITestCase):
         )
         self.assertEqual(refresh_response.status_code, 200)
 
-        new_access_token = refresh_response.json().get("access")
+        new_access_token = refresh_response.data.get("access")  # ✅ updated
         self.assertIsNotNone(new_access_token)
 
         # Step 3: Access protected dashboard using new access token
