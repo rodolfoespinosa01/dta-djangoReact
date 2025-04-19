@@ -1,8 +1,8 @@
-from rest_framework.test import APITestCase
+from tests.base.base_admin_test import BaseAdminTest
 from django.urls import reverse
 from users.models import CustomUser
 
-class SuperAdminDashboardAccessTest(APITestCase):
+class SuperAdminDashboardAccessTest(BaseAdminTest):
     def test_superadmin_can_login_and_access_dashboard(self):
         print("🛡️  Test: SuperAdmin can login and access dashboard")
 
