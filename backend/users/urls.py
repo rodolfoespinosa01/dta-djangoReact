@@ -25,7 +25,7 @@ urlpatterns = [
     path('admin-dashboard/', AdminDashboardView.as_view(), name='admin-dashboard'),
 
     # Admin Registration
-    path('register-admin/', register_admin, name='register_admin'),
+    path('register-admin/', register_admin, name='register-admin'),
     path('pending-signup/<str:token>/', get_pending_admin_signup),
 
     # Admin Password Reset
