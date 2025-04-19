@@ -1,5 +1,7 @@
 from django.contrib import admin
 from .models import AdminPlan, AdminProfile, PendingAdminSignup
+from django.apps import AppConfig
+
 
 class AdminPlanAdmin(admin.ModelAdmin):
     list_display = ('name', 'description', 'display_price', 'stripe_price_id')
@@ -11,3 +13,10 @@ class AdminPlanAdmin(admin.ModelAdmin):
 admin.site.register(AdminPlan, AdminPlanAdmin)
 admin.site.register(AdminProfile)
 admin.site.register(PendingAdminSignup)
+
+class AdminplansConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'adminplans'
+
+    def ready(self):
+        import adminplans.signals  # 👈 this will register the signal
