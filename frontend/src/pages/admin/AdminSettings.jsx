@@ -105,26 +105,26 @@ function AdminSettings() {
   return (
     <div style={{ padding: '2rem' }}>
       <h2>Admin Settings</h2>
-
+  
       {/* Show Admin Email */}
       {user?.email && <p>Settings for: <strong>{user.email}</strong></p>}
-
+  
       {/* Only render when we have data */}
       {dashboardData && (
         <>
           {/* Start Date */}
           {renderStartDate()}
-
+  
           {/* Trial Days Remaining */}
           {dashboardData.subscription_status === 'admin_trial' && dashboardData.days_remaining !== null && (
             <p>⏳ Trial Days Left: <strong>{dashboardData.days_remaining}</strong></p>
           )}
-
+  
           {/* Next Billing Date */}
           {dashboardData.subscription_active && dashboardData.next_billing_date && (
             <p><strong>Next Billing Date:</strong> {formatDate(dashboardData.next_billing_date)}</p>
           )}
-
+  
           {/* Cancel Subscription */}
           {!cancelled ? (
             <button
@@ -146,14 +146,30 @@ function AdminSettings() {
           )}
         </>
       )}
-
+  
       {!dashboardData && (
         <p style={{ marginTop: '1rem', color: 'gray' }}>
           Unable to load subscription details.
         </p>
       )}
+  
+      {/* Back to Dashboard Button */}
+      <button
+        onClick={() => navigate('/admin-dashboard')}
+        style={{
+          marginTop: '2rem',
+          backgroundColor: '#2563eb',
+          color: 'white',
+          padding: '0.75rem 1.5rem',
+          border: 'none',
+          borderRadius: '6px',
+          cursor: 'pointer'
+        }}
+      >
+        Back to Dashboard
+      </button>
     </div>
-  );
+  );  
 }
 
 export default AdminSettings;
