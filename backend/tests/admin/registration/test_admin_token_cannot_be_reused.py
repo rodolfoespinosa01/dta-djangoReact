@@ -48,7 +48,7 @@ class AdminTokenReuseTest(BaseAdminTest):
 
         # ✅ First registration attempt
         first_response = self.client.post(
-            reverse("register_admin"),
+            reverse("register-admin"),
             data={
                 "email": "tokenreuse@test.com",
                 "password": "mypassword123",
@@ -56,14 +56,12 @@ class AdminTokenReuseTest(BaseAdminTest):
             },
             content_type="application/json"
         )
-
-        print("🔍 First Response JSON:", first_response.json())
-        print("🔍 First Response Status:", first_response.status_code)
+        
         self.assertEqual(first_response.status_code, status.HTTP_201_CREATED)
 
         # ❌ Second attempt using same token
         second_response = self.client.post(
-            reverse("register_admin"),
+            reverse("register-admin"),
             data={
                 "email": "tokenreuse2@test.com",
                 "password": "mypassword123",

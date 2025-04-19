@@ -316,9 +316,10 @@ Feel free to open an issue or submit a PR if you're contributing.
 ✅ Stripe keys work (test mode)
 
 
+
+
 👨‍💼 Admin Registration & Free Trial
-🛠️ test_admin_token_cannot_be_reused.py
-(Token should only be usable once for registration)
+✅test_admin_token_cannot_be_reused.py
 
 🛠️ test_admin_invalid_or_expired_token.py
 (Invalid or expired token returns error on registration)
