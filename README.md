@@ -319,11 +319,8 @@ Feel free to open an issue or submit a PR if you're contributing.
 
 
 👨‍💼 Admin Registration & Free Trial
-✅test_admin_token_cannot_be_reused.py
-
-🛠️ test_admin_invalid_or_expired_token.py
-(Invalid or expired token returns error on registration)
-
+✅ test_admin_token_cannot_be_reused.py
+✅ test_admin_invalid_or_expired_token.py
 
 💸 Stripe & Billing
 🛠️ test_admin_paid_plan_registration_monthly.py
