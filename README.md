@@ -328,16 +328,8 @@ Feel free to open an issue or submit a PR if you're contributing.
 
 🔐 Password Reset Flow
 ✅ test_admin_forgot_password_token_created.py
-✅
-🛠️ test_admin_forgot_password_token_created.py
-(Request generates reset token, simulates email print)
-
-🛠️ test_admin_reset_password_success.py
-(Successfully updates password)
-
-🛠️ test_admin_old_password_fails_new_pass_works.py
-(Confirm old password no longer works after reset)
-
+✅ test_admin_reset_password_success.py
+✅ test_admin_old_password_fails_new_pass_works.py
 
 📊 SuperAdmin Dashboard
 🛠️ test_superadmin_dashboard_admin_grouping.py
