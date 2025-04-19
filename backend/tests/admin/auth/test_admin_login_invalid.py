@@ -1,6 +1,6 @@
 from tests.base.base_admin_test import BaseAdminTest
 from django.urls import reverse
-from users.models import CustomUser
+from users.models.custom_user import CustomUser
 
 class AdminLoginInvalidTest(BaseAdminTest):
     def setUp(self):

@@ -3,7 +3,7 @@
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework import serializers
-from users.models import CustomUser
+from users.models.custom_user import CustomUser
 
 class AdminTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod

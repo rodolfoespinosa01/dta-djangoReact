@@ -1,7 +1,7 @@
 import uuid
 from django.db import models
 from django.utils import timezone
-from users.models import CustomUser
+from users.models.custom_user import CustomUser
 
 class AdminPlan(models.Model):
     PLAN_CHOICES = [
