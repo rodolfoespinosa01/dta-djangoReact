@@ -27,7 +27,6 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('access_token', loginData.access);
       localStorage.setItem('refresh_token', loginData.refresh);
   
-      console.log('✅ Auth state updated');
     } catch (err) {
       console.error('Failed to decode access token in login()', err);
     }
@@ -46,10 +45,6 @@ export const AuthProvider = ({ children }) => {
     const access = localStorage.getItem('access_token');
     const refresh = localStorage.getItem('refresh_token');
 
-    console.log('🧪 Checking for stored tokens...');
-    console.log('Access token:', access);
-    console.log('Refresh token:', refresh);
-
     if (!access || !refresh) {
       console.warn('❌ No tokens found in localStorage');
       setAuth({ user: null, accessToken: null, isAuthenticated: false, loading: false });
@@ -58,10 +53,8 @@ export const AuthProvider = ({ children }) => {
 
     try {
       const decoded = jwtDecode(access);
-      console.log('✅ Decoded access token:', decoded);
 
       const isExpired = decoded.exp * 1000 < Date.now();
-      console.log('⏰ Token expired?', isExpired);
 
       if (isExpired) {
         console.warn('🔁 Token is expired, logging out...');
@@ -76,7 +69,6 @@ export const AuthProvider = ({ children }) => {
         loading: false,
       });
 
-      console.log('✅ Session restored on refresh');
     } catch (err) {
       console.error('❌ Error decoding token on refresh:', err);
       setAuth({ user: null, accessToken: null, isAuthenticated: false, loading: false });

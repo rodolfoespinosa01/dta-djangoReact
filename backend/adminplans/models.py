@@ -44,6 +44,11 @@ class AdminProfile(models.Model):
     admin_stripe_customer_id = models.CharField(max_length=100, null=True, blank=True)
     admin_stripe_subscription_id = models.CharField(max_length=100, null=True, blank=True)
     auto_renew_cancelled = models.BooleanField(default=False)
+    # Add these fields to support cancellation + reactivation logic
+    is_canceled = models.BooleanField(default=False)
+    canceled_at = models.DateTimeField(null=True, blank=True)
+    subscription_end_date = models.DateTimeField(null=True, blank=True)  # used for paid admins only
+
 
     def __str__(self):
         return f"{self.user.email} - {self.user.subscription_status}"

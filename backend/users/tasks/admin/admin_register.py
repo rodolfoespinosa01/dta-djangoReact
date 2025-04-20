@@ -41,24 +41,25 @@ def register_admin(request):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     customer_obj = checkout_session.get("customer")
-    customer_id = customer_obj["id"] if isinstance(customer_obj, dict) else customer_obj  # Fallback if not expanded
+    customer_id = customer_obj["id"] if isinstance(customer_obj, dict) else customer_obj
     customer_email = checkout_session.get("customer_email") or customer_obj.get("email")
 
-    plan_name = checkout_session.get('metadata', {}).get('plan_name')
-    plan = AdminPlan.objects.get(name=plan_name)
+    # Normalize adminTrial to adminMonthly internally
+    raw_plan_name = checkout_session.get('metadata', {}).get('plan_name')
+    actual_plan_name = 'adminMonthly' if raw_plan_name == 'adminTrial' else raw_plan_name
+    is_trial = raw_plan_name == 'adminTrial'
 
     try:
-        plan = AdminPlan.objects.get(name=plan_name)
+        plan = AdminPlan.objects.get(name=actual_plan_name)
     except AdminPlan.DoesNotExist:
         return Response({'error': 'Plan not found'}, status=status.HTTP_404_NOT_FOUND)
 
     plan_mapping = {
-        'adminTrial': 'admin_trial',
         'adminMonthly': 'admin_monthly',
         'adminQuarterly': 'admin_quarterly',
         'adminAnnual': 'admin_annual',
     }
-    subscription_status = plan_mapping.get(plan.name, 'admin_trial')
+    subscription_status = plan_mapping.get(actual_plan_name, 'admin_monthly')
 
     if User.objects.filter(username=email).exists():
         return Response({'error': 'User already exists'}, status=status.HTTP_400_BAD_REQUEST)
@@ -69,28 +70,27 @@ def register_admin(request):
     user.subscription_status = subscription_status
     user.save()
 
-    # AdminProfile
+    # AdminProfile creation
+    now = timezone.now()
     profile_data = {
         'admin_stripe_customer_id': customer_id,
         'admin_stripe_subscription_id': subscription_id,
+        'subscription_started_at': now,
     }
 
-    now = timezone.now()
-    if subscription_status == 'admin_trial':
+    if is_trial:
         profile_data['trial_start_date'] = now
+        profile_data['next_billing_date'] = now + relativedelta(days=14)
     elif subscription_status == 'admin_monthly':
-        profile_data['subscription_started_at'] = now
         profile_data['next_billing_date'] = now + relativedelta(months=1)
     elif subscription_status == 'admin_quarterly':
-        profile_data['subscription_started_at'] = now
         profile_data['next_billing_date'] = now + relativedelta(months=3)
     elif subscription_status == 'admin_annual':
-        profile_data['subscription_started_at'] = now
         profile_data['next_billing_date'] = now + relativedelta(months=12)
 
     AdminProfile.objects.get_or_create(user=user, defaults=profile_data)
 
-    # Handle setup mode
+    # Handle setup intent mode if needed
     if checkout_session.mode == 'setup':
         setup_intent = checkout_session.get('setup_intent')
         if setup_intent and setup_intent.get('payment_method'):
@@ -102,8 +102,10 @@ def register_admin(request):
             except stripe.error.StripeError as e:
                 return Response({'error': f'Failed to attach payment method: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
+    # Cleanup token so it's one-time use only
     pending.delete()
 
+    # JWT response
     refresh = RefreshToken.for_user(user)
     refresh['email'] = user.email
     refresh['role'] = user.role

@@ -1,6 +1,7 @@
 import stripe
 from django.http import HttpResponse
 from django.utils.crypto import get_random_string
+from django.utils import timezone
 from django.conf import settings
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
@@ -29,7 +30,7 @@ def admin_stripe_webhook(request):
         customer_email = session.get('customer_email')
         subscription_id = session.get('subscription')
 
-        # Fallback if customer_email missing
+        # Fallback if email missing
         if not customer_email:
             customer_id = session.get('customer')
             if customer_id:
@@ -40,10 +41,14 @@ def admin_stripe_webhook(request):
         print(f"📧 Email: {customer_email}")
         print(f"🧾 Subscription ID: {subscription_id}")
 
-        plan_name = session.get('metadata', {}).get('plan_name')
-        if not plan_name:
-            print("❌ Missing plan name in session metadata")
+        # Metadata from checkout creation
+        raw_plan_name = session.get('metadata', {}).get('plan_name')
+        if not raw_plan_name:
+            print("❌ Missing plan_name in metadata")
             return HttpResponse(status=500)
+
+        # Normalize: adminTrial → adminMonthly internally
+        plan_name = 'adminMonthly' if raw_plan_name == 'adminTrial' else raw_plan_name
 
         try:
             plan = AdminPlan.objects.get(name=plan_name)
@@ -56,7 +61,7 @@ def admin_stripe_webhook(request):
                 email=customer_email,
                 session_id=session_id,
                 token=token,
-                plan=plan_name,
+                plan=raw_plan_name,  # Keep original for clarity in admin view
                 subscription_id=subscription_id
             )
             print(f"✅ PendingAdminSignup saved for {customer_email}")

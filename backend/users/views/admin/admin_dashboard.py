@@ -1,8 +1,8 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions, status
+from django.utils.timezone import now
 from adminplans.models import AdminProfile
-from datetime import date
 
 
 class AdminDashboardView(APIView):
@@ -19,31 +19,36 @@ class AdminDashboardView(APIView):
         except AdminProfile.DoesNotExist:
             return Response({"error": "Admin profile not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        subscription_status = user.subscription_status  # e.g., "admin_monthly"
-        plan = subscription_status.replace('_', '').lower()  # Normalize to match conditions
+        # ❌ Block access if subscription has ended
+        if profile.is_canceled and profile.subscription_end_date and profile.subscription_end_date < now():
+            return Response({
+                "error": "Your subscription has ended. Please reactivate to access the dashboard."
+            }, status=status.HTTP_403_FORBIDDEN)
 
-        is_cancelled = profile.auto_renew_cancelled
-        is_trial = plan == 'admintrial'
-        trial_active = is_trial and not profile.is_trial_expired()
+        subscription_status = user.subscription_status
+        is_canceled = profile.is_canceled
+        is_active = not is_canceled
+        trial_days_left = profile.trial_days_remaining()
+        is_trial = trial_days_left > 0 if trial_days_left is not None else False
 
-        # Determine if subscription is active
-        is_active = plan in ['admintrial', 'adminmonthly', 'adminquarterly', 'adminannual'] and not is_cancelled
-
-        # Assign start dates based on plan
-        trial_start = profile.trial_start_date
-        monthly_start = profile.subscription_started_at if plan == 'adminmonthly' else None
-        quarterly_start = profile.subscription_started_at if plan == 'adminquarterly' else None
-        annual_start = profile.subscription_started_at if plan == 'adminannual' else None
+        # Assign start dates
+        monthly_start = profile.subscription_started_at if subscription_status == 'adminMonthly' else None
+        quarterly_start = profile.subscription_started_at if subscription_status == 'adminQuarterly' else None
+        annual_start = profile.subscription_started_at if subscription_status == 'adminAnnual' else None
 
         response_data = {
             "subscription_status": subscription_status,
             "subscription_active": is_active,
-            "trial_start": trial_start,
+            "is_canceled": is_canceled,
+            "canceled_at": profile.canceled_at,
+            "subscription_end_date": profile.subscription_end_date,
+            "trial_start": profile.trial_start_date,
+            "is_trial": is_trial,
+            "days_remaining": trial_days_left if is_trial else None,
             "monthly_start": monthly_start,
             "quarterly_start": quarterly_start,
             "annual_start": annual_start,
-            "next_billing_date": profile.next_billing_date if is_active else None,
-            "days_remaining": profile.trial_days_remaining() if trial_active else None
+            "next_billing_date": profile.next_billing_date if is_active else None
         }
 
         return Response(response_data)

@@ -25,7 +25,6 @@ function AdminSettings() {
         });
 
         const data = await res.json();
-        console.log("DASHBOARD DATA:", data);
         if (res.ok) {
           setDashboardData(data);
         } else {
@@ -105,55 +104,70 @@ function AdminSettings() {
   return (
     <div style={{ padding: '2rem' }}>
       <h2>Admin Settings</h2>
-  
-      {/* Show Admin Email */}
+
       {user?.email && <p>Settings for: <strong>{user.email}</strong></p>}
-  
-      {/* Only render when we have data */}
+
       {dashboardData && (
         <>
-          {/* Start Date */}
           {renderStartDate()}
-  
-          {/* Trial Days Remaining */}
+
           {dashboardData.subscription_status === 'admin_trial' && dashboardData.days_remaining !== null && (
             <p>⏳ Trial Days Left: <strong>{dashboardData.days_remaining}</strong></p>
           )}
-  
-          {/* Next Billing Date */}
+
           {dashboardData.subscription_active && dashboardData.next_billing_date && (
             <p><strong>Next Billing Date:</strong> {formatDate(dashboardData.next_billing_date)}</p>
           )}
-  
-          {/* Cancel Subscription */}
-          {!cancelled ? (
-            <button
-              onClick={handleCancelAutoRenew}
-              style={{
-                marginTop: '1rem',
-                backgroundColor: '#ef4444',
-                color: 'white',
-                padding: '0.5rem 1rem',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer'
-              }}
-            >
-              Cancel Subscription
-            </button>
-          ) : (
-            <p style={{ marginTop: '1rem', color: 'green' }}>{cancelMessage}</p>
-          )}
+
+          {/* Cancel or Reactivate Subscription */}
+          <>
+            {!cancelled && !dashboardData.is_canceled && dashboardData.subscription_active && (
+              <button
+                onClick={handleCancelAutoRenew}
+                style={{
+                  marginTop: '1rem',
+                  backgroundColor: '#ef4444',
+                  color: 'white',
+                  padding: '0.5rem 1rem',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel Subscription
+              </button>
+            )}
+
+            {dashboardData.is_canceled && (
+              <button
+                onClick={() => navigate('/admin-reactivate')}
+                style={{
+                  marginTop: '1rem',
+                  backgroundColor: '#10b981',
+                  color: 'white',
+                  padding: '0.5rem 1rem',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                Reactivate Subscription
+              </button>
+            )}
+
+            {cancelMessage && (
+              <p style={{ marginTop: '1rem', color: 'green' }}>{cancelMessage}</p>
+            )}
+          </>
         </>
       )}
-  
+
       {!dashboardData && (
         <p style={{ marginTop: '1rem', color: 'gray' }}>
           Unable to load subscription details.
         </p>
       )}
-  
-      {/* Back to Dashboard Button */}
+
       <button
         onClick={() => navigate('/admin-dashboard')}
         style={{
@@ -169,7 +183,7 @@ function AdminSettings() {
         Back to Dashboard
       </button>
     </div>
-  );  
+  );
 }
 
 export default AdminSettings;
