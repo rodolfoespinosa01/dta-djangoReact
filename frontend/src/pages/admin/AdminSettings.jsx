@@ -119,6 +119,21 @@ function AdminSettings() {
             <p><strong>Next Billing Date:</strong> {formatDate(dashboardData.next_billing_date)}</p>
           )}
 
+          {dashboardData.is_canceled && dashboardData.subscription_end_date && (
+            <div style={{
+              backgroundColor: '#fee2e2',
+              padding: '1rem',
+              borderRadius: '6px',
+              marginTop: '1rem',
+              border: '1px solid #dc2626'
+            }}>
+              <p style={{ margin: 0, color: '#991b1b', fontWeight: 'bold' }}>
+                🛑 Your subscription will end on <strong>{formatDate(dashboardData.subscription_end_date)}</strong>.
+              </p>
+            </div>
+          )}
+
+
           {/* Cancel or Reactivate Subscription */}
           <>
             {!cancelled && !dashboardData.is_canceled && dashboardData.subscription_active && (
