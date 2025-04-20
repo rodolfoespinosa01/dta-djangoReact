@@ -44,13 +44,18 @@
       "dependsOrder": "parallel"
     },
     {
-      "label": "Run Machine Update Script",
+      "label": "Run Machine Update",
       "type": "shell",
-      "command": "./machineupdate.sh",
-      "options": {
-        "cwd": "${workspaceFolder}"
+      "command": "./.vscode/machineupdate.sh",
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
       },
-      "problemMatcher": []
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
     },
     {
       "label": "Run Django Tests",
