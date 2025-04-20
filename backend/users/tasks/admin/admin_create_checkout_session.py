@@ -24,7 +24,7 @@ def create_admin_checkout_session(request):
         if not plan_name or not email:
             return Response({'error': 'Missing plan or email'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Check if user already exists with an active or used plan
+        # Check if user already exists
         existing_user = CustomUser.objects.filter(email=email).first()
         if existing_user:
             if existing_user.subscription_status in ['admin_trial', 'admin_monthly', 'admin_quarterly', 'admin_annual', 'admin_inactive']:
@@ -40,38 +40,34 @@ def create_admin_checkout_session(request):
                         'error': 'This email has already used the free trial. Please choose a paid plan.'
                     }, status=status.HTTP_403_FORBIDDEN)
 
-        # Prevent multiple pending signups
+        # Prevent pending signup abuse
         if PendingAdminSignup.objects.filter(email=email, is_used=False).exists():
             return Response({
                 'error': 'A registration link has already been generated for this email. Please complete your registration or wait for it to expire.'
             }, status=status.HTTP_403_FORBIDDEN)
 
-        # Create Stripe customer and session
-        plan = AdminPlan.objects.get(name=plan_name)
+        # Normalize plan (adminTrial still uses adminMonthly price ID)
+        actual_plan_name = 'adminMonthly' if plan_name == 'adminTrial' else plan_name
+
+        # Lookup Stripe plan
+        plan = AdminPlan.objects.get(name=actual_plan_name)
         customer = stripe.Customer.create(email=email)
 
-        if plan.name == 'adminTrial':
-            session = stripe.checkout.Session.create(
-                mode='setup',
-                payment_method_types=['card'],
-                customer=customer.id,
-                metadata={'plan_name': plan.name},
-                success_url='http://localhost:3000/admin-thank-you?session_id={CHECKOUT_SESSION_ID}',
-                cancel_url='http://localhost:3000/admin-plans',
-            )
-        else:
-            session = stripe.checkout.Session.create(
-                mode='subscription',
-                payment_method_types=['card'],
-                customer=customer.id,
-                line_items=[{
-                    'price': plan.stripe_price_id,
-                    'quantity': 1,
-                }],
-                metadata={'plan_name': plan.name},
-                success_url='http://localhost:3000/admin-thank-you?session_id={CHECKOUT_SESSION_ID}',
-                cancel_url='http://localhost:3000/admin-plans',
-            )
+        # Create Stripe session (subscription mode for all plans)
+        session = stripe.checkout.Session.create(
+            mode='subscription',
+            payment_method_types=['card'],
+            customer=customer.id,
+            line_items=[{
+                'price': plan.stripe_price_id,
+                'quantity': 1,
+            }],
+            metadata={
+                'plan_name': plan_name  # Keep original to detect trial in webhook
+            },
+            success_url='http://localhost:3000/admin-thank-you?session_id={CHECKOUT_SESSION_ID}',
+            cancel_url='http://localhost:3000/admin-plans',
+        )
 
         return Response({'url': session.url}, status=status.HTTP_200_OK)
 
