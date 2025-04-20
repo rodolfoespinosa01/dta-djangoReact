@@ -1,6 +1,8 @@
 from django.contrib import admin
 from .models import AdminPlan, AdminProfile, PendingAdminSignup
 from django.apps import AppConfig
+from .models import AdminAccountHistory
+
 
 
 class AdminPlanAdmin(admin.ModelAdmin):
@@ -19,4 +21,10 @@ class AdminplansConfig(AppConfig):
     name = 'adminplans'
 
     def ready(self):
-        import adminplans.signals  # 👈 this will register the signal
+        import adminplans.signals
+
+class AdminAccountHistoryAdmin(admin.ModelAdmin):
+    list_display = ('admin', 'plan_name', 'start_date', 'end_date', 'was_canceled', 'timestamp')
+
+admin.site.register(AdminAccountHistory, AdminAccountHistoryAdmin)
+

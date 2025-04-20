@@ -5,6 +5,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
+from adminplans.models import AdminAccountHistory
+
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -47,6 +49,16 @@ def cancel_admin_subscription(request):
         profile.subscription_end_date = subscription_end
         profile.next_billing_date = None  # 🔥 Clear this to avoid confusion
         profile.save()
+
+        AdminAccountHistory.objects.create(
+            admin=user,
+            plan_name=user.subscription_status,
+            subscription_id=profile.admin_stripe_subscription_id,
+            start_date=profile.subscription_started_at or now,
+            end_date=subscription_end,
+            was_canceled=True
+        )
+
 
         return Response({
             'success': True,
