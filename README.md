@@ -337,24 +337,12 @@ Feel free to open an issue or submit a PR if you're contributing.
 
 🔁 Cancel Subscription Flow
 ✅ Test: Admin cancels paid plan (monthly, quarterly, annual)
-Stripe subscription is marked cancel_at_period_end
-is_canceled is set to True
-auto_renew_cancelled is True
-subscription_end_date matches the old next_billing_date
-next_billing_date is cleared
+✅ Test: Admin cancels paid plan (monthly, quarterly, annual)
 
 
 
 
 ✅ NEW TEST CASES TO ADD (POST-CANCEL/REACTIVATION LOGIC)
-
-🔁 Cancel Subscription Flow
-🚧 Test: Admin cancels paid plan (monthly, quarterly, annual)
-Stripe subscription is marked cancel_at_period_end
-is_canceled is set to True
-auto_renew_cancelled is True
-subscription_end_date matches the old next_billing_date
-next_billing_date is cleared
 
 🚧 Test: Admin cancels during free trial
 Access is revoked immediately (simulate dashboard block)
@@ -394,6 +382,6 @@ Previous end date is preserved
 New start date begins fresh
 
 🧪 BONUS: Future-Proofing
-🚧 Test: Multiple plan transitions recorded in AdminAccountHistory
+🚧 n Test: Multiple plan transitions recorded in AdminAccountHistory
 Admin signs up → cancels → reactivates (monthly → annual)
 All transitions logged in correct order
