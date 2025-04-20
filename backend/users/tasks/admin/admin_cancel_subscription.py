@@ -1,5 +1,6 @@
 import stripe
 from django.conf import settings
+from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -17,21 +18,40 @@ def cancel_admin_subscription(request):
 
     profile = user.admin_profile
     subscription_id = profile.admin_stripe_subscription_id
+    now = timezone.now()
 
     if not subscription_id:
         return Response({'error': 'No active Stripe subscription found'}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
+        # Cancel Stripe subscription at period end
         stripe.Subscription.modify(
             subscription_id,
             cancel_at_period_end=True
         )
+
+        # Retrieve full subscription to get current_period_end
+        subscription = stripe.Subscription.retrieve(subscription_id)
+        current_period_end = subscription.get('current_period_end')
+
+        if current_period_end:
+            subscription_end = timezone.datetime.fromtimestamp(current_period_end, tz=timezone.utc)
+        else:
+            # Fallback if period end not available (e.g., trial or setup error)
+            subscription_end = profile.next_billing_date or (now + timezone.timedelta(days=14))
+
+        # Update profile
+        profile.is_canceled = True
+        profile.canceled_at = now
         profile.auto_renew_cancelled = True
+        profile.subscription_end_date = subscription_end
+        profile.next_billing_date = None  # 🔥 Clear this to avoid confusion
         profile.save()
 
         return Response({
             'success': True,
-            'message': 'Your subscription has been set to cancel. You’ll retain access until the current billing period ends.'
+            'message': 'Your subscription will cancel at the end of your billing period.',
+            'subscription_ends': subscription_end
         }, status=status.HTTP_200_OK)
 
     except stripe.error.StripeError as e:
