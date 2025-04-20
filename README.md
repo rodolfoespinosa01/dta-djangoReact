@@ -334,3 +334,66 @@ Feel free to open an issue or submit a PR if you're contributing.
 📊 SuperAdmin Dashboard
 ✅ test_superadmin_dashboard_admin_grouping.py
 ✅ test_superadmin_dashboard_amounts_render.py
+
+🔁 Cancel Subscription Flow
+✅ Test: Admin cancels paid plan (monthly, quarterly, annual)
+Stripe subscription is marked cancel_at_period_end
+is_canceled is set to True
+auto_renew_cancelled is True
+subscription_end_date matches the old next_billing_date
+next_billing_date is cleared
+
+
+
+
+✅ NEW TEST CASES TO ADD (POST-CANCEL/REACTIVATION LOGIC)
+
+🔁 Cancel Subscription Flow
+🚧 Test: Admin cancels paid plan (monthly, quarterly, annual)
+Stripe subscription is marked cancel_at_period_end
+is_canceled is set to True
+auto_renew_cancelled is True
+subscription_end_date matches the old next_billing_date
+next_billing_date is cleared
+
+🚧 Test: Admin cancels during free trial
+Access is revoked immediately (simulate dashboard block)
+subscription_end_date = now
+next_billing_date is cleared
+
+🚧 Test: Cancel logic creates a new AdminAccountHistory record
+History has correct plan_name, start_date, end_date
+was_canceled = True
+
+📅 Billing Dates Logic
+🚧 Test: Reactivated admin before expiry gets updated subscription_end_date
+New billing date is extended
+New AdminAccountHistory is created
+is_canceled flipped back to False
+
+🚧 Test: Reactivated admin after expiry creates new Stripe subscription
+Stripe subscription_id is replaced
+subscription_end_date and next_billing_date reflect new plan
+Old plan is preserved in history
+
+🔐 Access Logic
+🚧 Test: Admin with expired subscription_end_date is blocked from dashboard
+Response = 403 from /admin-dashboard/
+
+🚧 Test: Admin with active subscription_end_date is allowed dashboard access
+Confirm subscription_end_date > now() allows access
+
+🧾 Account History Integrity
+🚧 Test: History is created on first-time plan registration
+was_canceled = False
+No duplicate history on refresh
+History has accurate start_date and initial plan
+
+🚧 Test: Reactivation creates new AdminAccountHistory
+Previous end date is preserved
+New start date begins fresh
+
+🧪 BONUS: Future-Proofing
+🚧 Test: Multiple plan transitions recorded in AdminAccountHistory
+Admin signs up → cancels → reactivates (monthly → annual)
+All transitions logged in correct order

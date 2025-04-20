@@ -6,6 +6,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from adminplans.models import AdminAccountHistory
+from datetime import timezone as dt_timezone
+
 
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -37,7 +39,7 @@ def cancel_admin_subscription(request):
         current_period_end = subscription.get('current_period_end')
 
         if current_period_end:
-            subscription_end = timezone.datetime.fromtimestamp(current_period_end, tz=timezone.utc)
+            subscription_end = timezone.datetime.fromtimestamp(current_period_end, tz=dt_timezone.utc)
         else:
             # Fallback if period end not available (e.g., trial or setup error)
             subscription_end = profile.next_billing_date or (now + timezone.timedelta(days=14))
