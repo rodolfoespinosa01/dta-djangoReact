@@ -11,7 +11,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from adminplans.models import AdminPlan, AdminProfile, PendingAdminSignup
+from adminplans.models import AdminPlan, AdminProfile, PendingAdminSignup, AdminAccountHistory
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 User = get_user_model()
@@ -89,6 +89,16 @@ def register_admin(request):
         profile_data['next_billing_date'] = now + relativedelta(months=12)
 
     AdminProfile.objects.get_or_create(user=user, defaults=profile_data)
+
+    # Create history entry for initial plan
+    AdminAccountHistory.objects.create(
+        admin=user,
+        plan_name=plan.name,
+        subscription_id=subscription_id,
+        start_date=now,
+        end_date=profile_data.get('next_billing_date'),  # might be None for trials
+        was_canceled=False
+    )
 
     # Handle setup intent mode if needed
     if checkout_session.mode == 'setup':
