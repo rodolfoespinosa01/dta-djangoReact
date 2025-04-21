@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 function AdminSettings() {
   const { user, isAuthenticated, accessToken } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [dashboardData, setDashboardData] = useState(null);
   const [cancelMessage, setCancelMessage] = useState('');
@@ -23,6 +24,14 @@ function AdminSettings() {
           }
         });
 
+        if (res.status === 403) {
+          const data = await res.json();
+          if (data.redirect_to) {
+            navigate(data.redirect_to);
+          }
+          return;
+        }
+
         const data = await res.json();
         if (res.ok) {
           setDashboardData(data);
@@ -36,7 +45,7 @@ function AdminSettings() {
     };
 
     fetchDashboardData();
-  }, [accessToken, isAuthenticated, navigate]);
+  }, [accessToken, isAuthenticated, navigate, location]);
 
   const handleCancelSubscription = async () => {
     try {
@@ -92,6 +101,12 @@ function AdminSettings() {
     ) : null;
   };
 
+  const isWithinBillingCycle = () => {
+    const endDate = dashboardData?.subscription_end_date;
+    if (!endDate) return false;
+    return new Date(endDate) > new Date();
+  };
+
   return (
     <div style={{ padding: '2rem' }}>
       <h2>Admin Settings</h2>
@@ -142,7 +157,8 @@ function AdminSettings() {
             </button>
           )}
 
-          {dashboardData.is_canceled && (
+          {/* Only show if canceled AND still in billing cycle */}
+          {dashboardData.is_canceled && isWithinBillingCycle() && (
             <button
               onClick={() => navigate('/admin_reactivate')}
               style={{
