@@ -1,0 +1,36 @@
+from datetime import timedelta
+from django.utils import timezone
+from rest_framework import status
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.test import APIClient
+from users.models import CustomUser
+from adminplans.models import AdminProfile
+from tests.base.base_admin_test import BaseAdminTest
+
+class AdminDashboardAccessTest(BaseAdminTest):
+    def setUp(self):
+        super().setUp()
+        self.client = APIClient()
+
+    def test_expired_admin_blocked_from_dashboard(self):
+        admin = CustomUser.objects.create_user(
+            username='expiredadmin',
+            email='expiredadmin@test.com',
+            password='securepass123',
+            role='admin',
+            subscription_status='admin_monthly'
+        )
+
+        AdminProfile.objects.create(
+            user=admin,
+            subscription_started_at=timezone.now() - timedelta(days=60),
+            subscription_end_date=timezone.now() - timedelta(days=1),  # expired
+            is_canceled=True
+        )
+
+        refresh = RefreshToken.for_user(admin)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {str(refresh.access_token)}')
+
+        response = self.client.get("/api/adminplans/admin_dashboard/")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn("subscription has ended", response.data.get("error", ""))
