@@ -4,7 +4,6 @@ from rest_framework import permissions, status
 from django.utils.timezone import now
 from adminplans.models import AdminProfile
 
-
 class AdminDashboardView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -19,10 +18,11 @@ class AdminDashboardView(APIView):
         except AdminProfile.DoesNotExist:
             return Response({"error": "Admin profile not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        # ❌ Block access if subscription has ended
+        # ❌ Fully inactive: redirect to reactivate page
         if profile.is_canceled and profile.subscription_end_date and profile.subscription_end_date < now():
             return Response({
-                "error": "Your subscription has ended. Please reactivate to access the dashboard."
+                "error": "Your subscription has ended.",
+                "redirect_to": "/admin_reactivate"
             }, status=status.HTTP_403_FORBIDDEN)
 
         subscription_status = user.subscription_status
@@ -32,9 +32,9 @@ class AdminDashboardView(APIView):
         is_trial = trial_days_left > 0 if trial_days_left is not None else False
 
         # Assign start dates
-        monthly_start = profile.subscription_started_at if subscription_status == 'adminMonthly' else None
-        quarterly_start = profile.subscription_started_at if subscription_status == 'adminQuarterly' else None
-        annual_start = profile.subscription_started_at if subscription_status == 'adminAnnual' else None
+        monthly_start = profile.subscription_started_at if subscription_status == 'admin_monthly' else None
+        quarterly_start = profile.subscription_started_at if subscription_status == 'admin_quarterly' else None
+        annual_start = profile.subscription_started_at if subscription_status == 'admin_annual' else None
 
         response_data = {
             "subscription_status": subscription_status,
