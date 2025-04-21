@@ -338,20 +338,12 @@ Feel free to open an issue or submit a PR if you're contributing.
 🔁 Cancel Subscription Flow
 ✅ Test: Admin cancels paid plan (monthly, quarterly, annual)
 ✅ Test: Admin cancels paid plan (monthly, quarterly, annual)
+✅ Test: AccountHistory marks new start and cancelled date
 
 
 
 
 ✅ NEW TEST CASES TO ADD (POST-CANCEL/REACTIVATION LOGIC)
-
-🚧 Test: Admin cancels during free trial
-Access is revoked immediately (simulate dashboard block)
-subscription_end_date = now
-next_billing_date is cleared
-
-🚧 Test: Cancel logic creates a new AdminAccountHistory record
-History has correct plan_name, start_date, end_date
-was_canceled = True
 
 📅 Billing Dates Logic
 🚧 Test: Reactivated admin before expiry gets updated subscription_end_date
