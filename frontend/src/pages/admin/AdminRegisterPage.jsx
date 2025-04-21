@@ -24,7 +24,7 @@ function AdminRegisterPage() {
 
     const fetchPendingEmail = async () => {
       try {
-        const res = await fetch(`http://localhost:8000/api/users/pending-signup/${tokenFromURL}/`);
+        const res = await fetch(`http://localhost:8000/api/users/admin_pending_signup/${tokenFromURL}/`);
         
         // Try to parse JSON only if response is OK
         if (!res.ok) {
@@ -55,7 +55,7 @@ function AdminRegisterPage() {
       e.preventDefault();
     
       try {
-        const res = await fetch('http://localhost:8000/api/users/register-admin/', {
+        const res = await fetch('http://localhost:8000/api/users/admin_register/', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -79,7 +79,7 @@ function AdminRegisterPage() {
     
         alert('✅ Account created successfully! Logging you in...');
     
-        const loginRes = await fetch('http://localhost:8000/api/users/admin-login/', {
+        const loginRes = await fetch('http://localhost:8000/api/users/admin_login/', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -93,10 +93,10 @@ function AdminRegisterPage() {
           navigate('/admin-login');
           return;
         }
-        console.log('✅ loginData from /admin-login:', loginData);
+        console.log('✅ loginData from /admin_login:', loginData);
         login(loginData);
 
-        navigate('/admin-dashboard');
+        navigate('/admin_dashboard');
     
       } catch (err) {
         console.error('Unexpected error:', err);

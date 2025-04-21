@@ -30,57 +30,56 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/" element={<MainHomePage />} />
-        <Route path="/admin-homepage" element={<AdminHomePage />} />
-        <Route path="/admin-plans" element={<AdminPlanSelectionPage />} />
-        <Route path="/admin-register" element={<AdminRegisterPage />} />
-        <Route path="/admin-login" element={<AdminLoginPage />} />
-        <Route path="/admin-forgot-password" element={<AdminForgotPasswordPage />} />
-        <Route path="/admin-thank-you" element={<AdminThankYou />} />
-        <Route path="/admin-reset-password" element={<AdminResetPasswordPage />} />
-        <Route path="/superadmin-login" element={<SuperAdminLoginPage />} />
-        <Route path="/user-homepage" element={<UserHomePage />} />
-        <Route path="/user-plans" element={<UserPlanSelectionPage />} />
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/" element={<MainHomePage />} />
+          <Route path="/admin_homepage" element={<AdminHomePage />} />
+          <Route path="/admin_plans" element={<AdminPlanSelectionPage />} />
+          <Route path="/admin_register" element={<AdminRegisterPage />} />
+          <Route path="/admin_login" element={<AdminLoginPage />} />
+          <Route path="/admin_forgot_password" element={<AdminForgotPasswordPage />} />
+          <Route path="/admin_reset_password" element={<AdminResetPasswordPage />} />
+          <Route path="/admin_thank_you" element={<AdminThankYou />} />
+          <Route path="/superadmin_login" element={<SuperAdminLoginPage />} />
+          <Route path="/user_homepage" element={<UserHomePage />} />
+          <Route path="/user_plans" element={<UserPlanSelectionPage />} />
 
-        {/* Protected Admin Routes */}
-        <Route
-          path="/admin-dashboard"
-          element={
-            <AdminProtectedRoute>
-              <AdminDashboard />
-            </AdminProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin-settings"
-          element={
-            <AdminProtectedRoute>
-              <AdminSettings />
-            </AdminProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin-trial-ended"
-          element={
-            <AdminProtectedRoute>
-              <AdminTrialEnded />
-            </AdminProtectedRoute>
-          }
-        />
+          {/* Protected Admin Routes */}
+          <Route
+            path="/admin_dashboard"
+            element={
+              <AdminProtectedRoute>
+                <AdminDashboard />
+              </AdminProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin_settings"
+            element={
+              <AdminProtectedRoute>
+                <AdminSettings />
+              </AdminProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin_trial_ended"
+            element={
+              <AdminProtectedRoute>
+                <AdminTrialEnded />
+              </AdminProtectedRoute>
+            }
+          />
 
-        {/* Protected Super Admin Routes */}
-        <Route
-          path="/superadmin-dashboard"
-          element={
-            <SuperAdminProtectedRoute>
-              <SuperAdminDashboard />
-            </SuperAdminProtectedRoute>
-          }
-        />
-      </Routes>
-
+          {/* Protected Super Admin Routes */}
+          <Route
+            path="/superadmin_dashboard"
+            element={
+              <SuperAdminProtectedRoute>
+                <SuperAdminDashboard />
+              </SuperAdminProtectedRoute>
+            }
+          />
+        </Routes>
       </AuthProvider>
     </Router>
   );

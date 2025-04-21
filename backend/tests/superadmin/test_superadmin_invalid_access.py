@@ -19,7 +19,7 @@ class SuperAdminRouteProtectionTests(BaseAdminTest):
         print("🚫 Test: Admin cannot login through SuperAdmin route")
 
         login_response = self.client.post(
-            reverse('superadmin-login'),
+            reverse('superadmin_login'),
             data={
                 'username': self.admin_username,
                 'password': self.admin_password

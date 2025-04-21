@@ -80,7 +80,7 @@ function SuperAdminDashboard() {
         onClick={() => {
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
-          navigate('/superadmin-login');
+          navigate('/superadmin_login');
         }}
         style={{
           marginTop: '2rem',

@@ -16,7 +16,7 @@ function AdminDashboard() {
 
     const fetchTrialStatus = async () => {
       try {
-        const res = await fetch('http://localhost:8000/api/users/admin-dashboard/', {
+        const res = await fetch('http://localhost:8000/api/adminplans/admin_dashboard/', {
           headers: {
             Authorization: `Bearer ${accessToken}`
           }
@@ -60,7 +60,7 @@ function AdminDashboard() {
       </div>
 
       <button
-        onClick={() => navigate('/admin-settings')}
+        onClick={() => navigate('/admin_settings')}
         style={{
           marginTop: '2rem',
           padding: '0.75rem 1.5rem',

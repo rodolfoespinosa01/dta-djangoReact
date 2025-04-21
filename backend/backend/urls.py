@@ -4,8 +4,8 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include('adminplans.urls')),
     path('api/users/', include('users.urls')),
+    path('api/adminplans/', include('adminplans.urls')),
 ]
 
 # 🧪 Only include test routes if DJANGO_TEST_MODE is enabled

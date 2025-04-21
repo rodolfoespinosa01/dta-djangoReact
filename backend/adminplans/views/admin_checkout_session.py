@@ -9,13 +9,13 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from users.models.custom_user import CustomUser
-from adminplans.models import AdminPlan, PendingAdminSignup
+from adminplans.models import AdminPlan, AdminPendingSignup
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
-def create_admin_checkout_session(request):
+def admin_checkout_session(request):
     try:
         data = request.data
         plan_name = data.get('plan_name')
@@ -41,7 +41,7 @@ def create_admin_checkout_session(request):
                     }, status=status.HTTP_403_FORBIDDEN)
 
         # Prevent pending signup abuse
-        if PendingAdminSignup.objects.filter(email=email, is_used=False).exists():
+        if AdminPendingSignup.objects.filter(email=email, is_used=False).exists():
             return Response({
                 'error': 'A registration link has already been generated for this email. Please complete your registration or wait for it to expire.'
             }, status=status.HTTP_403_FORBIDDEN)
@@ -65,8 +65,8 @@ def create_admin_checkout_session(request):
             metadata={
                 'plan_name': plan_name  # Keep original to detect trial in webhook
             },
-            success_url='http://localhost:3000/admin-thank-you?session_id={CHECKOUT_SESSION_ID}',
-            cancel_url='http://localhost:3000/admin-plans',
+            success_url='http://localhost:3000/admin_thank_you?session_id={CHECKOUT_SESSION_ID}',
+            cancel_url='http://localhost:3000/admin_plans',
         )
 
         return Response({'url': session.url}, status=status.HTTP_200_OK)
