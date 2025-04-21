@@ -14,7 +14,7 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def cancel_admin_subscription(request):
+def admin_cancel_subscription(request):
     user = request.user
 
     if user.role != 'admin':

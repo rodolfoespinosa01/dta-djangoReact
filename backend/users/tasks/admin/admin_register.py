@@ -11,14 +11,14 @@ from rest_framework.permissions import AllowAny
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from adminplans.models import AdminPlan, AdminProfile, PendingAdminSignup, AdminAccountHistory
+from adminplans.models import AdminPlan, AdminProfile, AdminPendingSignup, AdminAccountHistory
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 User = get_user_model()
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
-def register_admin(request):
+def admin_register(request):
     data = request.data
     email = data.get('email')
     password = data.get('password')
@@ -28,8 +28,8 @@ def register_admin(request):
         return Response({'error': 'Missing fields'}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
-        pending = PendingAdminSignup.objects.get(token=token)
-    except PendingAdminSignup.DoesNotExist:
+        pending = AdminPendingSignup.objects.get(token=token)
+    except AdminPendingSignup.DoesNotExist:
         return Response({'error': 'Invalid or expired token'}, status=status.HTTP_404_NOT_FOUND)
 
     session_id = pending.session_id

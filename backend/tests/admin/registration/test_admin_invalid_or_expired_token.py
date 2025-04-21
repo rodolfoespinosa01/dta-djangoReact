@@ -7,7 +7,7 @@ class AdminInvalidTokenTest(BaseAdminTest):
         print("❌ Test: Admin registration with invalid token")
 
         response = self.client.post(
-            reverse("register-admin"),
+            reverse("admin_register"),
             data={
                 "email": "fakeadmin@test.com",
                 "password": "securepass123",

@@ -1,7 +1,7 @@
 from tests.base.base_admin_test import BaseAdminTest
 from django.urls import reverse
 from users.models.custom_user import CustomUser
-from users.models.admin_password_reset_token import AdminPasswordResetToken
+from users.models.admin.admin_password_reset_token import AdminPasswordResetToken
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
@@ -28,7 +28,7 @@ class AdminOldPasswordFailsNewPassWorksTest(BaseAdminTest):
 
         # Perform password reset
         self.client.post(
-            reverse("admin-reset-password-confirm"),
+            reverse("admin_reset_password_confirm"),
             data={
                 "uid": self.uid,
                 "token": self.token,
@@ -40,7 +40,7 @@ class AdminOldPasswordFailsNewPassWorksTest(BaseAdminTest):
     def test_old_password_fails_new_password_works(self):
         # Try login with old password — should fail
         old_login = self.client.post(
-            reverse("admin-login"),
+            reverse("admin_login"),
             data={
                 "username": self.admin_email,
 
@@ -52,7 +52,7 @@ class AdminOldPasswordFailsNewPassWorksTest(BaseAdminTest):
 
         # Try login with new password — should succeed
         new_login = self.client.post(
-            reverse("admin-login"),
+            reverse("admin_login"),
             data={
                 "username": self.admin_email,
 

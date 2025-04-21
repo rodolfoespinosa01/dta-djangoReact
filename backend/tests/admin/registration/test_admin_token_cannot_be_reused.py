@@ -2,7 +2,7 @@
 
 from tests.base.base_admin_test import BaseAdminTest
 from django.urls import reverse
-from adminplans.models import PendingAdminSignup, AdminPlan
+from adminplans.models import AdminPendingSignup, AdminPlan
 from users.models.custom_user import CustomUser
 from rest_framework import status
 from unittest.mock import patch, MagicMock
@@ -21,8 +21,8 @@ class AdminTokenReuseTest(BaseAdminTest):
             }
         )
 
-        # 🧪 Create PendingAdminSignup manually
-        PendingAdminSignup.objects.create(
+        # 🧪 Create AdminPendingSignup manually
+        AdminPendingSignup.objects.create(
             email="tokenreuse@test.com",
             session_id="cs_test_123",
             token="testtoken123",
@@ -48,7 +48,7 @@ class AdminTokenReuseTest(BaseAdminTest):
 
         # ✅ First registration attempt
         first_response = self.client.post(
-            reverse("register-admin"),
+            reverse("admin_register"),
             data={
                 "email": "tokenreuse@test.com",
                 "password": "mypassword123",
@@ -61,7 +61,7 @@ class AdminTokenReuseTest(BaseAdminTest):
 
         # ❌ Second attempt using same token
         second_response = self.client.post(
-            reverse("register-admin"),
+            reverse("admin_register"),
             data={
                 "email": "tokenreuse2@test.com",
                 "password": "mypassword123",

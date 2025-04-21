@@ -1,10 +1,12 @@
 from django.contrib import admin
-from .models import AdminPlan, AdminProfile, PendingAdminSignup
-from django.apps import AppConfig
-from .models import AdminAccountHistory
+from adminplans.models import (
+    AdminPlan,
+    AdminProfile,
+    AdminPendingSignup,
+    AdminAccountHistory,
+)
 
-
-
+# --- AdminPlan ---
 class AdminPlanAdmin(admin.ModelAdmin):
     list_display = ('name', 'description', 'display_price', 'stripe_price_id')
 
@@ -13,18 +15,15 @@ class AdminPlanAdmin(admin.ModelAdmin):
     display_price.short_description = 'Price (USD)'
 
 admin.site.register(AdminPlan, AdminPlanAdmin)
+
+# --- AdminProfile ---
 admin.site.register(AdminProfile)
-admin.site.register(PendingAdminSignup)
 
-class AdminplansConfig(AppConfig):
-    default_auto_field = 'django.db.models.BigAutoField'
-    name = 'adminplans'
+# --- AdminPendingSignup ---
+admin.site.register(AdminPendingSignup)
 
-    def ready(self):
-        import adminplans.signals
-
+# --- AdminAccountHistory ---
 class AdminAccountHistoryAdmin(admin.ModelAdmin):
     list_display = ('admin', 'plan_name', 'start_date', 'end_date', 'was_canceled', 'timestamp')
 
 admin.site.register(AdminAccountHistory, AdminAccountHistoryAdmin)
-

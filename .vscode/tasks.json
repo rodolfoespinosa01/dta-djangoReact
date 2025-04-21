@@ -29,7 +29,7 @@
     {
       "label": "Run Stripe Webhook",
       "type": "shell",
-      "command": "stripe listen --forward-to localhost:8000/api/stripe-webhook/",
+      "command": "stripe listen --forward-to localhost:8000/api/adminplans/admin_stripe_webhook/",
       "options": {
         "cwd": "${workspaceFolder}"
       }

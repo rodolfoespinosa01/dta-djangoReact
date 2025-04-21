@@ -48,7 +48,7 @@ function AdminPlanSelectionPage() {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8000/api/create-checkout-session/', {
+      const response = await fetch('http://localhost:8000/api/adminplans/admin_checkout_session/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plan_name: planId, email }),

@@ -190,7 +190,7 @@ Feel free to open an issue or submit a PR if you're contributing.
   - Reactivation
   - Timestamps and status changes
 - [ ] Log history entries in:
-  - `register_admin()`
+  - `admin_register()`
   - `auto_upgrade_admin_trial()`
   - Cancel views (monthly/annual)
   - Reactivation & transitions
@@ -208,7 +208,7 @@ Feel free to open an issue or submit a PR if you're contributing.
 ---
 
 ### ⚠️ Prevent Duplicate Stripe Sessions
-- [ ] If `PendingAdminSignup` already exists:
+- [ ] If `AdminPendingSignup` already exists:
   - Show message: "You have a pending registration. Please check your email."
 - [ ] If user already exists:
   - Require login before purchasing new plans
@@ -237,7 +237,7 @@ Feel free to open an issue or submit a PR if you're contributing.
 ---
 
 ### ⚙️ Django Admin Panel Enhancements
-- [ ] Improve `AdminProfile` and `PendingAdminSignup` layouts
+- [ ] Improve `AdminProfile` and `AdminPendingSignup` layouts
 - [ ] Add filters for:
   - Active/inactive status
   - Subscription type
@@ -272,7 +272,7 @@ Feel free to open an issue or submit a PR if you're contributing.
 ✅ Admin cannot access SuperAdmin routes
 
 👨‍💼 Admin Registration & Free Trial
-✅ Stripe webhook creates PendingAdminSignup
+✅ Stripe webhook creates AdminPendingSignup
 ✅ Token-based admin registration succeeds
 ✅ Free trial user created with:
 
@@ -366,7 +366,7 @@ Old plan is preserved in history
 
 🔐 Access Logic
 🚧 Test: Admin with expired subscription_end_date is blocked from dashboard
-Response = 403 from /admin-dashboard/
+Response = 403 from /admin_dashboard/
 
 🚧 Test: Admin with active subscription_end_date is allowed dashboard access
 Confirm subscription_end_date > now() allows access
