@@ -19,8 +19,9 @@ import UserPlanSelectionPage from './pages/user/UserPlanSelectionPage';
 // Protected Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminSettings from './pages/admin/AdminSettings';
-import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
 import AdminThankYou from './pages/admin/AdminThankYou';
+import AdminReactivatePage from './pages/admin/AdminReactivatePage'; // ✅ NEW
+import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
 
 // Route Guards
 import AdminProtectedRoute from './routes/AdminProtectedRoute';
@@ -66,6 +67,14 @@ function App() {
             element={
               <AdminProtectedRoute>
                 <AdminTrialEnded />
+              </AdminProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin_reactivate"
+            element={
+              <AdminProtectedRoute>
+                <AdminReactivatePage />
               </AdminProtectedRoute>
             }
           />
