@@ -1,2 +1,2 @@
 from users.models.custom_user import CustomUser
-from users.models.account_history import AccountHistory
+from users.models.admin.admin_password_reset_token import AdminPasswordResetToken

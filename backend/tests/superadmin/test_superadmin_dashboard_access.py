@@ -9,13 +9,13 @@ class SuperAdminDashboardAccessTest(BaseAdminTest):
         # Step 1: Create SuperAdmin with valid email
         user = CustomUser.objects.create_superuser(
             username="dta_user",
-            email="superadmin@test.com",  # ✅ Added email
+            email="superadmin@test.com",
             password="dta6914"
         )
 
         # Step 2: Login with correct field
         login_response = self.client.post(
-            reverse('superadmin-login'),
+            reverse('superadmin_login'),
             data={'username': "dta_user", 'password': "dta6914"},
             content_type='application/json'
         )
@@ -27,7 +27,7 @@ class SuperAdminDashboardAccessTest(BaseAdminTest):
 
         # Step 3: Access dashboard with token
         dashboard_response = self.client.get(
-            reverse("superadmin-dashboard"),
+            reverse("superadmin_dashboard"),
             HTTP_AUTHORIZATION=f'Bearer {token}'
         )
 

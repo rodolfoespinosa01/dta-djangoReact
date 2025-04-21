@@ -4,7 +4,7 @@ from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from users.models.custom_user import CustomUser
-from users.models.admin_password_reset_token import AdminPasswordResetToken
+from users.models.admin.admin_password_reset_token import AdminPasswordResetToken
 from django.contrib.auth.hashers import make_password
 
 class AdminForgotPasswordSerializer(serializers.Serializer):
@@ -23,7 +23,7 @@ class AdminForgotPasswordSerializer(serializers.Serializer):
 
         AdminPasswordResetToken.objects.create(user=user, token=token)
 
-        reset_link = f"http://localhost:3000/adminresetpassword?uid={uid}&token={token}"
+        reset_link = f"http://localhost:3000/admin_reset_password?uid={uid}&token={token}"
 
         print("\n=================== 📩 Admin Password Reset Email ===================")
         print(f"To: {email}")

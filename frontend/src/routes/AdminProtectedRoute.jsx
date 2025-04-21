@@ -9,7 +9,7 @@ function AdminProtectedRoute({ children }) {
 
   if (!isAuthenticated || user?.role !== 'admin') {
     console.warn('🚫 Redirecting: not authenticated or wrong role');
-    return <Navigate to="/admin-login" />;
+    return <Navigate to="/admin_login" />;
   }
 
   return children; // ← this must be here

@@ -7,7 +7,7 @@ from rest_framework import status
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
-def login_admin(request):
+def admin_login(request):
     if request.method != 'POST':
         return Response({'error': 'POST request required'}, status=status.HTTP_400_BAD_REQUEST)
     

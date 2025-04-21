@@ -1,7 +1,7 @@
 from tests.base.base_admin_test import BaseAdminTest
 from django.urls import reverse
 from users.models.custom_user import CustomUser
-from users.models.admin_password_reset_token import AdminPasswordResetToken
+from users.models.admin.admin_password_reset_token import AdminPasswordResetToken
 from unittest.mock import patch
 from rest_framework import status
 
@@ -20,7 +20,7 @@ class AdminForgotPasswordTokenTest(BaseAdminTest):
     @patch("builtins.print")
     def test_forgot_password_creates_token_and_prints_email(self, mock_print):
         response = self.client.post(
-            reverse("admin-forgot-password"),
+            reverse("admin_forgot_password"),
             data={"email": self.admin_email},
             content_type="application/json"
         )

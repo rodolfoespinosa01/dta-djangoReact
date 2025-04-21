@@ -6,7 +6,7 @@ from django.conf import settings
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 
-from adminplans.models import AdminPlan, PendingAdminSignup
+from adminplans.models import AdminPlan, AdminPendingSignup
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 endpoint_secret = settings.STRIPE_WEBHOOK_SECRET
@@ -57,16 +57,16 @@ def admin_stripe_webhook(request):
             return HttpResponse(status=500)
 
         try:
-            PendingAdminSignup.objects.create(
+            AdminPendingSignup.objects.create(
                 email=customer_email,
                 session_id=session_id,
                 token=token,
                 plan=raw_plan_name,  # Keep original for clarity in admin view
                 subscription_id=subscription_id
             )
-            print(f"✅ PendingAdminSignup saved for {customer_email}")
+            print(f"✅ AdminPendingSignup saved for {customer_email}")
 
-            registration_link = f"http://localhost:3000/admin-register?token={token}"
+            registration_link = f"http://localhost:3000/admin_register?token={token}"
             print("\n" + "=" * 60)
             print("📩 Registration email (simulated):")
             print(f"To: {customer_email}")
@@ -75,7 +75,7 @@ def admin_stripe_webhook(request):
             print("=" * 60 + "\n")
 
         except Exception as e:
-            print(f"❌ Error saving PendingAdminSignup: {str(e)}")
+            print(f"❌ Error saving AdminPendingSignup: {str(e)}")
             return HttpResponse(status=500)
 
     return HttpResponse(status=200)

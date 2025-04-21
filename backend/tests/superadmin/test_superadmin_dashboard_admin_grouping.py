@@ -38,12 +38,12 @@ class SuperAdminDashboardGroupingTest(BaseAdminTest):
         AdminProfile.objects.create(user=inactive_user)
 
         # Auth: login as superadmin
-        login = self.client.post(reverse("superadmin-login"), data={"username": "superadmin@test.com", "password": "superpass123"}, content_type="application/json")
+        login = self.client.post(reverse("superadmin_login"), data={"username": "superadmin@test.com", "password": "superpass123"}, content_type="application/json")
         self.token = login.json().get("access")
         self.auth_headers = {"HTTP_AUTHORIZATION": f"Bearer {self.token}"}
 
     def test_dashboard_returns_grouped_admins(self):
-        response = self.client.get(reverse("superadmin-dashboard"), **self.auth_headers)
+        response = self.client.get(reverse("superadmin_dashboard"), **self.auth_headers)
         self.assertEqual(response.status_code, 200)
 
         plans = {admin["plan"]: admin["email"] for admin in response.json()["admins"]}
