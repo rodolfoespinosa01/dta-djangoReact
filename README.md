@@ -339,6 +339,7 @@ Feel free to open an issue or submit a PR if you're contributing.
 ✅ Test: Admin cancels paid plan (monthly, quarterly, annual)
 ✅ Test: Admin cancels paid plan (monthly, quarterly, annual)
 ✅ Test: AccountHistory marks new start and cancelled date
+✅ Test: Test reactivation for both active cancelled admin and inactive admins
 
 
 
