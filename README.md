@@ -341,40 +341,6 @@ Feel free to open an issue or submit a PR if you're contributing.
 ✅ Test: AccountHistory marks new start and cancelled date
 ✅ Test: Test reactivation for both active cancelled admin and inactive admins
 
-
-
-
-✅ NEW TEST CASES TO ADD (POST-CANCEL/REACTIVATION LOGIC)
-
-📅 Billing Dates Logic
-🚧 Test: Reactivated admin before expiry gets updated subscription_end_date
-New billing date is extended
-New AdminAccountHistory is created
-is_canceled flipped back to False
-
-🚧 Test: Reactivated admin after expiry creates new Stripe subscription
-Stripe subscription_id is replaced
-subscription_end_date and next_billing_date reflect new plan
-Old plan is preserved in history
-
 🔐 Access Logic
-🚧 Test: Admin with expired subscription_end_date is blocked from dashboard
-Response = 403 from /admin_dashboard/
-
-🚧 Test: Admin with active subscription_end_date is allowed dashboard access
-Confirm subscription_end_date > now() allows access
-
-🧾 Account History Integrity
-🚧 Test: History is created on first-time plan registration
-was_canceled = False
-No duplicate history on refresh
-History has accurate start_date and initial plan
-
-🚧 Test: Reactivation creates new AdminAccountHistory
-Previous end date is preserved
-New start date begins fresh
-
-🧪 BONUS: Future-Proofing
-🚧 n Test: Multiple plan transitions recorded in AdminAccountHistory
-Admin signs up → cancels → reactivates (monthly → annual)
-All transitions logged in correct order
+✅ Test: Admin with expired subscription_end_date is blocked from dashboard
+✅ Test: Admin with active subscription_end_date is allowed dashboard access
