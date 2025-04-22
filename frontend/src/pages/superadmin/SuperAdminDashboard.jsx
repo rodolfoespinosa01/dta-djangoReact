@@ -11,13 +11,13 @@ function SuperAdminDashboard() {
     if (loading) return;
 
     if (!isAuthenticated || !user?.is_superuser) {
-      navigate('/superadmin-login');
+      navigate('/superadmin_login');
       return;
     }
 
     const token = localStorage.getItem('access_token');
     if (!token) {
-      navigate('/superadmin-login');
+      navigate('/superadmin_login');
       return;
     }
 
@@ -30,7 +30,7 @@ function SuperAdminDashboard() {
       .then(data => setStats(data))
       .catch(err => {
         console.error('Failed to fetch dashboard data:', err);
-        navigate('/superadmin-login');
+        navigate('/superadmin_login');
       });
   }, [loading, isAuthenticated, user, navigate]);
 

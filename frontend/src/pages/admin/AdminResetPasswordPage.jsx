@@ -34,7 +34,7 @@ function AdminResetPasswordPage() {
 
     if (res.ok) {
       setStatus('success');
-      setTimeout(() => navigate('/admin-login'), 2000);
+      setTimeout(() => navigate('/admin_login'), 2000);
     } else {
       const data = await res.json();
       setStatus(data?.detail || 'Reset failed. Check your link or try again.');

@@ -12,7 +12,7 @@ function AdminSettings() {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      navigate('/admin-login');
+      navigate('/admin_login');
       return;
     }
 

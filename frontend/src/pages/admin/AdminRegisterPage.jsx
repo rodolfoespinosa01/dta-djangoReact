@@ -90,7 +90,7 @@ function AdminRegisterPage() {
     
         if (!loginRes.ok) {
           alert(loginData.error || 'Auto-login failed. Please login manually.');
-          navigate('/admin-login');
+          navigate('/admin_login');
           return;
         }
         console.log('✅ loginData from /admin_login:', loginData);
