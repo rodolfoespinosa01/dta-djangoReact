@@ -10,30 +10,34 @@ from rest_framework.permissions import AllowAny
 from users.models import CustomUser
 from adminplans.models import AdminProfile, AdminPlan, AdminAccountHistory
 
+# Stripe setup
 stripe.api_key = settings.STRIPE_SECRET_KEY
 endpoint_secret = settings.STRIPE_WEBHOOK_SECRET
 
 @api_view(['POST'])
-@permission_classes([AllowAny])
+@permission_classes([AllowAny])  # Webhook must be public
 def admin_stripe_reactivation_webhook(request):
     payload = request.body
     sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
 
+    # 🔐 Verify Stripe webhook signature
     try:
         event = stripe.Webhook.construct_event(payload, sig_header, endpoint_secret)
     except (ValueError, stripe.error.SignatureVerificationError):
         print("❌ Stripe signature verification failed")
         return HttpResponse(status=400)
 
+    # Only handle completed checkout sessions (reactivations)
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
         metadata = session.get('metadata', {})
 
-        # ✅ Skip if not a reactivation session
+        # ✅ Skip non-reactivation sessions
         if 'reactivated_email' not in metadata:
             print("ℹ️ Not a reactivation session — skipping.")
             return HttpResponse(status=200)
 
+        # Extract metadata values
         email = metadata.get('reactivated_email')
         plan_name = metadata.get('plan_name')
         subscription_id = session.get('subscription')
@@ -45,15 +49,17 @@ def admin_stripe_reactivation_webhook(request):
             return HttpResponse(status=400)
 
         try:
+            # 🧑‍💼 Find the user and plan
             user = CustomUser.objects.get(email=email, role='admin')
             profile = user.admin_profile
             plan = AdminPlan.objects.get(name=plan_name)
 
-            # ✅ Retrieve full subscription details from Stripe
+            # 🧾 Get full Stripe subscription info
             stripe_subscription = stripe.Subscription.retrieve(subscription_id)
             subscription_items = stripe_subscription.get('items', {}).get('data', [])
             current_period_end = subscription_items[0].get('current_period_end') if subscription_items else None
 
+            # ⏳ Retry once if period_end not ready
             if not current_period_end:
                 print("⚠️ current_period_end missing — retrying in 2s")
                 time.sleep(2)
@@ -66,12 +72,13 @@ def admin_stripe_reactivation_webhook(request):
                 print("❌ Stripe subscription is STILL missing current_period_end")
                 return HttpResponse(status=500)
 
+            # 🕒 Format date for database
             period_end_date = timezone.datetime.fromtimestamp(current_period_end, tz=dt_timezone.utc)
             now = timezone.now()
 
             print("🔄 Updating AdminProfile...")
 
-            # ✅ Update AdminProfile
+            # ✅ Reactivate AdminProfile
             profile.admin_stripe_subscription_id = subscription_id
             profile.subscription_started_at = now
             profile.next_billing_date = period_end_date
@@ -83,7 +90,7 @@ def admin_stripe_reactivation_webhook(request):
 
             print("📘 AdminProfile updated")
 
-            # ✅ Log into AdminAccountHistory
+            # ✅ Create new history log entry
             AdminAccountHistory.objects.create(
                 admin=user,
                 plan_name=plan_name,

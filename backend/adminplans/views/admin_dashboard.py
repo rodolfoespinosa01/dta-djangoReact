@@ -5,37 +5,44 @@ from django.utils.timezone import now
 from adminplans.models import AdminProfile
 
 class AdminDashboardView(APIView):
+    # Only authenticated users can access this view
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         user = request.user
 
+        # Must be an admin to proceed
         if user.role != 'admin':
             return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
 
+        # Try to get the current AdminProfile (active subscription cycle)
         try:
             profile = user.admin_profile
         except AdminProfile.DoesNotExist:
             return Response({"error": "Admin profile not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        # ❌ Fully inactive: redirect to reactivate page
+        # ❌ If subscription is fully canceled and period has ended, block access
         if profile.is_canceled and profile.subscription_end_date and profile.subscription_end_date < now():
             return Response({
                 "error": "Your subscription has ended.",
-                "redirect_to": "/admin_reactivate"
+                "redirect_to": "/admin_reactivate"  # Frontend will redirect to reactivation options
             }, status=status.HTTP_403_FORBIDDEN)
 
+        # Status flags for use in UI
         subscription_status = user.subscription_status
         is_canceled = profile.is_canceled
         is_active = not is_canceled
+
+        # Trial logic
         trial_days_left = profile.trial_days_remaining()
         is_trial = trial_days_left > 0 if trial_days_left is not None else False
 
-        # Assign start dates
+        # Assign plan-specific start dates (for frontend display or analytics)
         monthly_start = profile.subscription_started_at if subscription_status == 'admin_monthly' else None
         quarterly_start = profile.subscription_started_at if subscription_status == 'admin_quarterly' else None
         annual_start = profile.subscription_started_at if subscription_status == 'admin_annual' else None
 
+        # Prepare response payload
         response_data = {
             "subscription_status": subscription_status,
             "subscription_active": is_active,

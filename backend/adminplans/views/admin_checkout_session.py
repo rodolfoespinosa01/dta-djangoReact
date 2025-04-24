@@ -11,28 +11,32 @@ from rest_framework import status
 from users.models.custom_user import CustomUser
 from adminplans.models import AdminPlan, AdminPendingSignup
 
+# Set Stripe secret key
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 @api_view(['POST'])
-@permission_classes([AllowAny])
+@permission_classes([AllowAny])  # Public access (no login required)
 def admin_checkout_session(request):
     try:
         data = request.data
         plan_name = data.get('plan_name')
         email = data.get('email')
 
+        # Validate required fields
         if not plan_name or not email:
             return Response({'error': 'Missing plan or email'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Check if user already exists
+        # Check if the user already exists (used for upgrade/reactivation validation)
         existing_user = CustomUser.objects.filter(email=email).first()
         if existing_user:
-            if existing_user.subscription_status in ['admin_trial', 'admin_monthly', 'admin_quarterly', 'admin_annual', 'admin_inactive']:
+            if existing_user.subscription_status in [
+                'admin_trial', 'admin_monthly', 'admin_quarterly', 'admin_annual', 'admin_inactive'
+            ]:
                 return Response({
                     'error': 'This email is already associated with an account. Please log in to manage or upgrade your plan.'
                 }, status=status.HTTP_403_FORBIDDEN)
 
-        # Prevent free trial abuse
+        # Prevent trial abuse: reject if user already has a trial start date
         if plan_name == 'adminTrial':
             if existing_user and hasattr(existing_user, 'admin_profile'):
                 if existing_user.admin_profile.trial_start_date:
@@ -40,20 +44,22 @@ def admin_checkout_session(request):
                         'error': 'This email has already used the free trial. Please choose a paid plan.'
                     }, status=status.HTTP_403_FORBIDDEN)
 
-        # Prevent pending signup abuse
+        # Prevent multiple pending registrations
         if AdminPendingSignup.objects.filter(email=email, is_used=False).exists():
             return Response({
                 'error': 'A registration link has already been generated for this email. Please complete your registration or wait for it to expire.'
             }, status=status.HTTP_403_FORBIDDEN)
 
-        # Normalize plan (adminTrial still uses adminMonthly price ID)
+        # Normalize trial → monthly (Stripe price ID for adminTrial uses monthly under the hood)
         actual_plan_name = 'adminMonthly' if plan_name == 'adminTrial' else plan_name
 
-        # Lookup Stripe plan
+        # Get corresponding plan info from DB
         plan = AdminPlan.objects.get(name=actual_plan_name)
+
+        # Create Stripe customer (linked to email)
         customer = stripe.Customer.create(email=email)
 
-        # Create Stripe session (subscription mode for all plans)
+        # Create Stripe Checkout Session
         session = stripe.checkout.Session.create(
             mode='subscription',
             payment_method_types=['card'],
@@ -63,16 +69,18 @@ def admin_checkout_session(request):
                 'quantity': 1,
             }],
             metadata={
-                'plan_name': plan_name  # Keep original to detect trial in webhook
+                'plan_name': plan_name  # Use raw plan name to detect trials in webhook
             },
             success_url='http://localhost:3000/admin_thank_you?session_id={CHECKOUT_SESSION_ID}',
             cancel_url='http://localhost:3000/admin_plans',
         )
 
+        # Return Stripe Checkout URL to frontend
         return Response({'url': session.url}, status=status.HTTP_200_OK)
 
     except AdminPlan.DoesNotExist:
         return Response({'error': 'Plan not found'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
+        # Catch-all error handling
         print("❌ Error creating checkout session:", str(e))
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
