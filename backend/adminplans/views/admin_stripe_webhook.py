@@ -9,29 +9,32 @@ from rest_framework.permissions import AllowAny
 from adminplans.models import AdminPlan, AdminPendingSignup
 from users.models import CustomUser
 
+# Stripe configuration
 stripe.api_key = settings.STRIPE_SECRET_KEY
 endpoint_secret = settings.STRIPE_WEBHOOK_SECRET
 
 @api_view(['POST'])
-@permission_classes([AllowAny])
+@permission_classes([AllowAny])  # Stripe must hit this anonymously
 def admin_stripe_webhook(request):
-    token = get_random_string(length=64)
+    token = get_random_string(length=64)  # One-time-use registration token
     payload = request.body
     sig_header = request.META.get("HTTP_STRIPE_SIGNATURE")
 
+    # ✅ Verify webhook signature
     try:
         event = stripe.Webhook.construct_event(payload, sig_header, endpoint_secret)
     except (ValueError, stripe.error.SignatureVerificationError):
         print("❌ Signature verification failed")
         return HttpResponse(status=400)
 
+    # 🎯 Listen for checkout completion only
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
         session_id = session.get('id')
         customer_email = session.get('customer_email')
         subscription_id = session.get('subscription')
 
-        # Fallback: get email from customer if not in session
+        # Fallback to retrieve email from customer object if missing
         if not customer_email:
             customer_id = session.get('customer')
             if customer_id:
@@ -40,27 +43,29 @@ def admin_stripe_webhook(request):
 
         print(f"📥 New signup webhook: {customer_email}, session: {session_id}")
 
-        # Get plan info
+        # Get plan metadata
         raw_plan_name = session.get('metadata', {}).get('plan_name')
         if not raw_plan_name:
             print("❌ Missing plan_name in metadata")
             return HttpResponse(status=500)
 
-        # Normalize: adminTrial still uses adminMonthly Stripe product
+        # Normalize trial to use monthly plan ID logic internally
         plan_name = 'adminMonthly' if raw_plan_name == 'adminTrial' else raw_plan_name
 
         try:
+            # Confirm the plan exists in DB
             plan = AdminPlan.objects.get(name=plan_name)
         except AdminPlan.DoesNotExist:
             print(f"❌ AdminPlan not found: {plan_name}")
             return HttpResponse(status=500)
 
-        # 🚫 Skip if user already exists (reactivation handled separately)
+        # 🚫 If the user already exists, this is NOT a new signup → ignore
         if CustomUser.objects.filter(email=customer_email).exists():
             print(f"⚠️ User already exists: {customer_email} — skipping signup webhook")
             return HttpResponse(status=200)
 
         try:
+            # ✅ Create a new pending signup for this email + session
             AdminPendingSignup.objects.create(
                 email=customer_email,
                 session_id=session_id,
@@ -70,7 +75,7 @@ def admin_stripe_webhook(request):
             )
             print(f"✅ AdminPendingSignup created for {customer_email}")
 
-            # Simulated registration email
+            # ✉️ Simulated registration link
             registration_link = f"http://localhost:3000/admin_register?token={token}"
             print("\n" + "=" * 60)
             print("📩 Registration email (simulated):")
