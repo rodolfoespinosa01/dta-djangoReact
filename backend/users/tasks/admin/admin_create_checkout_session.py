@@ -65,8 +65,8 @@ def create_admin_checkout_session(request):
             metadata={
                 'plan_name': plan_name  # Keep original to detect trial in webhook
             },
-            success_url='http://localhost:3000/admin-thank-you?session_id={CHECKOUT_SESSION_ID}',
-            cancel_url='http://localhost:3000/admin-plans',
+            success_url='http://localhost:3000/admin_thank_you?session_id={CHECKOUT_SESSION_ID}',
+            cancel_url='http://localhost:3000/admin_plans',
         )
 
         return Response({'url': session.url}, status=status.HTTP_200_OK)

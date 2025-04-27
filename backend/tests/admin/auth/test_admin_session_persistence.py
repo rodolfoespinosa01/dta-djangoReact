@@ -28,7 +28,7 @@ class AdminSessionPersistenceTest(BaseAdminTest):
 
         # Step 3: Login to get token
         login_response = self.client.post(
-            reverse('admin-login'),
+            reverse('admin_login'),
             data={'username': 'admin2@example.com', 'password': 'strongpass456'},
             content_type='application/json'
         )
@@ -37,7 +37,7 @@ class AdminSessionPersistenceTest(BaseAdminTest):
 
         # Step 4: Use token to access admin dashboard
         dashboard_response = self.client.get(
-            reverse('admin-dashboard'),
+            reverse('admin_dashboard'),
             HTTP_AUTHORIZATION=f'Bearer {token}'
         )
 

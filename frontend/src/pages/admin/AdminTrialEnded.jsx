@@ -12,7 +12,7 @@ function AdminTrialEnded() {
     localStorage.removeItem('role');
     localStorage.removeItem('subscription_status');
 
-    navigate('/admin-login');
+    navigate('/admin_login');
   };
 
   return (
@@ -25,7 +25,7 @@ function AdminTrialEnded() {
 
       <div style={{ marginTop: '2rem' }}>
         <button
-          onClick={() => navigate('/admin-plans')}
+          onClick={() => navigate('/admin_plans')}
           style={{
             marginRight: '1rem',
             padding: '0.75rem 1.5rem',

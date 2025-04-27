@@ -66,7 +66,7 @@ def admin_stripe_webhook(request):
             )
             print(f"✅ PendingAdminSignup saved for {customer_email}")
 
-            registration_link = f"http://localhost:3000/admin-register?token={token}"
+            registration_link = f"http://localhost:3000/admin_register?token={token}"
             print("\n" + "=" * 60)
             print("📩 Registration email (simulated):")
             print(f"To: {customer_email}")

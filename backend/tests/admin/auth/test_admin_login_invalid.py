@@ -20,7 +20,7 @@ class AdminLoginInvalidTest(BaseAdminTest):
         print("❌ Test: Admin login with invalid credentials")
 
         response = self.client.post(
-            reverse('admin-login'),
+            reverse('admin_login'),
             data={'username': self.email, 'password': 'wrongpassword'},  
             content_type='application/json'
         )

@@ -20,7 +20,7 @@ class SuperAdminTokenRefreshTests(BaseAdminTest):
 
         # ✅ Step 1: Login with username (not email)
         login_response = self.client.post(
-            reverse("superadmin-login"),
+            reverse("superadmin_login"),
             data={"username": self.username, "password": self.password},
             content_type="application/json"
         )

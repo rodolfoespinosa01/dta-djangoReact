@@ -26,7 +26,7 @@ function AdminResetPasswordPage() {
       return;
     }
 
-    const res = await fetch('http://localhost:8000/api/users/admin/reset-password/confirm/', {
+    const res = await fetch('http://localhost:8000/api/users/admin/reset_password/confirm/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ uid, token, new_password: newPassword }),
@@ -34,7 +34,7 @@ function AdminResetPasswordPage() {
 
     if (res.ok) {
       setStatus('success');
-      setTimeout(() => navigate('/admin-login'), 2000);
+      setTimeout(() => navigate('/admin_login'), 2000);
     } else {
       const data = await res.json();
       setStatus(data?.detail || 'Reset failed. Check your link or try again.');

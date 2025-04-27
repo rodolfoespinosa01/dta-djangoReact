@@ -12,13 +12,13 @@ function AdminSettings() {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      navigate('/admin-login');
+      navigate('/admin_login');
       return;
     }
 
     const fetchDashboardData = async () => {
       try {
-        const res = await fetch('http://localhost:8000/api/users/admin-dashboard/', {
+        const res = await fetch('http://localhost:8000/api/users/admin_dashboard/', {
           headers: {
             Authorization: `Bearer ${accessToken}`
           }
@@ -41,7 +41,7 @@ function AdminSettings() {
 
   const handleCancelAutoRenew = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/users/admin/cancel-auto-renew/', {
+      const res = await fetch('http://localhost:8000/api/users/admin/cancel_auto_renew/', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,

@@ -7,7 +7,7 @@ function SuperAdminProtectedRoute({ children }) {
 
   if (loading) return <p>Loading...</p>;
   if (!isAuthenticated || !user?.is_superuser) {
-    return <Navigate to="/superadmin-login" />;
+    return <Navigate to="/superadmin_login" />;
   }
 
   return children;
