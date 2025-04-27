@@ -10,13 +10,13 @@ function AdminDashboard() {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      navigate('/admin-login');
+      navigate('/admin_login');
       return;
     }
 
     const fetchTrialStatus = async () => {
       try {
-        const res = await fetch('http://localhost:8000/api/users/admin-dashboard/', {
+        const res = await fetch('http://localhost:8000/api/users/admin_dashboard/', {
           headers: {
             Authorization: `Bearer ${accessToken}`
           }

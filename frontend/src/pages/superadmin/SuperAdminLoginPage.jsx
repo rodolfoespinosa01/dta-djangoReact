@@ -11,7 +11,7 @@ function SuperAdminLoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const response = await fetch('http://localhost:8000/api/users/superadmin-login/', {
+    const response = await fetch('http://localhost:8000/api/users/superadmin_login/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),

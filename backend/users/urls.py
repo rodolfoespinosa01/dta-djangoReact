@@ -17,21 +17,21 @@ from users.tasks.admin.admin_cancel_subscription import cancel_admin_subscriptio
 
 urlpatterns = [
     # SuperAdmin
-    path('superadmin/dashboard/', superadmin_dashboard, name='superadmin-dashboard'),
-    path('superadmin-login/', SuperAdminTokenObtainPairView.as_view(), name='superadmin-login'),
+    path('superadmin/dashboard/', superadmin_dashboard, name='superadmin_dashboard'),
+    path('superadmin_login/', SuperAdminTokenObtainPairView.as_view(), name='superadmin_login'),
 
     # Admin Auth & Dashboard
-    path('admin-login/', AdminLoginView.as_view(), name='admin-login'),
-    path('admin-dashboard/', AdminDashboardView.as_view(), name='admin-dashboard'),
+    path('admin_login/', AdminLoginView.as_view(), name='admin_login'),
+    path('admin-dashboard/', AdminDashboardView.as_view(), name='admin_dashboard'),
 
     # Admin Registration
-    path('register-admin/', register_admin, name='register-admin'),
+    path('register-admin/', register_admin, name='register_admin'),
     path('pending-signup/<str:token>/', get_pending_admin_signup),
 
     # Admin Password Reset
-    path('admin/forgot-password/', AdminForgotPasswordView.as_view(), name='admin-forgot-password'),
-    path('admin/reset-password/confirm/', AdminResetPasswordConfirmView.as_view(), name='admin-reset-password-confirm'),
+    path('admin/forgot_password/', AdminForgotPasswordView.as_view(), name='admin_forgot_password'),
+    path('admin/reset_password/confirm/', AdminResetPasswordConfirmView.as_view(), name='admin_reset-password-confirm'),
 
     # Admin Subscription Cancel
-    path('admin/cancel-auto-renew/', cancel_admin_subscription),
+    path('admin/cancel_auto_renew/', cancel_admin_subscription),
 ]

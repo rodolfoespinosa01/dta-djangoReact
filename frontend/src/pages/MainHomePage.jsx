@@ -10,13 +10,13 @@ function MainHomePage() {
       <p>This is your white label development platform for next-gen meal plans.</p>
 
       <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-        <button onClick={() => navigate('/admin-login')} style={buttonStyle}>
+        <button onClick={() => navigate('/admin_login')} style={buttonStyle}>
           Admin Login
         </button>
-        <button onClick={() => navigate('/superadmin-login')} style={buttonStyle}>
+        <button onClick={() => navigate('/superadmin_login')} style={buttonStyle}>
           SuperAdmin Login
         </button>
-        <button onClick={() => navigate('/admin-plans')} style={buttonStyle}>
+        <button onClick={() => navigate('/admin_plans')} style={buttonStyle}>
           View Admin Plans
         </button>
       </div>
