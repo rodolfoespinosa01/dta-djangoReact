@@ -79,7 +79,7 @@ function AdminRegisterPage() {
     
         alert('✅ Account created successfully! Logging you in...');
     
-        const loginRes = await fetch('http://localhost:8000/api/users/admin-login/', {
+        const loginRes = await fetch('http://localhost:8000/api/users/admin_login/', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -90,13 +90,13 @@ function AdminRegisterPage() {
     
         if (!loginRes.ok) {
           alert(loginData.error || 'Auto-login failed. Please login manually.');
-          navigate('/admin-login');
+          navigate('/admin_login');
           return;
         }
-        console.log('✅ loginData from /admin-login:', loginData);
+        console.log('✅ loginData from /admin_login:', loginData);
         login(loginData);
 
-        navigate('/admin-dashboard');
+        navigate('/admin_dashboard');
     
       } catch (err) {
         console.error('Unexpected error:', err);

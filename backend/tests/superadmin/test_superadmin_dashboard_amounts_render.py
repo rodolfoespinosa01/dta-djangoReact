@@ -67,7 +67,7 @@ class SuperAdminDashboardAmountsRenderTest(BaseAdminTest):
         AdminProfile.objects.create(user=self.inactive_user)
 
         # Login as SuperAdmin
-        login = self.client.post(reverse("superadmin-login"), data={
+        login = self.client.post(reverse("superadmin_login"), data={
             "username": "superadmin@test.com",
             "password": "superpass123"
         }, content_type="application/json")

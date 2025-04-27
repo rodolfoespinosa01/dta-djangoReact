@@ -40,7 +40,7 @@ class AdminOldPasswordFailsNewPassWorksTest(BaseAdminTest):
     def test_old_password_fails_new_password_works(self):
         # Try login with old password — should fail
         old_login = self.client.post(
-            reverse("admin-login"),
+            reverse("admin_login"),
             data={
                 "username": self.admin_email,
 
@@ -52,7 +52,7 @@ class AdminOldPasswordFailsNewPassWorksTest(BaseAdminTest):
 
         # Try login with new password — should succeed
         new_login = self.client.post(
-            reverse("admin-login"),
+            reverse("admin_login"),
             data={
                 "username": self.admin_email,
 

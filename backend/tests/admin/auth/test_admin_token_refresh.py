@@ -27,7 +27,7 @@ class AdminTokenRefreshTests(BaseAdminTest):
     def test_admin_token_refresh_and_access_dashboard(self):
         # Step 1: Login to get refresh token
         login_response = self.client.post(
-            reverse("admin-login"),
+            reverse("admin_login"),
             data={"username": self.email, "password": self.password},
             content_type="application/json"
         )
@@ -49,7 +49,7 @@ class AdminTokenRefreshTests(BaseAdminTest):
 
         # Step 3: Access protected dashboard using new access token
         dashboard_response = self.client.get(
-            reverse("admin-dashboard"),
+            reverse("admin_dashboard"),
             HTTP_AUTHORIZATION=f"Bearer {new_access_token}"
         )
 

@@ -33,20 +33,20 @@ function App() {
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<MainHomePage />} />
-        <Route path="/admin-homepage" element={<AdminHomePage />} />
-        <Route path="/admin-plans" element={<AdminPlanSelectionPage />} />
-        <Route path="/admin-register" element={<AdminRegisterPage />} />
-        <Route path="/admin-login" element={<AdminLoginPage />} />
-        <Route path="/admin-forgot-password" element={<AdminForgotPasswordPage />} />
-        <Route path="/admin-thank-you" element={<AdminThankYou />} />
-        <Route path="/admin-reset-password" element={<AdminResetPasswordPage />} />
-        <Route path="/superadmin-login" element={<SuperAdminLoginPage />} />
-        <Route path="/user-homepage" element={<UserHomePage />} />
-        <Route path="/user-plans" element={<UserPlanSelectionPage />} />
+        <Route path="/admin_homepage" element={<AdminHomePage />} />
+        <Route path="/admin_plans" element={<AdminPlanSelectionPage />} />
+        <Route path="/admin_register" element={<AdminRegisterPage />} />
+        <Route path="/admin_login" element={<AdminLoginPage />} />
+        <Route path="/admin_forgot_password" element={<AdminForgotPasswordPage />} />
+        <Route path="/admin_thank_you" element={<AdminThankYou />} />
+        <Route path="/admin_reset_password" element={<AdminResetPasswordPage />} />
+        <Route path="/superadmin_login" element={<SuperAdminLoginPage />} />
+        <Route path="/user_homepage" element={<UserHomePage />} />
+        <Route path="/user_plans" element={<UserPlanSelectionPage />} />
 
         {/* Protected Admin Routes */}
         <Route
-          path="/admin-dashboard"
+          path="/admin_dashboard"
           element={
             <AdminProtectedRoute>
               <AdminDashboard />
@@ -54,7 +54,7 @@ function App() {
           }
         />
         <Route
-          path="/admin-settings"
+          path="/admin_settings"
           element={
             <AdminProtectedRoute>
               <AdminSettings />
@@ -62,7 +62,7 @@ function App() {
           }
         />
         <Route
-          path="/admin-trial-ended"
+          path="/admin_trial_ended"
           element={
             <AdminProtectedRoute>
               <AdminTrialEnded />
@@ -72,7 +72,7 @@ function App() {
 
         {/* Protected Super Admin Routes */}
         <Route
-          path="/superadmin-dashboard"
+          path="/superadmin_dashboard"
           element={
             <SuperAdminProtectedRoute>
               <SuperAdminDashboard />

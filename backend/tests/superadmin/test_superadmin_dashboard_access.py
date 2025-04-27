@@ -15,7 +15,7 @@ class SuperAdminDashboardAccessTest(BaseAdminTest):
 
         # Step 2: Login with correct field
         login_response = self.client.post(
-            reverse('superadmin-login'),
+            reverse('superadmin_login'),
             data={'username': "dta_user", 'password': "dta6914"},
             content_type='application/json'
         )
