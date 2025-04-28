@@ -2,7 +2,7 @@
 
 from tests.base.base_admin_test import BaseAdminTest
 from django.urls import reverse
-from adminplans.models import PendingAdminSignup, AdminPlan, AdminProfile
+from adminplans.models import AdminPendingSignup, AdminPlan, AdminProfile
 from users.models.custom_user import CustomUser
 from unittest.mock import patch, MagicMock
 from rest_framework import status
@@ -23,7 +23,7 @@ class AdminMonthlyRegistrationTest(BaseAdminTest):
         )
 
         # Simulate webhook created token
-        PendingAdminSignup.objects.create(
+        AdminPendingSignup.objects.create(
             email="monthlytest@example.com",
             session_id="cs_test_monthly",
             token="monthlytoken123",
@@ -46,7 +46,7 @@ class AdminMonthlyRegistrationTest(BaseAdminTest):
         mock_stripe_session.return_value = mock_session
 
         response = self.client.post(
-            reverse("register-admin"),
+            reverse("admin_register"),
             data={
                 "email": "monthlytest@example.com",
                 "password": "strongpass123",

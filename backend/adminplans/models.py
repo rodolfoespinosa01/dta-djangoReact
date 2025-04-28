@@ -23,7 +23,7 @@ class AdminPlan(models.Model):
         return round(self.price_cents / 100, 2)
 
 
-class PendingAdminSignup(models.Model):
+class AdminPendingSignup(models.Model):
     email = models.EmailField()
     session_id = models.CharField(max_length=255, unique=True)
     token = models.CharField(max_length=64, unique=True, default=uuid.uuid4)

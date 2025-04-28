@@ -56,7 +56,7 @@ function AdminSettings() {
         setCancelMessage(data.message);
 
         // Refresh dashboard state
-        const refreshRes = await fetch('http://localhost:8000/api/users/admin-dashboard/', {
+        const refreshRes = await fetch('http://localhost:8000/api/users/admin_dashboard/', {
           headers: {
             Authorization: `Bearer ${accessToken}`
           }
@@ -119,6 +119,19 @@ function AdminSettings() {
             <p><strong>Next Billing Date:</strong> {formatDate(dashboardData.next_billing_date)}</p>
           )}
 
+          {/* 🔥 New Section: Show active or active-until status */}
+          {dashboardData.is_canceled && dashboardData.subscription_end_date && (
+            <p style={{ marginTop: '1rem', color: 'red' }}>
+              Your account will remain active until: <strong>{formatDate(dashboardData.subscription_end_date)}</strong>
+            </p>
+          )}
+
+          {!dashboardData.is_canceled && dashboardData.subscription_active && (
+            <p style={{ marginTop: '1rem', color: 'green' }}>
+              Your account is currently active.
+            </p>
+          )}
+
           {/* Cancel or Reactivate Subscription */}
           <>
             {!cancelled && !dashboardData.is_canceled && dashboardData.subscription_active && (
@@ -140,7 +153,7 @@ function AdminSettings() {
 
             {dashboardData.is_canceled && (
               <button
-                onClick={() => navigate('/admin-reactivate')}
+                onClick={() => navigate('/_reactivate')}
                 style={{
                   marginTop: '1rem',
                   backgroundColor: '#10b981',
@@ -169,7 +182,7 @@ function AdminSettings() {
       )}
 
       <button
-        onClick={() => navigate('/admin-dashboard')}
+        onClick={() => navigate('/admin_dashboard')}
         style={{
           marginTop: '2rem',
           backgroundColor: '#2563eb',

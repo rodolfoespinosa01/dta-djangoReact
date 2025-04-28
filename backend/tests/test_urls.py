@@ -9,7 +9,7 @@ from tests.superadmin.test_superadmin_urls import test_superadmin_urls
 
 # 🚀 Combine all test routes into one export
 test_urlpatterns = [
-    path("api/test-admin/", include(test_admin_urls)),
-    path("api/test-superadmin/", include(test_superadmin_urls)),
-    # path("api/test-client/", include(test_client_urls)),  # safe even if empty
+    path("api/test_admin/", include(test_admin_urls)),
+    path("api/test_superadmin/", include(test_superadmin_urls)),
+    # path("api/test_client/", include(test_client_urls)),  # safe even if empty
 ]

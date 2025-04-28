@@ -38,7 +38,7 @@ class AdminTokenRefreshTests(BaseAdminTest):
 
         # Step 2: Use refresh token to get a new access token
         refresh_response = self.client.post(
-            "/api/test-admin/token/refresh/",
+            "/api/test_admin/token/refresh/",
             data={"refresh": refresh_token},
             content_type="application/json"
         )

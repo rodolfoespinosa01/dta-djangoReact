@@ -5,6 +5,6 @@ class AdminProtectedRouteTest(BaseAdminTest):
     def test_admin_dashboard_requires_auth(self):
         print("🔒 Test: Admin cannot access dashboard if not logged in")
 
-        response = self.client.get(reverse('admin-dashboard'))
+        response = self.client.get(reverse('admin_dashboard'))
 
         self.assertEqual(response.status_code, 401)

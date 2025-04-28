@@ -74,7 +74,7 @@ class Migration(migrations.Migration):
             ],
         ),
         migrations.CreateModel(
-            name="PendingAdminSignup",
+            name="AdminPendingSignup",
             fields=[
                 (
                     "id",

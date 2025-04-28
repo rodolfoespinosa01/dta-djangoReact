@@ -31,7 +31,7 @@ class SuperAdminTokenRefreshTests(BaseAdminTest):
 
         # ✅ Step 2: Refresh token
         refresh_response = self.client.post(
-            reverse("test-superadmin-token-refresh"),
+            reverse("test_super_token_refresh"),
             data={"refresh": refresh_token},
             content_type="application/json"
         )
@@ -42,7 +42,7 @@ class SuperAdminTokenRefreshTests(BaseAdminTest):
 
         # ✅ Step 3: Access SuperAdmin dashboard with new access token
         dashboard_response = self.client.get(
-            reverse("superadmin-dashboard"),
+            reverse("superadmin_dashboard"),
             HTTP_AUTHORIZATION=f"Bearer {new_access_token}"
         )
         self.assertEqual(dashboard_response.status_code, 200)

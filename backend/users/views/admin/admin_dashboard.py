@@ -19,15 +19,14 @@ class AdminDashboardView(APIView):
         except AdminProfile.DoesNotExist:
             return Response({"error": "Admin profile not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        # ❌ Block access if subscription has ended
+        # ✅ Check if subscription has truly ended
+        inactive = False
         if profile.is_canceled and profile.subscription_end_date and profile.subscription_end_date < now():
-            return Response({
-                "error": "Your subscription has ended. Please reactivate to access the dashboard."
-            }, status=status.HTTP_403_FORBIDDEN)
+            inactive = True
 
         subscription_status = user.subscription_status
         is_canceled = profile.is_canceled
-        is_active = not is_canceled
+        is_active = not inactive 
         trial_days_left = profile.trial_days_remaining()
         is_trial = trial_days_left > 0 if trial_days_left is not None else False
 
@@ -40,6 +39,7 @@ class AdminDashboardView(APIView):
             "subscription_status": subscription_status,
             "subscription_active": is_active,
             "is_canceled": is_canceled,
+            "inactive": inactive,
             "canceled_at": profile.canceled_at,
             "subscription_end_date": profile.subscription_end_date,
             "trial_start": profile.trial_start_date,
