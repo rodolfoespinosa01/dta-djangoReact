@@ -22,7 +22,7 @@ function AdminLoginPage() {
     if (response.ok) {
       login(data);
       localStorage.setItem('refresh_token', data.refresh);
-      navigate('/admin-dashboard');
+      navigate('/admin_dashboard');
     } else {
       alert(data.error || 'Login failed');
     }
@@ -50,7 +50,7 @@ function AdminLoginPage() {
         />
         <button type="submit">Log In</button>
         <p style={{ marginTop: '1rem' }}>
-          <a href="/adminforgotpassword" style={{ color: 'blue', textDecoration: 'underline' }}>
+          <a href="/admin_forgot_password" style={{ color: 'blue', textDecoration: 'underline' }}>
             Forgot your password?
           </a>
         </p>

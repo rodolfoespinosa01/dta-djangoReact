@@ -27,7 +27,7 @@ class SuperAdminDashboardAccessTest(BaseAdminTest):
 
         # Step 3: Access dashboard with token
         dashboard_response = self.client.get(
-            reverse("superadmin-dashboard"),
+            reverse("superadmin_dashboard"),
             HTTP_AUTHORIZATION=f'Bearer {token}'
         )
 

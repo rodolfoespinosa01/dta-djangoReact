@@ -22,7 +22,7 @@ function SuperAdminLoginPage() {
     if (response.ok) {
       login(data);
       localStorage.setItem('refresh_token', data.refresh);
-      navigate('/superadmin-dashboard');
+      navigate('/superadmin_dashboard');
     } else {
       alert(data.error || 'Login failed');
     }

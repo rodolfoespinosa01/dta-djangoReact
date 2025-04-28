@@ -75,7 +75,7 @@ class SuperAdminDashboardAmountsRenderTest(BaseAdminTest):
         self.auth_headers = {"HTTP_AUTHORIZATION": f"Bearer {self.token}"}
 
     def test_amounts_and_billing_dates_render_properly(self):
-        response = self.client.get(reverse("superadmin-dashboard"), **self.auth_headers)
+        response = self.client.get(reverse("superadmin_dashboard"), **self.auth_headers)
         self.assertEqual(response.status_code, 200)
 
         admins = response.json().get("admins", [])

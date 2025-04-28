@@ -24,7 +24,7 @@ function AdminRegisterPage() {
 
     const fetchPendingEmail = async () => {
       try {
-        const res = await fetch(`http://localhost:8000/api/users/pending-signup/${tokenFromURL}/`);
+        const res = await fetch(`http://localhost:8000/api/users/admin_pending_signup/${tokenFromURL}/`);
         
         // Try to parse JSON only if response is OK
         if (!res.ok) {
@@ -55,7 +55,7 @@ function AdminRegisterPage() {
       e.preventDefault();
     
       try {
-        const res = await fetch('http://localhost:8000/api/users/register-admin/', {
+        const res = await fetch('http://localhost:8000/api/users/admin_register/', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',

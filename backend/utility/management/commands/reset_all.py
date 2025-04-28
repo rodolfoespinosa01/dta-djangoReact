@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
-from adminplans.models import AdminProfile, PendingAdminSignup
+from adminplans.models import AdminProfile, AdminPendingSignup
 from users.models.admin_password_reset_token import AdminPasswordResetToken
 
 class Command(BaseCommand):
@@ -22,7 +22,7 @@ class Command(BaseCommand):
         except User.DoesNotExist:
             AdminProfile.objects.all().delete()
 
-        # Delete PendingAdminSignup entries
-        PendingAdminSignup.objects.all().delete()
+        # Delete AdminPendingSignup entries
+        AdminPendingSignup.objects.all().delete()
 
         self.stdout.write(self.style.SUCCESS('🎯 All admin test data reset!'))

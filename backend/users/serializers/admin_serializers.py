@@ -23,7 +23,7 @@ class AdminForgotPasswordSerializer(serializers.Serializer):
 
         AdminPasswordResetToken.objects.create(user=user, token=token)
 
-        reset_link = f"http://localhost:3000/adminresetpassword?uid={uid}&token={token}"
+        reset_link = f"http://localhost:3000/admin_reset_password?uid={uid}&token={token}"
 
         print("\n=================== 📩 Admin Password Reset Email ===================")
         print(f"To: {email}")
