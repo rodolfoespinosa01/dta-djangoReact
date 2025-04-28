@@ -28,7 +28,7 @@ class AdminOldPasswordFailsNewPassWorksTest(BaseAdminTest):
 
         # Perform password reset
         self.client.post(
-            reverse("admin-reset-password-confirm"),
+            reverse("admin_reset_password_confirm"),
             data={
                 "uid": self.uid,
                 "token": self.token,

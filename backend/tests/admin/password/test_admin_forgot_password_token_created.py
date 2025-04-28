@@ -20,7 +20,7 @@ class AdminForgotPasswordTokenTest(BaseAdminTest):
     @patch("builtins.print")
     def test_forgot_password_creates_token_and_prints_email(self, mock_print):
         response = self.client.post(
-            reverse("admin-forgot-password"),
+            reverse("admin_forgot_password"),
             data={"email": self.admin_email},
             content_type="application/json"
         )
