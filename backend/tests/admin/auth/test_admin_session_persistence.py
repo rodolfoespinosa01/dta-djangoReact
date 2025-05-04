@@ -1,8 +1,9 @@
 from tests.base.base_admin_test import BaseAdminTest
 from django.urls import reverse
 from django.utils import timezone
-from users.models.custom_user import CustomUser
-from adminplans.models import AdminProfile
+from core.models import CustomUser
+from users.admin_area.models import AdminPlan, AdminProfile
+
 
 class AdminSessionPersistenceTest(BaseAdminTest):
     def test_admin_session_persists_via_token(self):

@@ -1,8 +1,8 @@
 from tests.base.base_admin_test import BaseAdminTest
 from django.urls import reverse
 from django.utils import timezone
-from users.models import CustomUser
-from adminplans.models import AdminProfile, AdminPlan
+from core.models import CustomUser
+from users.admin_area.models import AdminProfile, AdminPlan
 from datetime import timedelta
 
 class SuperAdminDashboardAmountsRenderTest(BaseAdminTest):

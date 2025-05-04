@@ -1,6 +1,6 @@
 from tests.base.base_admin_test import BaseAdminTest
 from django.urls import reverse
-from users.models import CustomUser
+from core.models import CustomUser
 
 class SuperAdminDashboardAccessTest(BaseAdminTest):
     def test_superadmin_can_login_and_access_dashboard(self):
