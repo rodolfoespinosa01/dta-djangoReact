@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
-from adminplans.models import AdminProfile, AdminPendingSignup
-from users.models.admin_password_reset_token import AdminPasswordResetToken
+from users.admin_area.models import AdminProfile, AdminPendingSignup
+from users.admin_area.models import AdminPasswordResetToken
 
 class Command(BaseCommand):
     help = 'Fully resets admin data (users, tokens, profiles, pending signups) for local testing'
