@@ -6,8 +6,12 @@ from django.conf import settings
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 
+<<<<<<<< HEAD:backend/adminplans/views/admin_stripe_webhook.py
 from adminplans.models import AdminPlan, AdminPendingSignup
 from users.models import CustomUser
+========
+from users.admin_area.models import AdminPlan, AdminPendingSignup
+>>>>>>>> admin-reactivation-debug:backend/users/admin_area/tasks/admin_stripe_webhook.py
 
 # Stripe configuration
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -65,7 +69,10 @@ def admin_stripe_webhook(request):
             return HttpResponse(status=200)
 
         try:
+<<<<<<<< HEAD:backend/adminplans/views/admin_stripe_webhook.py
             # ✅ Create a new pending signup for this email + session
+========
+>>>>>>>> admin-reactivation-debug:backend/users/admin_area/tasks/admin_stripe_webhook.py
             AdminPendingSignup.objects.create(
                 email=customer_email,
                 session_id=session_id,
@@ -73,9 +80,14 @@ def admin_stripe_webhook(request):
                 plan=raw_plan_name,
                 subscription_id=subscription_id
             )
+<<<<<<<< HEAD:backend/adminplans/views/admin_stripe_webhook.py
             print(f"✅ AdminPendingSignup created for {customer_email}")
 
             # ✉️ Simulated registration link
+========
+            print(f"✅ AdminPendingSignup saved for {customer_email}")
+
+>>>>>>>> admin-reactivation-debug:backend/users/admin_area/tasks/admin_stripe_webhook.py
             registration_link = f"http://localhost:3000/admin_register?token={token}"
             print("\n" + "=" * 60)
             print("📩 Registration email (simulated):")
@@ -84,7 +96,11 @@ def admin_stripe_webhook(request):
             print("=" * 60 + "\n")
 
         except Exception as e:
+<<<<<<<< HEAD:backend/adminplans/views/admin_stripe_webhook.py
             print(f"❌ Error creating AdminPendingSignup: {e}")
+========
+            print(f"❌ Error saving AdminPendingSignup: {str(e)}")
+>>>>>>>> admin-reactivation-debug:backend/users/admin_area/tasks/admin_stripe_webhook.py
             return HttpResponse(status=500)
 
     return HttpResponse(status=200)

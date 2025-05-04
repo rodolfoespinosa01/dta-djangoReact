@@ -335,12 +335,6 @@ Feel free to open an issue or submit a PR if you're contributing.
 ✅ test_superadmin_dashboard_admin_grouping.py
 ✅ test_superadmin_dashboard_amounts_render.py
 
-🔁 Cancel Subscription Flow
-✅ Test: Admin cancels paid plan (monthly, quarterly, annual)
-✅ Test: Admin cancels paid plan (monthly, quarterly, annual)
-✅ Test: AccountHistory marks new start and cancelled date
-✅ Test: Test reactivation for both active cancelled admin and inactive admins
 
-🔐 Access Logic
-✅ Test: Admin with expired subscription_end_date is blocked from dashboard
-✅ Test: Admin with active subscription_end_date is allowed dashboard access
+
+IMMEDIATE DEVELOPMENT - CANCEL LOGIC FOR ALL TYPES OF PLAN, CONFIRM IT WORKS AND WE ARE CAPTURING DATA

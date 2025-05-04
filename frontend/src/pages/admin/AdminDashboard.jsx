@@ -1,19 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { useLocation } from 'react-router-dom';
-
 
 function AdminDashboard() {
   const { user, isAuthenticated, accessToken, logout } = useAuth();
   const navigate = useNavigate();
 
   const [daysLeft, setDaysLeft] = useState(null);
-
-  const location = useLocation();
-  const queryParams = new URLSearchParams(location.search);
-  const showReactivatedBanner = queryParams.get('reactivated') === 'true';
-
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -23,7 +16,7 @@ function AdminDashboard() {
 
     const fetchTrialStatus = async () => {
       try {
-        const res = await fetch('http://localhost:8000/api/adminplans/admin_dashboard/', {
+        const res = await fetch('http://localhost:8000/api/users/admin_dashboard/', {
           headers: {
             Authorization: `Bearer ${accessToken}`
           }
@@ -51,20 +44,6 @@ function AdminDashboard() {
 
   return (
     <div style={{ padding: '2rem', textAlign: 'center' }}>
-      {showReactivatedBanner && (
-      <div style={{
-        backgroundColor: '#d1fae5',
-        color: '#065f46',
-        padding: '1rem',
-        borderRadius: '6px',
-        marginBottom: '1rem',
-        fontWeight: 'bold',
-        border: '1px solid #10b981'
-      }}>
-        ✅ Welcome back! Your subscription has been reactivated.
-      </div>
-    )}
-
       <h1>Welcome to your dashboard</h1>
       <p>Your all-in-one platform for creating personalized diet plans for your clients.</p>
 

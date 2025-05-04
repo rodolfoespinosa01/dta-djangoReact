@@ -2,8 +2,8 @@
 
 from tests.base.base_admin_test import BaseAdminTest
 from django.urls import reverse
-from adminplans.models import AdminPendingSignup, AdminPlan
-from users.models.custom_user import CustomUser
+from users.admin_area.models import AdminPendingSignup, AdminPlan
+from core.models import CustomUser
 from rest_framework import status
 from unittest.mock import patch, MagicMock
 

@@ -8,15 +8,25 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 
+<<<<<<<< HEAD:backend/adminplans/views/admin_checkout_session.py
 from users.models.custom_user import CustomUser
 from adminplans.models import AdminPlan, AdminPendingSignup
+========
+from core.models import CustomUser
+from users.admin_area.models import AdminPlan, AdminPendingSignup
+>>>>>>>> admin-reactivation-debug:backend/users/admin_area/tasks/admin_create_checkout_session.py
 
 # Set Stripe secret key
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 @api_view(['POST'])
+<<<<<<<< HEAD:backend/adminplans/views/admin_checkout_session.py
 @permission_classes([AllowAny])  # Public access (no login required)
 def admin_checkout_session(request):
+========
+@permission_classes([AllowAny])
+def admin_create_checkout_session(request):
+>>>>>>>> admin-reactivation-debug:backend/users/admin_area/tasks/admin_create_checkout_session.py
     try:
         data = request.data
         plan_name = data.get('plan_name')
@@ -44,7 +54,11 @@ def admin_checkout_session(request):
                         'error': 'This email has already used the free trial. Please choose a paid plan.'
                     }, status=status.HTTP_403_FORBIDDEN)
 
+<<<<<<<< HEAD:backend/adminplans/views/admin_checkout_session.py
         # Prevent multiple pending registrations
+========
+        # Prevent pending signup abuse
+>>>>>>>> admin-reactivation-debug:backend/users/admin_area/tasks/admin_create_checkout_session.py
         if AdminPendingSignup.objects.filter(email=email, is_used=False).exists():
             return Response({
                 'error': 'A registration link has already been generated for this email. Please complete your registration or wait for it to expire.'

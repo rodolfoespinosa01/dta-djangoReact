@@ -37,7 +37,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     setAuth({ user: null, accessToken: null, isAuthenticated: false, loading: false });
-    navigate('/admin_login');
+    navigate('/adminlogin');
   };
 
   // ✅ Rehydrate session from localStorage on refresh
