@@ -19,14 +19,6 @@
       }
     },
     {
-      "label": "Run Celery Worker",
-      "type": "shell",
-      "command": "source venv/bin/activate && celery -A backend worker --loglevel=info",
-      "options": {
-        "cwd": "${workspaceFolder}/backend"
-      }
-    },
-    {
       "label": "Run Stripe Webhook",
       "type": "shell",
       "command": "stripe listen --forward-to localhost:8000/api/admin_stripe_webhook/",

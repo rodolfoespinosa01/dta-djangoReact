@@ -1,7 +1,7 @@
 from tests.base.base_admin_test import BaseAdminTest
 from django.urls import reverse
-from users.models.custom_user import CustomUser
-from adminplans.models import AdminProfile
+from core.models import CustomUser
+from users.admin_area.models import AdminPlan, AdminProfile
 from django.utils import timezone
 
 class AdminTokenRefreshTests(BaseAdminTest):

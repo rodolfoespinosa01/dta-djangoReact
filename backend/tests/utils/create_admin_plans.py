@@ -1,4 +1,4 @@
-from adminplans.models import AdminPlan
+from users.admin_area.models import AdminPlan
 
 def create_admin_plans():
     AdminPlan.objects.get_or_create(

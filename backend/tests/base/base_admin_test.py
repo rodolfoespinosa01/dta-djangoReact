@@ -1,7 +1,7 @@
 # tests/base/base_admin_test.py
 
 from django.test import TestCase
-from adminplans.models import AdminPlan
+from users.admin_area.models import AdminPlan
 
 class BaseAdminTest(TestCase):
     def setUp(self):
