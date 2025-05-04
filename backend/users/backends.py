@@ -1,7 +1,7 @@
 # backend/users/backends.py
 
 from django.contrib.auth.backends import ModelBackend
-from users.models.custom_user import CustomUser
+from core.models import CustomUser
 
 class EmailBackend(ModelBackend):
     """

@@ -1,7 +1,7 @@
 from tests.base.base_admin_test import BaseAdminTest
 from django.urls import reverse
-from users.models.custom_user import CustomUser
-from adminplans.models import AdminProfile
+from core.models import CustomUser
+from users.admin_area.models import AdminPlan, AdminProfile
 from django.utils import timezone
 
 class AdminTokenRefreshTests(BaseAdminTest):
@@ -38,11 +38,10 @@ class AdminTokenRefreshTests(BaseAdminTest):
 
         # Step 2: Use refresh token to get a new access token
         refresh_response = self.client.post(
-            "/api/test/admin/token/refresh/",
+            "/api/test_admin/token/refresh/",
             data={"refresh": refresh_token},
             content_type="application/json"
         )
-        
         self.assertEqual(refresh_response.status_code, 200)
 
         new_access_token = refresh_response.data.get("access")  # ✅ updated
