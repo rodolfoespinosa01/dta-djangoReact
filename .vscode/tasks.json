@@ -21,15 +21,7 @@
     {
       "label": "Run Stripe Webhook",
       "type": "shell",
-      "command": "stripe listen --forward-to localhost:8000/api/adminplans/admin_stripe_webhook/",
-      "options": {
-        "cwd": "${workspaceFolder}"
-      }
-    },
-    {
-      "label": "Run Reactivation Webhook",
-      "type": "shell",
-      "command": "stripe listen --forward-to localhost:8000/api/adminplans/admin_stripe_reactivation_webhook/",
+      "command": "stripe listen --forward-to localhost:8000/api/admin_stripe_webhook/",
       "options": {
         "cwd": "${workspaceFolder}"
       }
@@ -39,24 +31,18 @@
       "dependsOn": [
         "Run Django Server",
         "Run React App",
-        "Run Stripe Webhook",
-        "Run Reactivation Webhook"
+        "Run Stripe Webhook"
       ],
       "dependsOrder": "parallel"
     },
     {
-      "label": "Run Machine Update",
+      "label": "Run Machine Update Script",
       "type": "shell",
-      "command": "./.vscode/machineupdate.sh",
-      "problemMatcher": [],
-      "group": {
-        "kind": "build",
-        "isDefault": true
+      "command": "./machineupdate.sh",
+      "options": {
+        "cwd": "${workspaceFolder}"
       },
-      "presentation": {
-        "reveal": "always",
-        "panel": "shared"
-      }
+      "problemMatcher": []
     },
     {
       "label": "Run Django Tests",

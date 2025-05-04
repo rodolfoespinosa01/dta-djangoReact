@@ -2,7 +2,7 @@
 
 from tests.base.base_admin_test import BaseAdminTest
 from django.urls import reverse
-from adminplans.models import AdminPendingSignup
+from users.admin_area.models import AdminPendingSignup
 import stripe
 import json
 from unittest.mock import patch
