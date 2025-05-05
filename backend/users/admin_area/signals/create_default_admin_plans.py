@@ -4,7 +4,7 @@ from users.admin_area.models import AdminPlan
 
 @receiver(post_migrate)
 def create_default_admin_plans(sender, **kwargs):
-    if sender.name != 'adminplans':
+    if sender.name != 'users.admin_area':
         return
 
     default_plans = [

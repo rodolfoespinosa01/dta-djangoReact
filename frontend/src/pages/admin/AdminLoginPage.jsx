@@ -11,20 +11,26 @@ function AdminLoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const response = await fetch('http://localhost:8000/api/users/admin_login/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: email, password }),
-    });
+    try {
+      const response = await fetch('http://localhost:8000/api/users/admin/login/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username: email, password }),
+      });
 
-    const data = await response.json();
+      const data = await response.json();
 
-    if (response.ok) {
-      login(data);
-      localStorage.setItem('refresh_token', data.refresh);
-      navigate('/admin_dashboard');
-    } else {
-      alert(data.error || 'Login failed');
+      if (response.ok) {
+        login(data);
+        localStorage.setItem('refresh_token', data.refresh);
+        navigate('/admin_dashboard');
+      } else {
+        alert(data.error || 'Login failed');
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      alert('Something went wrong. Please try again.');
     }
   };
 
@@ -48,13 +54,12 @@ function AdminLoginPage() {
           onChange={(e) => setPassword(e.target.value)}
           style={{ display: 'block', marginBottom: '1rem', width: '100%' }}
         />
-        <button type="submit">Log In</button>
+        <button type="submit" style={{ width: '100%' }}>Log In</button>
         <p style={{ marginTop: '1rem' }}>
           <a href="/admin_forgot_password" style={{ color: 'blue', textDecoration: 'underline' }}>
             Forgot your password?
           </a>
         </p>
-
       </form>
     </div>
   );
