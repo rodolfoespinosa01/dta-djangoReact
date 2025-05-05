@@ -8,6 +8,8 @@ from users.admin_area.tasks.admin_register import admin_register
 from users.admin_area.tasks.admin_get_pending_signup import admin_get_pending_signup
 from users.admin_area.tasks.admin_cancel_subscription import admin_cancel_subscription
 from users.admin_area.tasks.admin_stripe_webhook import admin_stripe_webhook
+from users.admin_area.tasks.admin_create_checkout_session import admin_create_checkout_session
+
 
 urlpatterns = [
     path('login/', AdminLoginView.as_view(), name='admin_login'),
@@ -22,5 +24,6 @@ urlpatterns = [
     path('cancel_auto_renew/', admin_cancel_subscription),
 
     path('stripe_webhook/', admin_stripe_webhook, name='admin_stripe_webhook'),
+    path('admin_create_checkout_session/', admin_create_checkout_session, name='admin_create_checkout_session'),
 
 ]
