@@ -4,8 +4,8 @@ from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.test import APITestCase
 from rest_framework.test import APIClient 
-from users.models import CustomUser
-from adminplans.models import AdminProfile
+from core.models.custom_user import CustomUser
+from users.admin_area.models import AdminProfile
 from tests.base.base_admin_test import BaseAdminTest
 
 class AdminDashboardAccessTest(BaseAdminTest):
@@ -33,6 +33,6 @@ class AdminDashboardAccessTest(BaseAdminTest):
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {str(refresh.access_token)}')
 
     def test_expired_admin_blocked_from_dashboard(self):
-        response = self.client.get("/api/adminplans/admin_dashboard/")
+        response = self.client.get("/api/admin/dashboard/")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertIn("subscription has ended", response.data.get("error", ""))
