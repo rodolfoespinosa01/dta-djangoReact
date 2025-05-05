@@ -1,8 +1,8 @@
 from django.apps import AppConfig
 
-class AdminplansConfig(AppConfig):
+class AdminAreaConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'adminplans'
+    name = 'users.admin_area'
 
     def ready(self):
-        import adminplans.signals
+        import users.admin_area.signals
