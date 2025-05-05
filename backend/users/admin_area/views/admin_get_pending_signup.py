@@ -3,7 +3,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 
-from adminplans.models import AdminPendingSignup
+from users.admin_area.models import AdminPendingSignup
 
 @api_view(['GET'])  # ✅ Only accepts GET requests
 @permission_classes([AllowAny])  # 🔓 Public endpoint (used before user is created)
