@@ -3,6 +3,7 @@ import json
 
 from django.conf import settings
 from django.utils.crypto import get_random_string
+from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -10,6 +11,7 @@ from rest_framework import status
 
 from core.models import CustomUser
 from users.admin_area.models import Plan, PendingSignup
+from users.admin_area.utils.account_history import log_account_event
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -53,7 +55,7 @@ def create_checkout_session(request):
         plan = Plan.objects.get(name=actual_plan_name)
         customer = stripe.Customer.create(email=email)
 
-        # Create Stripe session (subscription mode for all plans)
+        # Create Stripe session
         session = stripe.checkout.Session.create(
             mode='subscription',
             payment_method_types=['card'],
@@ -63,11 +65,31 @@ def create_checkout_session(request):
                 'quantity': 1,
             }],
             metadata={
-                'plan_name': plan_name  # Keep original to detect trial in webhook
+                'plan_name': plan_name
             },
             success_url='http://localhost:3000/admin_thank_you?session_id={CHECKOUT_SESSION_ID}',
             cancel_url='http://localhost:3000/admin_plans',
         )
+
+        # Save PendingSignup for token-based registration
+        PendingSignup.objects.create(
+            email=email,
+            session_id=session.id,
+            subscription_id=session.subscription,
+            is_used=False,
+            token=get_random_string(32)
+        )
+
+        # ✅ Log Stripe Payment to AccountHistory — user will be resolved later
+        log_account_event(
+            email=email,
+            event_type='stripe_payment',
+            plan_name=plan.name,
+            stripe_customer_id=customer.id,
+            stripe_subscription_id=session.subscription,
+            subscription_start=timezone.now()
+        )
+
 
         return Response({'url': session.url}, status=status.HTTP_200_OK)
 
