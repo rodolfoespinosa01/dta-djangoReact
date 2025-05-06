@@ -11,14 +11,14 @@ from rest_framework.permissions import AllowAny
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from users.admin_area.models import AdminPlan, AdminProfile, AdminPendingSignup
+from users.admin_area.models import Plan, Profile, PendingSignup
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 User = get_user_model()
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
-def admin_register(request):
+def register(request):
     data = request.data
     email = data.get('email')
     password = data.get('password')
@@ -28,8 +28,8 @@ def admin_register(request):
         return Response({'error': 'Missing fields'}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
-        pending = AdminPendingSignup.objects.get(token=token)
-    except AdminPendingSignup.DoesNotExist:
+        pending = PendingSignup.objects.get(token=token)
+    except PendingSignup.DoesNotExist:
         return Response({'error': 'Invalid or expired token'}, status=status.HTTP_404_NOT_FOUND)
 
     session_id = pending.session_id
@@ -50,8 +50,8 @@ def admin_register(request):
     is_trial = raw_plan_name == 'adminTrial'
 
     try:
-        plan = AdminPlan.objects.get(name=actual_plan_name)
-    except AdminPlan.DoesNotExist:
+        plan = Plan.objects.get(name=actual_plan_name)
+    except Plan.DoesNotExist:
         return Response({'error': 'Plan not found'}, status=status.HTTP_404_NOT_FOUND)
 
     plan_mapping = {
@@ -73,22 +73,22 @@ def admin_register(request):
     # AdminProfile creation
     now = timezone.now()
     profile_data = {
-        'admin_stripe_customer_id': customer_id,
-        'admin_stripe_subscription_id': subscription_id,
+        'stripe_customer_id': customer_id,
+        'stripe_subscription_id': subscription_id,
         'subscription_started_at': now,
     }
 
     if is_trial:
         profile_data['trial_start_date'] = now
         profile_data['next_billing_date'] = now + relativedelta(days=14)
-    elif subscription_status == 'admin_monthly':
+    elif subscription_status == 'monthly':
         profile_data['next_billing_date'] = now + relativedelta(months=1)
-    elif subscription_status == 'admin_quarterly':
+    elif subscription_status == 'quarterly':
         profile_data['next_billing_date'] = now + relativedelta(months=3)
-    elif subscription_status == 'admin_annual':
+    elif subscription_status == 'annual':
         profile_data['next_billing_date'] = now + relativedelta(months=12)
 
-    AdminProfile.objects.get_or_create(user=user, defaults=profile_data)
+    Profile.objects.get_or_create(user=user, defaults=profile_data)
 
     # Handle setup intent mode if needed
     if checkout_session.mode == 'setup':

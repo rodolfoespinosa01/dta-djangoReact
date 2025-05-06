@@ -6,14 +6,14 @@ from django.conf import settings
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 
-from users.admin_area.models import AdminPlan, AdminPendingSignup
+from users.admin_area.models import Plan, PendingSignup
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 endpoint_secret = settings.STRIPE_WEBHOOK_SECRET
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
-def admin_stripe_webhook(request):
+def stripe_webhook(request):
     token = get_random_string(length=64)
     payload = request.body
     sig_header = request.META.get("HTTP_STRIPE_SIGNATURE")
@@ -51,20 +51,20 @@ def admin_stripe_webhook(request):
         plan_name = 'adminMonthly' if raw_plan_name == 'adminTrial' else raw_plan_name
 
         try:
-            plan = AdminPlan.objects.get(name=plan_name)
-        except AdminPlan.DoesNotExist:
-            print(f"❌ AdminPlan not found for: {plan_name}")
+            plan = Plan.objects.get(name=plan_name)
+        except Plan.DoesNotExist:
+            print(f"❌ Plan not found for: {plan_name}")
             return HttpResponse(status=500)
 
         try:
-            AdminPendingSignup.objects.create(
+            PendingSignup.objects.create(
                 email=customer_email,
                 session_id=session_id,
                 token=token,
                 plan=raw_plan_name,  # Keep original for clarity in admin view
                 subscription_id=subscription_id
             )
-            print(f"✅ AdminPendingSignup saved for {customer_email}")
+            print(f"✅ PendingSignup saved for {customer_email}")
 
             registration_link = f"http://localhost:3000/admin_register?token={token}"
             print("\n" + "=" * 60)
@@ -75,7 +75,7 @@ def admin_stripe_webhook(request):
             print("=" * 60 + "\n")
 
         except Exception as e:
-            print(f"❌ Error saving AdminPendingSignup: {str(e)}")
+            print(f"❌ Error saving PendingSignup: {str(e)}")
             return HttpResponse(status=500)
 
     return HttpResponse(status=200)

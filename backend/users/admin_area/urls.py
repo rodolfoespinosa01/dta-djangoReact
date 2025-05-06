@@ -1,29 +1,34 @@
+# backend/users/admin_area/urls.py
+
 from django.urls import path
-from users.admin_area.views.admin_dashboard import AdminDashboardView
-from users.admin_area.views.admin_forgot_password import AdminForgotPasswordView
-from users.admin_area.views.admin_reset_password_confirm import AdminResetPasswordConfirmView
-from users.admin_area.views.admin_login import AdminLoginView
-
-from users.admin_area.tasks.admin_register import admin_register
-from users.admin_area.tasks.admin_get_pending_signup import admin_get_pending_signup
-from users.admin_area.tasks.admin_cancel_subscription import admin_cancel_subscription
-from users.admin_area.tasks.admin_stripe_webhook import admin_stripe_webhook
-from users.admin_area.tasks.admin_create_checkout_session import admin_create_checkout_session
-
+# 🔐 Auth
+from users.admin_area.views.auth.register import register
+from users.admin_area.views.auth.token_login import TokenObtainPairView
+from users.admin_area.views.auth.get_pending_signup import get_pending_signup
+# Password
+from users.admin_area.views.password.forgot_password import ForgotPasswordView
+from users.admin_area.views.password.reset_password_confirm import ResetPasswordConfirmView
+# 📊 Dashboard
+from users.admin_area.views.dashboard.dashboard import DashboardView
+# 💳 Billing
+from users.admin_area.views.billing.create_checkout_session import create_checkout_session
+from users.admin_area.views.billing.stripe_webhook import stripe_webhook
+from users.admin_area.views.billing.cancel_subscription import cancel_subscription
 
 urlpatterns = [
-    path('login/', AdminLoginView.as_view(), name='admin_login'),
-    path('dashboard/', AdminDashboardView.as_view(), name='admin_dashboard'),
+    # 🔐 Auth
+    path('register/', register, name='register'),
+    path('login/', TokenObtainPairView.as_view(), name='login'),
+    path('pending_signup/<str:token>/', get_pending_signup, name='get_pending_signup'),
 
-    path('register/', admin_register, name='admin_register'),
-    path('pending_signup/<str:token>/', admin_get_pending_signup),
+    # Password
+    path('forgot_password/', ForgotPasswordView.as_view()),
+    path('reset_password_confirm/', ResetPasswordConfirmView.as_view()),
+    # 📊 Dashboard
+    path('dashboard/', DashboardView.as_view()),
 
-    path('forgot_password/', AdminForgotPasswordView.as_view(), name='admin_forgot_password'),
-    path('reset_password/confirm/', AdminResetPasswordConfirmView.as_view(), name='admin_reset_password_confirm'),
-
-    path('cancel_auto_renew/', admin_cancel_subscription),
-
-    path('stripe_webhook/', admin_stripe_webhook, name='admin_stripe_webhook'),
-    path('admin_create_checkout_session/', admin_create_checkout_session, name='admin_create_checkout_session'),
-
+    # 💳 Billing
+    path('create_checkout_session/', create_checkout_session, name='create_checkout_session'),
+    path('stripe_webhook/', stripe_webhook, name='stripe_webhook'),
+    path('cancel_subscription/', cancel_subscription, name='cancel_subscription'),
 ]

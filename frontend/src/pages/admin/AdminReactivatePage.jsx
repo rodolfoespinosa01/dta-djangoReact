@@ -14,7 +14,7 @@ function AdminReactivatePage() {
     setError(null);
 
     try {
-      const res = await fetch('http://localhost:8000/api/adminplans/admin_reactivate_checkout/', {
+      const res = await fetch('http://localhost:8000/api/users/admin/reactivate_checkout/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,3 +1,3 @@
 # backend/users/admin_area/serializers/__init__.py
-from .admin_forgot_password_serializer import AdminForgotPasswordSerializer
-from .admin_reset_password_serializer import AdminResetPasswordSerializer
+from .forgot_password_serializer import ForgotPasswordSerializer
+from .reset_password_serializer import ResetPasswordSerializer
