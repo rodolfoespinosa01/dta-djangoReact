@@ -1,12 +1,12 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from users.admin_area.serializers import AdminForgotPasswordSerializer
+from users.admin_area.serializers.forgot_password_serializer import ForgotPasswordSerializer
 
-class AdminForgotPasswordView(APIView):
+class ForgotPasswordView(APIView):
     def post(self, request):
-        serializer = AdminForgotPasswordSerializer(data=request.data)
+        serializer = ForgotPasswordSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response({"detail": "Password reset link sent (check terminal)."})
+            return Response({"detail": "Password reset email sent."}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

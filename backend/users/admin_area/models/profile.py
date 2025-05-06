@@ -2,13 +2,13 @@ from django.db import models
 from django.utils import timezone
 from core.models import CustomUser
 
-class AdminProfile(models.Model):
-    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='admin_profile')
+class Profile(models.Model):
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='profile')
     trial_start_date = models.DateTimeField(null=True, blank=True)
     subscription_started_at = models.DateTimeField(null=True, blank=True)
     next_billing_date = models.DateTimeField(null=True, blank=True)
-    admin_stripe_customer_id = models.CharField(max_length=100, null=True, blank=True)
-    admin_stripe_subscription_id = models.CharField(max_length=100, null=True, blank=True)
+    stripe_customer_id = models.CharField(max_length=100, null=True, blank=True)
+    stripe_subscription_id = models.CharField(max_length=100, null=True, blank=True)
     auto_renew_cancelled = models.BooleanField(default=False)
     is_canceled = models.BooleanField(default=False)
     canceled_at = models.DateTimeField(null=True, blank=True)

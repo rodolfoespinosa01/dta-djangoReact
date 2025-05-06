@@ -18,7 +18,7 @@ function AdminSettings() {
 
     const fetchDashboardData = async () => {
       try {
-        const res = await fetch('http://localhost:8000/api/users/admin_dashboard/', {
+        const res = await fetch('http://localhost:8000/api/users/admin/dashboard/', {
           headers: {
             Authorization: `Bearer ${accessToken}`
           }
@@ -41,7 +41,7 @@ function AdminSettings() {
 
   const handleCancelAutoRenew = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/users/admin/cancel_auto_renew/', {
+      const res = await fetch('http://localhost:8000/api/users/admin/cancel_subscription/', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -56,7 +56,7 @@ function AdminSettings() {
         setCancelMessage(data.message);
 
         // Refresh dashboard state
-        const refreshRes = await fetch('http://localhost:8000/api/users/admin_dashboard/', {
+        const refreshRes = await fetch('http://localhost:8000/api/users/admin/dashboard/', {
           headers: {
             Authorization: `Bearer ${accessToken}`
           }
@@ -153,7 +153,7 @@ function AdminSettings() {
 
             {dashboardData.is_canceled && (
               <button
-                onClick={() => navigate('/_reactivate')}
+                onClick={() => navigate('/admin_reactivate')}
                 style={{
                   marginTop: '1rem',
                   backgroundColor: '#10b981',

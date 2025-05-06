@@ -1,6 +1,6 @@
 from django.urls import path
-from users.client_area.views.client_dashboard import client_dashboard_view
+from users.client_area.views.dashboard import dashboard_view
 
 urlpatterns = [
-    path('dashboard/', client_dashboard_view, name='client_dashboard'),
+    path('dashboard/', dashboard_view, name='dashboard'),
 ]

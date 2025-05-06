@@ -1,14 +1,12 @@
 from django.contrib import admin
 from users.admin_area.models import (
-    AdminPlan,
-    AdminProfile,
-    AdminPendingSignup,
-    AdminPasswordResetToken,
+    Plan,
+    Profile,
+    PendingSignup,
+    PasswordResetToken,
 )
 
-from users.admin_area.admin_configs.admin_plan_admin import AdminPlanAdmin
-
-admin.site.register(AdminPlan, AdminPlanAdmin)
-admin.site.register(AdminProfile)
-admin.site.register(AdminPendingSignup)
-admin.site.register(AdminPasswordResetToken)
+admin.site.register(Plan)
+admin.site.register(Profile)
+admin.site.register(PendingSignup)
+admin.site.register(PasswordResetToken)

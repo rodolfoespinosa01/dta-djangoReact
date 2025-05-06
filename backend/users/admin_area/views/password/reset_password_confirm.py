@@ -1,13 +1,13 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from users.admin_area.serializers import AdminResetPasswordSerializer
+from users.admin_area.serializers import ResetPasswordSerializer
 
 
 
-class AdminResetPasswordConfirmView(APIView):
+class ResetPasswordConfirmView(APIView):
     def post(self, request):
-        serializer = AdminResetPasswordSerializer(data=request.data)
+        serializer = ResetPasswordSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response({"detail": "Password has been reset successfully."})

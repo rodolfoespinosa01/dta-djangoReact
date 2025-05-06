@@ -16,7 +16,7 @@ function AdminDashboard() {
 
     const fetchTrialStatus = async () => {
       try {
-        const res = await fetch('http://localhost:8000/api/users/admin_dashboard/', {
+        const res = await fetch('http://localhost:8000/api/users/admin/dashboard/', {
           headers: {
             Authorization: `Bearer ${accessToken}`
           }
