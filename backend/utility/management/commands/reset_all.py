@@ -1,5 +1,3 @@
-# backend/users/management/commands/reset_admin_data.py
-
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 
@@ -7,10 +5,11 @@ from users.admin_area.models import (
     Profile,
     PendingSignup,
     PasswordResetToken,
+    AccountHistory,  # ✅ New import
 )
 
 class Command(BaseCommand):
-    help = 'Fully resets admin data (users, tokens, profiles, pending signups) for local testing'
+    help = 'Fully resets admin data (users, tokens, profiles, pending signups, account history) for local testing'
 
     def handle(self, *args, **kwargs):
         User = get_user_model()
@@ -30,5 +29,9 @@ class Command(BaseCommand):
 
         # Delete pending signups
         PendingSignup.objects.all().delete()
+
+        # ✅ Delete account history entries
+        AccountHistory.objects.all().delete()
+        self.stdout.write(self.style.WARNING('🧾 Account history entries deleted.'))
 
         self.stdout.write(self.style.SUCCESS('🎯 All admin test data reset!'))

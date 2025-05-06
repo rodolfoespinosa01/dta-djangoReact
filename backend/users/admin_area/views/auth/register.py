@@ -13,6 +13,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from users.admin_area.models import Plan, Profile, PendingSignup
 
+from users.admin_area.utils.account_history import log_account_event
+
 stripe.api_key = settings.STRIPE_SECRET_KEY
 User = get_user_model()
 
@@ -88,7 +90,16 @@ def register(request):
     elif subscription_status == 'annual':
         profile_data['next_billing_date'] = now + relativedelta(months=12)
 
-    Profile.objects.get_or_create(user=user, defaults=profile_data)
+    profile, created = Profile.objects.get_or_create(user=user, defaults=profile_data)
+
+    log_account_event(
+        user=user,
+        event_type='signup',
+        plan_name=actual_plan_name,
+        stripe_subscription_id=subscription_id,
+        subscription_start=profile.subscription_started_at,
+        subscription_end=profile.next_billing_date
+    )
 
     # Handle setup intent mode if needed
     if checkout_session.mode == 'setup':
