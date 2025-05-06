@@ -9,13 +9,13 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from core.models import CustomUser
-from users.admin_area.models import AdminPlan, AdminPendingSignup
+from users.admin_area.models import Plan, PendingSignup
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
-def admin_create_checkout_session(request):
+def create_checkout_session(request):
     try:
         data = request.data
         plan_name = data.get('plan_name')
@@ -34,14 +34,14 @@ def admin_create_checkout_session(request):
 
         # Prevent free trial abuse
         if plan_name == 'adminTrial':
-            if existing_user and hasattr(existing_user, 'admin_profile'):
-                if existing_user.admin_profile.trial_start_date:
+            if existing_user and hasattr(existing_user, 'profile'):
+                if existing_user.profile.trial_start_date:
                     return Response({
                         'error': 'This email has already used the free trial. Please choose a paid plan.'
                     }, status=status.HTTP_403_FORBIDDEN)
 
         # Prevent pending signup abuse
-        if AdminPendingSignup.objects.filter(email=email, is_used=False).exists():
+        if PendingSignup.objects.filter(email=email, is_used=False).exists():
             return Response({
                 'error': 'A registration link has already been generated for this email. Please complete your registration or wait for it to expire.'
             }, status=status.HTTP_403_FORBIDDEN)
@@ -50,7 +50,7 @@ def admin_create_checkout_session(request):
         actual_plan_name = 'adminMonthly' if plan_name == 'adminTrial' else plan_name
 
         # Lookup Stripe plan
-        plan = AdminPlan.objects.get(name=actual_plan_name)
+        plan = Plan.objects.get(name=actual_plan_name)
         customer = stripe.Customer.create(email=email)
 
         # Create Stripe session (subscription mode for all plans)
@@ -71,7 +71,7 @@ def admin_create_checkout_session(request):
 
         return Response({'url': session.url}, status=status.HTTP_200_OK)
 
-    except AdminPlan.DoesNotExist:
+    except Plan.DoesNotExist:
         return Response({'error': 'Plan not found'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         print("❌ Error creating checkout session:", str(e))

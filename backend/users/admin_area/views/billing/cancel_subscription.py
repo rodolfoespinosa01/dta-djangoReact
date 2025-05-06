@@ -10,14 +10,14 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def admin_cancel_subscription(request):
+def cancel_subscription(request):
     user = request.user
 
     if user.role != 'admin':
         return Response({'error': 'Unauthorized'}, status=status.HTTP_403_FORBIDDEN)
 
-    profile = user.admin_profile
-    subscription_id = profile.admin_stripe_subscription_id
+    profile = user.profile
+    subscription_id = profile.stripe_subscription_id
     now = timezone.now()
 
     if not subscription_id:

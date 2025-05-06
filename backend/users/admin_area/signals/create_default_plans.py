@@ -1,9 +1,9 @@
 from django.db.models.signals import post_migrate
 from django.dispatch import receiver
-from users.admin_area.models import AdminPlan
+from users.admin_area.models import Plan
 
 @receiver(post_migrate)
-def create_default_admin_plans(sender, **kwargs):
+def create_default_plans(sender, **kwargs):
     if sender.name != 'users.admin_area':
         return
 
@@ -35,4 +35,4 @@ def create_default_admin_plans(sender, **kwargs):
     ]
 
     for plan in default_plans:
-        AdminPlan.objects.get_or_create(name=plan['name'], defaults=plan)
+        Plan.objects.get_or_create(name=plan['name'], defaults=plan)

@@ -2,10 +2,10 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions, status
 from django.utils.timezone import now
-from users.admin_area.models import AdminProfile
+from users.admin_area.models import Profile
 
 
-class AdminDashboardView(APIView):
+class DashboardView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
@@ -15,8 +15,8 @@ class AdminDashboardView(APIView):
             return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
 
         try:
-            profile = user.admin_profile
-        except AdminProfile.DoesNotExist:
+            profile = user.profile
+        except Profile.DoesNotExist:
             return Response({"error": "Admin profile not found."}, status=status.HTTP_404_NOT_FOUND)
 
         # ✅ Check if subscription has truly ended

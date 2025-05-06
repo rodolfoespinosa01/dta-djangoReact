@@ -1,8 +1,8 @@
 from django.urls import path
-from users.superadmin_area.views import superadmin_dashboard
-from users.superadmin_area.views.superadmin_token_login import SuperAdminTokenObtainPairView
+from users.superadmin_area.views import dashboard
+from users.superadmin_area.views.token_login import TokenObtainPairView
 
 urlpatterns = [
-    path('dashboard/', superadmin_dashboard, name='superadmin_dashboard'),
-    path('login/', SuperAdminTokenObtainPairView.as_view(), name='superadmin_login'),
+    path('dashboard/', dashboard, name='dashboard'),
+    path('login/', TokenObtainPairView.as_view(), name='login'),
 ]

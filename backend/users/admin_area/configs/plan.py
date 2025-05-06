@@ -1,7 +1,7 @@
 from django.contrib import admin
-from users.admin_area.models import AdminPlan
+from users.admin_area.models import Plan
 
-class AdminPlanAdmin(admin.ModelAdmin):
+class Plan(admin.ModelAdmin):
     list_display = ('name', 'description', 'display_price', 'stripe_price_id')
 
     def display_price(self, obj):

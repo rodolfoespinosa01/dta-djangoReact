@@ -2,7 +2,7 @@ from django.db import models
 from django.utils import timezone
 from core.models import CustomUser
 
-class AdminPasswordResetToken(models.Model):
+class PasswordResetToken(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     token = models.CharField(max_length=64)
     created_at = models.DateTimeField(auto_now_add=True)

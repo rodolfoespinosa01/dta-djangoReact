@@ -6,11 +6,11 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from core.models import CustomUser
-from users.admin_area.models import AdminProfile, AdminPlan
+from users.admin_area.models import Profile, Plan
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def superadmin_dashboard(request):
+def dashboard(request):
     user = request.user
 
     if not user.is_superuser:
@@ -33,14 +33,14 @@ def superadmin_dashboard(request):
             price = ""
             next_billing_str = ""
         elif status_label == 'admin_trial':
-            monthly_plan = AdminPlan.objects.filter(name='adminMonthly').first()
+            monthly_plan = Plan.objects.filter(name='adminMonthly').first()
             price = monthly_plan.price_dollars() if monthly_plan else "Unknown"
             next_billing = profile.trial_start_date + timedelta(days=14) if profile.trial_start_date else None
             next_billing_str = next_billing.strftime('%Y-%m-%d') if next_billing else ""
         else:
             # Paid plan
             plan_name = status_label.replace('admin_', 'admin').capitalize()
-            plan = AdminPlan.objects.filter(name__icontains=plan_name).first()
+            plan = Plan.objects.filter(name__icontains=plan_name).first()
             price = plan.price_dollars() if plan else "Unknown"
             next_billing_str = profile.next_billing_date.strftime('%Y-%m-%d') if profile.next_billing_date else ""
 

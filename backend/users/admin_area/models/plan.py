@@ -1,6 +1,6 @@
 from django.db import models
 
-class AdminPlan(models.Model):
+class Plan(models.Model):
     PLAN_CHOICES = [
         ('adminTrial', 'Free Admin Trial'),
         ('adminMonthly', 'Monthly Admin Plan'),
