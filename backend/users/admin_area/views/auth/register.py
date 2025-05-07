@@ -12,8 +12,7 @@ from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from users.admin_area.models import Plan, Profile, PendingSignup
-
-from users.admin_area.utils.account_history import log_account_event
+from users.admin_area.utils.account_logger import log_account_event
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 User = get_user_model()
@@ -35,7 +34,7 @@ def register(request):
         return Response({'error': 'Invalid or expired token'}, status=status.HTTP_404_NOT_FOUND)
 
     session_id = pending.session_id
-    subscription_id = pending.subscription_id
+    subscription_id = pending.subscription_id or checkout_session.get("subscription")
 
     try:
         checkout_session = stripe.checkout.Session.retrieve(session_id, expand=['customer', 'setup_intent'])
@@ -72,7 +71,6 @@ def register(request):
     user.subscription_status = subscription_status
     user.save()
 
-    # AdminProfile creation
     now = timezone.now()
     profile_data = {
         'stripe_customer_id': customer_id,
@@ -83,25 +81,16 @@ def register(request):
     if is_trial:
         profile_data['trial_start_date'] = now
         profile_data['next_billing_date'] = now + relativedelta(days=14)
-    elif subscription_status == 'monthly':
+    elif subscription_status == 'admin_monthly':
         profile_data['next_billing_date'] = now + relativedelta(months=1)
-    elif subscription_status == 'quarterly':
+    elif subscription_status == 'admin_quarterly':
         profile_data['next_billing_date'] = now + relativedelta(months=3)
-    elif subscription_status == 'annual':
+    elif subscription_status == 'admin_annual':
         profile_data['next_billing_date'] = now + relativedelta(months=12)
 
-    profile, created = Profile.objects.get_or_create(user=user, defaults=profile_data)
+    Profile.objects.get_or_create(user=user, defaults=profile_data)
 
-    log_account_event(
-        user=user,
-        event_type='signup',
-        plan_name=actual_plan_name,
-        stripe_subscription_id=subscription_id,
-        subscription_start=profile.subscription_started_at,
-        subscription_end=profile.next_billing_date
-    )
-
-    # Handle setup intent mode if needed
+    # Attach setup intent if exists
     if checkout_session.mode == 'setup':
         setup_intent = checkout_session.get('setup_intent')
         if setup_intent and setup_intent.get('payment_method'):
@@ -113,8 +102,19 @@ def register(request):
             except stripe.error.StripeError as e:
                 return Response({'error': f'Failed to attach payment method: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Cleanup token so it's one-time use only
+    # Delete pending token
     pending.delete()
+
+    # ✅ Log signup event
+    log_account_event(
+        user=user,
+        email=user.email,
+        event_type='signup',
+        plan_name=plan.name,
+        stripe_customer_id=customer_id,
+        stripe_subscription_id=subscription_id,
+        subscription_start=now
+    )
 
     # JWT response
     refresh = RefreshToken.for_user(user)

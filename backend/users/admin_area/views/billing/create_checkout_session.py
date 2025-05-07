@@ -11,7 +11,6 @@ from rest_framework import status
 
 from core.models import CustomUser
 from users.admin_area.models import Plan, PendingSignup
-from users.admin_area.utils.account_history import log_account_event
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -26,36 +25,29 @@ def create_checkout_session(request):
         if not plan_name or not email:
             return Response({'error': 'Missing plan or email'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Check if user already exists
+        # 🔒 Block if user already exists (active, inactive, canceled, etc.)
         existing_user = CustomUser.objects.filter(email=email).first()
         if existing_user:
-            if existing_user.subscription_status in ['admin_trial', 'admin_monthly', 'admin_quarterly', 'admin_annual', 'admin_inactive']:
-                return Response({
-                    'error': 'This email is already associated with an account. Please log in to manage or upgrade your plan.'
-                }, status=status.HTTP_403_FORBIDDEN)
+            return Response({
+                'error': 'This email is already associated with an account. Please log in or reactivate your plan.'
+            }, status=status.HTTP_403_FORBIDDEN)
 
-        # Prevent free trial abuse
-        if plan_name == 'adminTrial':
-            if existing_user and hasattr(existing_user, 'profile'):
-                if existing_user.profile.trial_start_date:
-                    return Response({
-                        'error': 'This email has already used the free trial. Please choose a paid plan.'
-                    }, status=status.HTTP_403_FORBIDDEN)
-
-        # Prevent pending signup abuse
+        # 🔒 Block if there is an unused PendingSignup
         if PendingSignup.objects.filter(email=email, is_used=False).exists():
             return Response({
                 'error': 'A registration link has already been generated for this email. Please complete your registration or wait for it to expire.'
             }, status=status.HTTP_403_FORBIDDEN)
 
-        # Normalize plan (adminTrial still uses adminMonthly price ID)
+        # Normalize plan name for trial
         actual_plan_name = 'adminMonthly' if plan_name == 'adminTrial' else plan_name
 
-        # Lookup Stripe plan
+        # Get Plan from DB
         plan = Plan.objects.get(name=actual_plan_name)
+
+        # Create Stripe Customer
         customer = stripe.Customer.create(email=email)
 
-        # Create Stripe session
+        # Create Stripe Checkout Session
         session = stripe.checkout.Session.create(
             mode='subscription',
             payment_method_types=['card'],
@@ -65,31 +57,21 @@ def create_checkout_session(request):
                 'quantity': 1,
             }],
             metadata={
-                'plan_name': plan_name
+                'plan_name': plan_name  # Use original input (even if it's adminTrial)
             },
             success_url='http://localhost:3000/admin_thank_you?session_id={CHECKOUT_SESSION_ID}',
             cancel_url='http://localhost:3000/admin_plans',
         )
 
-        # Save PendingSignup for token-based registration
+        # Save pending signup (actual registration happens later)
         PendingSignup.objects.create(
             email=email,
             session_id=session.id,
             subscription_id=session.subscription,
             is_used=False,
-            token=get_random_string(32)
+            token=get_random_string(32),
+            plan=plan_name,
         )
-
-        # ✅ Log Stripe Payment to AccountHistory — user will be resolved later
-        log_account_event(
-            email=email,
-            event_type='stripe_payment',
-            plan_name=plan.name,
-            stripe_customer_id=customer.id,
-            stripe_subscription_id=session.subscription,
-            subscription_start=timezone.now()
-        )
-
 
         return Response({'url': session.url}, status=status.HTTP_200_OK)
 
