@@ -5,7 +5,8 @@ from users.admin_area.models import (
     Profile,
     PendingSignup,
     PasswordResetToken,
-    AccountHistory,  # ✅ New import
+    AccountHistory,
+    PreCheckoutEmail
 )
 
 class Command(BaseCommand):
@@ -19,6 +20,9 @@ class Command(BaseCommand):
 
         # Delete password reset tokens
         PasswordResetToken.objects.all().delete()
+        self.stdout.write(self.style.WARNING('PW Tokens deleted.'))
+        PreCheckoutEmail.objects.all().delete()
+        self.stdout.write(self.style.WARNING('Pre Checkout Email entries deleted.'))
 
         # Delete profiles not linked to superadmin
         try:
@@ -29,9 +33,10 @@ class Command(BaseCommand):
 
         # Delete pending signups
         PendingSignup.objects.all().delete()
+        self.stdout.write(self.style.WARNING('Pending Signup entries deleted.'))
 
         # ✅ Delete account history entries
         AccountHistory.objects.all().delete()
-        self.stdout.write(self.style.WARNING('🧾 Account history entries deleted.'))
+        self.stdout.write(self.style.WARNING('Account history entries deleted.'))
 
         self.stdout.write(self.style.SUCCESS('🎯 All admin test data reset!'))
