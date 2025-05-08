@@ -34,18 +34,19 @@ def register(request):
         return Response({'error': 'Invalid or expired token'}, status=status.HTTP_404_NOT_FOUND)
 
     session_id = pending.session_id
-    subscription_id = pending.subscription_id or checkout_session.get("subscription")
 
     try:
         checkout_session = stripe.checkout.Session.retrieve(session_id, expand=['customer', 'setup_intent'])
     except stripe.error.StripeError as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    # ✅ Now it's safe to access the subscription from the session
+    subscription_id = pending.subscription_id or checkout_session.get("subscription")
+
     customer_obj = checkout_session.get("customer")
     customer_id = customer_obj["id"] if isinstance(customer_obj, dict) else customer_obj
     customer_email = checkout_session.get("customer_email") or customer_obj.get("email")
 
-    # Normalize adminTrial to adminMonthly internally
     raw_plan_name = checkout_session.get('metadata', {}).get('plan_name')
     actual_plan_name = 'adminMonthly' if raw_plan_name == 'adminTrial' else raw_plan_name
     is_trial = raw_plan_name == 'adminTrial'
@@ -90,7 +91,6 @@ def register(request):
 
     Profile.objects.get_or_create(user=user, defaults=profile_data)
 
-    # Attach setup intent if exists
     if checkout_session.mode == 'setup':
         setup_intent = checkout_session.get('setup_intent')
         if setup_intent and setup_intent.get('payment_method'):
@@ -102,10 +102,8 @@ def register(request):
             except stripe.error.StripeError as e:
                 return Response({'error': f'Failed to attach payment method: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Delete pending token
     pending.delete()
 
-    # ✅ Log signup event
     log_account_event(
         user=user,
         email=user.email,
@@ -116,7 +114,6 @@ def register(request):
         subscription_start=now
     )
 
-    # JWT response
     refresh = RefreshToken.for_user(user)
     refresh['email'] = user.email
     refresh['role'] = user.role

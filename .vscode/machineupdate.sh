@@ -14,7 +14,7 @@ echo "🔧 Running migrate..."
 python backend/manage.py migrate
 
 echo "🧹 Clearing pending admin tokens..."
-python backend/manage.py reset_admins
+python backend/manage.py reset_all
 
 echo "💻 Installing frontend dependencies..."
 cd frontend

@@ -6,11 +6,19 @@ from users.admin_area.models import (
     PasswordResetToken,
     AccountHistory,
     PendingPlanActivation,
+    PreCheckoutEmail,
 )
 
+# Registering models normally
 admin.site.register(Plan)
 admin.site.register(Profile)
 admin.site.register(AccountHistory)
 admin.site.register(PendingPlanActivation)
 admin.site.register(PendingSignup)
 admin.site.register(PasswordResetToken)
+
+@admin.register(PreCheckoutEmail)
+class PreCheckoutEmailAdmin(admin.ModelAdmin):
+    list_display = ('email', 'created_at')
+    readonly_fields = ('created_at',)
+

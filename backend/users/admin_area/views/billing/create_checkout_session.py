@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from core.models import CustomUser
-from users.admin_area.models import Plan, PendingSignup
+from users.admin_area.models import Plan, PendingSignup, PreCheckoutEmail
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -21,6 +21,8 @@ def create_checkout_session(request):
         data = request.data
         plan_name = data.get('plan_name')
         email = data.get('email')
+        # Save for tracking unpaid email attempts
+        PreCheckoutEmail.objects.get_or_create(email=email)
 
         if not plan_name or not email:
             return Response({'error': 'Missing plan or email'}, status=status.HTTP_400_BAD_REQUEST)

@@ -6,6 +6,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 
+from users.admin_area.utils.account_logger import log_account_event
+
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 @api_view(['POST'])
@@ -18,6 +20,8 @@ def cancel_subscription(request):
 
     profile = user.profile
     subscription_id = profile.stripe_subscription_id
+    customer_id = profile.stripe_customer_id
+    plan_name = user.subscription_status
     now = timezone.now()
 
     if not subscription_id:
@@ -26,7 +30,6 @@ def cancel_subscription(request):
     try:
         # Free trial user logic
         if profile.trial_start_date and not profile.is_trial_expired():
-            # Free trial still active — deactivate immediately
             profile.is_canceled = True
             profile.subscription_active = False
             profile.canceled_at = now
@@ -35,26 +38,29 @@ def cancel_subscription(request):
             profile.auto_renew_cancelled = True
             profile.save()
 
+            log_account_event(
+                user=user,
+                event_type='cancel',
+                plan_name=plan_name,
+                stripe_customer_id=customer_id,
+                stripe_subscription_id=subscription_id,
+                cancelled_at=now
+            )
+
             return Response({
                 'success': True,
                 'message': 'Your free trial has been canceled and your account is now inactive.'
             }, status=status.HTTP_200_OK)
 
         else:
-            # Paid subscription — cancel at period end
-            stripe.Subscription.modify(
-                subscription_id,
-                cancel_at_period_end=True
-            )
-
-            # Fetch updated subscription info
+            stripe.Subscription.modify(subscription_id, cancel_at_period_end=True)
             subscription = stripe.Subscription.retrieve(subscription_id)
             current_period_end = subscription.get('current_period_end')
 
             if current_period_end:
                 subscription_end = timezone.datetime.fromtimestamp(current_period_end, tz=timezone.utc)
             else:
-                subscription_end = profile.next_billing_date or (now + timezone.timedelta(days=30))  # fallback
+                subscription_end = profile.next_billing_date or (now + timezone.timedelta(days=30))
 
             profile.is_canceled = True
             profile.canceled_at = now
@@ -62,6 +68,15 @@ def cancel_subscription(request):
             profile.subscription_end_date = subscription_end
             profile.next_billing_date = None
             profile.save()
+
+            log_account_event(
+                user=user,
+                event_type='cancel',
+                plan_name=plan_name,
+                stripe_customer_id=customer_id,
+                stripe_subscription_id=subscription_id,
+                cancelled_at=now
+            )
 
             return Response({
                 'success': True,
