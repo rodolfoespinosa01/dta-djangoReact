@@ -1,4 +1,3 @@
-import json
 import stripe
 from django.http import HttpResponse
 from django.utils.crypto import get_random_string
@@ -7,7 +6,7 @@ from django.conf import settings
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 
-from users.admin_area.models import Plan, PendingSignup
+from users.admin_area.models import Plan, PendingSignup, PreCheckoutEmail
 from users.admin_area.utils.account_logger import log_account_event
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -28,27 +27,25 @@ def stripe_webhook(request):
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
         session_id = session.get('id')
-        subscription_id = session.get('subscription')
-        customer_id = session.get('customer')
-        raw_plan_name = session.get('metadata', {}).get('plan_name')
         customer_email = session.get('customer_email')
+        subscription_id = session.get('subscription')
 
-        # If email is missing, retrieve from customer object
-        if not customer_email and customer_id:
-            try:
+        # Fallback for customer email
+        if not customer_email:
+            customer_id = session.get('customer')
+            if customer_id:
                 customer = stripe.Customer.retrieve(customer_id)
                 customer_email = customer.get('email')
-            except Exception as e:
-                print(f"❌ Failed to retrieve customer: {str(e)}")
 
         print(f"🔍 Webhook triggered for session: {session_id}")
         print(f"📧 Email: {customer_email}")
         print(f"🧾 Subscription ID: {subscription_id}")
 
-        # Normalize plan
+        raw_plan_name = session.get('metadata', {}).get('plan_name')
         if not raw_plan_name:
             print("❌ Missing plan_name in metadata")
             return HttpResponse(status=500)
+
         plan_name = 'adminMonthly' if raw_plan_name == 'adminTrial' else raw_plan_name
 
         try:
@@ -57,42 +54,46 @@ def stripe_webhook(request):
             print(f"❌ Plan not found for: {plan_name}")
             return HttpResponse(status=500)
 
-        # ✅ Extract transaction ID from invoice (expand only charge)
-        stripe_transaction_id = None
-        invoice_id = session.get('invoice')
-        if invoice_id:
-            try:
-                invoice = stripe.Invoice.retrieve(invoice_id, expand=["charge"])
-                if invoice.get("charge"):
-                    stripe_transaction_id = invoice["charge"]["id"]
-            except Exception as e:
-                print(f"⚠️ Failed to retrieve invoice charge: {str(e)}")
+        token = get_random_string(64)
+        # Cleanup email from PreCheckoutEmail if it exists
+        PreCheckoutEmail.objects.filter(email=customer_email).delete()
 
-        # Prevent duplicates
-        if PendingSignup.objects.filter(session_id=session_id).exists():
+
+        # Check if PendingSignup already exists
+        existing = PendingSignup.objects.filter(session_id=session_id).first()
+        if existing:
             print(f"⚠️ PendingSignup already exists for session: {session_id}, skipping duplicate.")
-        else:
-            try:
-                token = get_random_string(length=64)
-                PendingSignup.objects.create(
-                    email=customer_email,
-                    session_id=session_id,
-                    token=token,
-                    plan=raw_plan_name,
-                    subscription_id=subscription_id
-                )
-                print(f"✅ PendingSignup saved for {customer_email}")
 
-                # Simulated registration email
+            if not existing.is_used:
+                registration_link = f"http://localhost:3000/admin_register?token={existing.token}"
                 print("\n" + "=" * 60)
-                print("📩 Registration email (simulated):")
-                print(f"To: {customer_email}")
+                print("📩 Registration email (reprinted):")
+                print(f"To: {existing.email}")
                 print("Subject: Finish setting up your Admin Account")
-                print(f"➡️ Click to register:\nhttp://localhost:3000/admin_register?token={token}")
+                print(f"➡️ Click to register:\n{registration_link}")
                 print("=" * 60 + "\n")
 
-            except Exception as e:
-                print(f"❌ Error saving PendingSignup: {str(e)}")
-                return HttpResponse(status=500)
+            return HttpResponse(status=200)
+
+        try:
+            PendingSignup.objects.create(
+                email=customer_email,
+                session_id=session_id,
+                token=token,
+                plan=raw_plan_name,
+                subscription_id=subscription_id
+            )
+
+            registration_link = f"http://localhost:3000/admin_register?token={token}"
+            print("\n" + "=" * 60)
+            print("📩 Registration email:")
+            print(f"To: {customer_email}")
+            print("Subject: Finish setting up your Admin Account")
+            print(f"➡️ Click to register:\n{registration_link}")
+            print("=" * 60 + "\n")
+
+        except Exception as e:
+            print(f"❌ Error saving PendingSignup: {str(e)}")
+            return HttpResponse(status=500)
 
     return HttpResponse(status=200)

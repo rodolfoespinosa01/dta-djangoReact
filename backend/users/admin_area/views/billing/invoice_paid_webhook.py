@@ -28,25 +28,32 @@ def invoice_paid_webhook(request):
         subscription_id = invoice.get('subscription')
         customer_id = invoice.get('customer')
         charge_id = invoice.get('charge')
-        email = invoice.get('customer_email')
+        email = invoice.get('customer_email') or invoice.get('customer', {}).get('email')
 
         print(f"💳 Invoice Paid Webhook Triggered")
         print(f"📧 Email: {email or '[unknown]'}")
         print(f"🧾 Subscription ID: {subscription_id}")
         print(f"💰 Charge ID (transaction): {charge_id}")
 
-        # 1. Get first invoice line item price ID
+        # Get the actual Stripe charge object if charge_id is present
+        transaction_id = None
+        if charge_id:
+            try:
+                charge_obj = stripe.Charge.retrieve(charge_id)
+                transaction_id = charge_obj.get('id')
+            except Exception as e:
+                print(f"⚠️ Could not fetch charge object: {e}")
+
+        # Determine the plan name from invoice line items
         plan_name = "unknown_plan"
         try:
             price_id = invoice.get("lines", {}).get("data", [{}])[0].get("price", {}).get("id")
             if price_id:
-                from users.admin_area.models import Plan
                 plan = Plan.objects.get(stripe_price_id=price_id)
                 plan_name = plan.name
         except Exception as e:
             print(f"⚠️ Failed to resolve plan name from invoice: {str(e)}")
 
-        # Log payment to AccountHistory
         try:
             log_account_event(
                 event_type='stripe_payment',
@@ -54,8 +61,8 @@ def invoice_paid_webhook(request):
                 plan_name=plan_name,
                 stripe_customer_id=customer_id,
                 stripe_subscription_id=subscription_id,
-                payment_processed_on=timezone.now(),
-                stripe_transaction_id=charge_id
+                stripe_transaction_id=transaction_id,
+                payment_processed_on=timezone.now()
             )
             print("🧾 Stripe payment logged to account history.")
         except Exception as e:
