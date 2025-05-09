@@ -65,15 +65,6 @@ def create_checkout_session(request):
             cancel_url='http://localhost:3000/admin_plans',
         )
 
-        # Save pending signup (actual registration happens later)
-        PendingSignup.objects.create(
-            email=email,
-            session_id=session.id,
-            subscription_id=session.subscription,
-            is_used=False,
-            token=get_random_string(32),
-            plan=plan_name,
-        )
 
         return Response({'url': session.url}, status=status.HTTP_200_OK)
 

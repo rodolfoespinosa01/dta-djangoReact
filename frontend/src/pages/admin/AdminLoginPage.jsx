@@ -35,32 +35,88 @@ function AdminLoginPage() {
   };
 
   return (
-    <div style={{ padding: '2rem' }}>
-      <h2>Admin Login</h2>
-      <form onSubmit={handleSubmit} style={{ maxWidth: '400px' }}>
-        <input
-          type="email"
-          placeholder="Email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          style={{ display: 'block', marginBottom: '1rem', width: '100%' }}
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          style={{ display: 'block', marginBottom: '1rem', width: '100%' }}
-        />
-        <button type="submit" style={{ width: '100%' }}>Log In</button>
-        <p style={{ marginTop: '1rem' }}>
-          <a href="/admin_forgot_password" style={{ color: 'blue', textDecoration: 'underline' }}>
-            Forgot your password?
-          </a>
-        </p>
-      </form>
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#f3f4f6',
+        padding: '2rem',
+      }}
+    >
+      <div
+        style={{
+          backgroundColor: 'white',
+          padding: '2.5rem',
+          borderRadius: '12px',
+          width: '100%',
+          maxWidth: '420px',
+          boxShadow: '0 8px 20px rgba(0, 0, 0, 0.05)',
+        }}
+      >
+        <h2 style={{ textAlign: 'center', marginBottom: '1.5rem' }}>🔐 Admin Login</h2>
+        <form onSubmit={handleSubmit}>
+          <input
+            type="email"
+            placeholder="Email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '0.75rem',
+              marginBottom: '1rem',
+              border: '1px solid #d1d5db',
+              borderRadius: '6px',
+              fontSize: '1rem',
+            }}
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '0.75rem',
+              marginBottom: '1rem',
+              border: '1px solid #d1d5db',
+              borderRadius: '6px',
+              fontSize: '1rem',
+            }}
+          />
+          <button
+            type="submit"
+            style={{
+              width: '100%',
+              padding: '0.75rem',
+              backgroundColor: '#2563eb',
+              color: 'white',
+              fontWeight: 'bold',
+              fontSize: '1rem',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+            }}
+          >
+            Log In
+          </button>
+          <p style={{ textAlign: 'center', marginTop: '1rem' }}>
+            <a
+              href="/admin_forgot_password"
+              style={{
+                color: '#2563eb',
+                textDecoration: 'none',
+                fontSize: '0.95rem',
+              }}
+            >
+              Forgot your password?
+            </a>
+          </p>
+        </form>
+      </div>
     </div>
   );
 }

@@ -7,6 +7,7 @@ from users.admin_area.models import (
     AccountHistory,
     PendingPlanActivation,
     PreCheckoutEmail,
+    ScheduledSubscription,
 )
 
 # Registering models normally
@@ -22,3 +23,8 @@ class PreCheckoutEmailAdmin(admin.ModelAdmin):
     list_display = ('email', 'created_at')
     readonly_fields = ('created_at',)
 
+@admin.register(ScheduledSubscription)
+class ScheduledSubscriptionAdmin(admin.ModelAdmin):
+    list_display = ['user', 'plan', 'starts_on', 'created_at']
+    list_filter = ['plan']
+    search_fields = ['user__email', 'stripe_subscription_id']
