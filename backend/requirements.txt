@@ -8,8 +8,10 @@ click==8.1.8
 click-didyoumean==0.3.1
 click-plugins==1.1.1
 click-repl==0.3.0
+cron-descriptor==1.4.5
 Django==5.2
 django-cors-headers==4.7.0
+django-timezone-field==7.1
 djangorestframework==3.16.0
 djangorestframework_simplejwt==5.5.0
 flake8==7.2.0
@@ -21,10 +23,12 @@ packaging==24.2
 pathspec==0.12.1
 platformdirs==4.3.7
 prompt_toolkit==3.0.50
+psycopg2==2.9.10
 psycopg2-binary==2.9.10
 pycodestyle==2.13.0
 pyflakes==3.3.2
 PyJWT==2.9.0
+python-crontab==3.2.0
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.0
 redis==5.2.1
