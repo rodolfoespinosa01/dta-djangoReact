@@ -1,28 +1,24 @@
 from django.db import models
-from django.utils import timezone
-from core.models import CustomUser
+from django.conf import settings
+from users.admin_area.models import Plan
 
 class Profile(models.Model):
-    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='profile')
-    trial_start_date = models.DateTimeField(null=True, blank=True)
-    subscription_started_at = models.DateTimeField(null=True, blank=True)
-    next_billing_date = models.DateTimeField(null=True, blank=True)
-    stripe_customer_id = models.CharField(max_length=100, null=True, blank=True)
-    stripe_subscription_id = models.CharField(max_length=100, null=True, blank=True)
-    auto_renew_cancelled = models.BooleanField(default=False)
-    is_canceled = models.BooleanField(default=False)
-    canceled_at = models.DateTimeField(null=True, blank=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profiles")
+    plan = models.ForeignKey(Plan, on_delete=models.SET_NULL, null=True)
+    
+    is_active = models.BooleanField(default=True)           # Legacy flag
+    is_canceled = models.BooleanField(default=False)        # Used for frontend UX and logic
+    is_current = models.BooleanField(default=True)          # Only one profile per user should have this = True
+
+    subscription_start_date = models.DateTimeField()
     subscription_end_date = models.DateTimeField(null=True, blank=True)
+    next_billing_date = models.DateTimeField(null=True, blank=True)
+
+    stripe_subscription_id = models.CharField(max_length=255, null=True, blank=True)
+    stripe_transaction_id = models.CharField(max_length=255, null=True, blank=True)
+    stripe_customer_id = models.CharField(max_length=255, null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.user.email} - {self.user.subscription_status}"
-
-    def trial_days_remaining(self):
-        if not self.trial_start_date:
-            return None
-        elapsed = timezone.now() - self.trial_start_date
-        remaining = 14 - elapsed.days
-        return max(0, remaining)
-
-    def is_trial_expired(self):
-        return self.trial_days_remaining() == 0
+        return f"{self.user.email} | {self.plan.name if self.plan else 'No Plan'} | Current: {self.is_current}"

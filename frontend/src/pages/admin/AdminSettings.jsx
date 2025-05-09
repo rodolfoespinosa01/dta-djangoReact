@@ -7,8 +7,8 @@ function AdminSettings() {
   const navigate = useNavigate();
 
   const [dashboardData, setDashboardData] = useState(null);
-  const [cancelled, setCancelled] = useState(false);
   const [cancelMessage, setCancelMessage] = useState('');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -27,12 +27,9 @@ function AdminSettings() {
         const data = await res.json();
         if (res.ok) {
           setDashboardData(data);
-        } else {
-          setDashboardData(null);
         }
       } catch (err) {
         console.error('Error fetching dashboard info:', err);
-        setDashboardData(null);
       }
     };
 
@@ -41,6 +38,7 @@ function AdminSettings() {
 
   const handleCancelAutoRenew = async () => {
     try {
+      setLoading(true);
       const res = await fetch('http://localhost:8000/api/users/admin/cancel_subscription/', {
         method: 'POST',
         headers: {
@@ -50,134 +48,139 @@ function AdminSettings() {
       });
 
       const data = await res.json();
+      setCancelMessage(res.ok ? data.message : data.error || 'Failed to cancel.');
 
-      if (res.ok) {
-        setCancelled(true);
-        setCancelMessage(data.message);
+      const refresh = await fetch('http://localhost:8000/api/users/admin/dashboard/', {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
 
-        // Refresh dashboard state
-        const refreshRes = await fetch('http://localhost:8000/api/users/admin/dashboard/', {
-          headers: {
-            Authorization: `Bearer ${accessToken}`
-          }
-        });
-
-        const refreshData = await refreshRes.json();
-        setDashboardData(refreshData);
-      } else {
-        setCancelMessage(data.error || 'Failed to cancel auto-renew.');
-      }
+      const refreshData = await refresh.json();
+      setDashboardData(refreshData);
     } catch (err) {
       console.error('Cancel error:', err);
       setCancelMessage('Network error.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const formatDate = (dateStr) => {
-    return dateStr ? new Date(dateStr).toLocaleDateString() : null;
-  };
+  const formatDate = (str) => str ? new Date(str).toLocaleDateString() : '—';
 
-  const renderStartDate = () => {
-    const plan = dashboardData?.subscription_status;
-    const starts = {
-      admin_trial: dashboardData?.trial_start,
-      admin_monthly: dashboardData?.monthly_start,
-      admin_quarterly: dashboardData?.quarterly_start,
-      admin_annual: dashboardData?.annual_start,
-    };
-
-    const labelMap = {
-      admin_trial: 'Trial Start Date',
-      admin_monthly: 'Monthly Plan Start Date',
-      admin_quarterly: 'Quarterly Plan Start Date',
-      admin_annual: 'Annual Plan Start Date',
-    };
-
-    const startDate = formatDate(starts[plan]);
-    const label = labelMap[plan];
-
-    return startDate && label ? (
-      <p><strong>{label}:</strong> {startDate}</p>
-    ) : null;
+  const subscriptionLabels = {
+    admin_trial: 'Free Trial',
+    admin_monthly: 'Monthly Plan',
+    admin_quarterly: 'Quarterly Plan',
+    admin_annual: 'Annual Plan'
   };
 
   return (
-    <div style={{ padding: '2rem' }}>
-      <h2>Admin Settings</h2>
+    <div style={{ padding: '2rem', maxWidth: '700px', margin: '0 auto' }}>
+      <h2>⚙️ Admin Settings</h2>
+      {user?.email && (
+        <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
+          Logged in as: <strong>{user.email}</strong>
+        </p>
+      )}
 
-      {user?.email && <p>Settings for: <strong>{user.email}</strong></p>}
+      {dashboardData ? (
+        <div
+          style={{
+            backgroundColor: '#f9fafb',
+            border: '1px solid #e5e7eb',
+            padding: '1.5rem',
+            borderRadius: '8px',
+          }}
+        >
+          <h3>📄 Subscription Info</h3>
+          <p><strong>Plan:</strong> {subscriptionLabels[dashboardData.subscription_status]}</p>
 
-      {dashboardData && (
-        <>
-          {renderStartDate()}
-
-          {dashboardData.subscription_status === 'admin_trial' && dashboardData.days_remaining !== null && (
-            <p>⏳ Trial Days Left: <strong>{dashboardData.days_remaining}</strong></p>
+          {dashboardData.trial_start && (
+            <p><strong>Trial Start Date:</strong> {formatDate(dashboardData.trial_start)}</p>
+          )}
+          {dashboardData.monthly_start && (
+            <p><strong>Monthly Start Date:</strong> {formatDate(dashboardData.monthly_start)}</p>
+          )}
+          {dashboardData.quarterly_start && (
+            <p><strong>Quarterly Start Date:</strong> {formatDate(dashboardData.quarterly_start)}</p>
+          )}
+          {dashboardData.annual_start && (
+            <p><strong>Annual Start Date:</strong> {formatDate(dashboardData.annual_start)}</p>
           )}
 
-          {dashboardData.subscription_active && dashboardData.next_billing_date && (
-            <p><strong>Next Billing Date:</strong> {formatDate(dashboardData.next_billing_date)}</p>
+          {dashboardData.is_trial && dashboardData.days_remaining !== null && (
+            <p style={{ marginTop: '0.5rem', color: '#d97706' }}>
+              ⏳ Trial Days Left: <strong>{dashboardData.days_remaining}</strong>
+            </p>
           )}
 
-          {/* 🔥 New Section: Show active or active-until status */}
+          {dashboardData.next_billing_date && dashboardData.subscription_active && (
+            <p style={{ marginTop: '0.5rem' }}>
+              <strong>Next Billing Date:</strong> {formatDate(dashboardData.next_billing_date)}
+            </p>
+          )}
+
+          {dashboardData.subscription_active && !dashboardData.is_canceled && (
+            <p style={{ marginTop: '0.75rem', color: '#16a34a' }}>
+              ✅ Your subscription is active and set to auto-renew.
+            </p>
+          )}
+
           {dashboardData.is_canceled && dashboardData.subscription_end_date && (
-            <p style={{ marginTop: '1rem', color: 'red' }}>
-              Your account will remain active until: <strong>{formatDate(dashboardData.subscription_end_date)}</strong>
+            <p style={{ marginTop: '0.75rem', color: '#dc2626' }}>
+              🔒 Your plan is canceled. Access ends on <strong>{formatDate(dashboardData.subscription_end_date)}</strong>
             </p>
           )}
 
-          {!dashboardData.is_canceled && dashboardData.subscription_active && (
-            <p style={{ marginTop: '1rem', color: 'green' }}>
-              Your account is currently active.
-            </p>
-          )}
-
-          {/* Cancel or Reactivate Subscription */}
-          <>
-            {!cancelled && !dashboardData.is_canceled && dashboardData.subscription_active && (
+          {/* 🔘 Actions */}
+          <div style={{ marginTop: '1.5rem' }}>
+            {!dashboardData.is_canceled && dashboardData.subscription_active && (
               <button
                 onClick={handleCancelAutoRenew}
+                disabled={loading}
                 style={{
-                  marginTop: '1rem',
                   backgroundColor: '#ef4444',
                   color: 'white',
-                  padding: '0.5rem 1rem',
+                  padding: '0.6rem 1.25rem',
                   border: 'none',
-                  borderRadius: '4px',
+                  borderRadius: '6px',
                   cursor: 'pointer'
                 }}
               >
-                Cancel Subscription
+                {loading ? 'Processing...' : 'Cancel Subscription'}
               </button>
             )}
 
-            {dashboardData.is_canceled && (
+            {dashboardData.is_canceled && dashboardData.reactivation_pending && (
+              <p style={{ color: '#2563eb', marginTop: '1rem' }}>
+                🔄 New plan scheduled to start: <strong>{formatDate(dashboardData.reactivation_start_date)}</strong>
+              </p>
+            )}
+
+            {dashboardData.is_canceled && !dashboardData.reactivation_pending && (
               <button
                 onClick={() => navigate('/admin_reactivate')}
                 style={{
                   marginTop: '1rem',
                   backgroundColor: '#10b981',
                   color: 'white',
-                  padding: '0.5rem 1rem',
+                  padding: '0.6rem 1.25rem',
                   border: 'none',
-                  borderRadius: '4px',
+                  borderRadius: '6px',
                   cursor: 'pointer'
                 }}
               >
                 Reactivate Subscription
               </button>
             )}
+          </div>
 
-            {cancelMessage && (
-              <p style={{ marginTop: '1rem', color: 'green' }}>{cancelMessage}</p>
-            )}
-          </>
-        </>
-      )}
-
-      {!dashboardData && (
-        <p style={{ marginTop: '1rem', color: 'gray' }}>
-          Unable to load subscription details.
+          {cancelMessage && (
+            <p style={{ marginTop: '1rem', color: 'green' }}>{cancelMessage}</p>
+          )}
+        </div>
+      ) : (
+        <p style={{ marginTop: '2rem', color: '#9ca3af' }}>
+          Unable to load your subscription details.
         </p>
       )}
 
@@ -193,7 +196,7 @@ function AdminSettings() {
           cursor: 'pointer'
         }}
       >
-        Back to Dashboard
+        ← Back to Dashboard
       </button>
     </div>
   );

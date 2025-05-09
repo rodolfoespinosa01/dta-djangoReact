@@ -6,37 +6,44 @@ from users.admin_area.models import (
     PendingSignup,
     PasswordResetToken,
     AccountHistory,
-    PreCheckoutEmail
+    PreCheckoutEmail,
+    ScheduledSubscription
 )
 
 class Command(BaseCommand):
-    help = 'Fully resets admin data (users, tokens, profiles, pending signups, account history) for local testing'
+    help = 'Fully resets admin data (users, tokens, profiles, scheduled subscriptions, etc.) for local testing'
 
     def handle(self, *args, **kwargs):
         User = get_user_model()
 
-        # Delete non-superadmin users
+        # Delete all users except the superadmin
         User.objects.exclude(username='dta_user').delete()
 
-        # Delete password reset tokens
+        # Reset Password Tokens & Pre-Checkout Emails
         PasswordResetToken.objects.all().delete()
-        self.stdout.write(self.style.WARNING('PW Tokens deleted.'))
-        PreCheckoutEmail.objects.all().delete()
-        self.stdout.write(self.style.WARNING('Pre Checkout Email entries deleted.'))
+        self.stdout.write(self.style.WARNING('🔒 Password reset tokens deleted.'))
 
-        # Delete profiles not linked to superadmin
+        PreCheckoutEmail.objects.all().delete()
+        self.stdout.write(self.style.WARNING('📬 Pre-checkout emails deleted.'))
+
+        # Delete all profiles except superadmin's
         try:
             superadmin = User.objects.get(username='dta_user')
             Profile.objects.exclude(user=superadmin).delete()
         except User.DoesNotExist:
             Profile.objects.all().delete()
+        self.stdout.write(self.style.WARNING('👤 Admin profiles deleted.'))
 
-        # Delete pending signups
+        # Pending signups
         PendingSignup.objects.all().delete()
-        self.stdout.write(self.style.WARNING('Pending Signup entries deleted.'))
+        self.stdout.write(self.style.WARNING('⏳ Pending signup entries deleted.'))
 
-        # ✅ Delete account history entries
+        # Account history
         AccountHistory.objects.all().delete()
-        self.stdout.write(self.style.WARNING('Account history entries deleted.'))
+        self.stdout.write(self.style.WARNING('📚 Account history entries deleted.'))
 
-        self.stdout.write(self.style.SUCCESS('🎯 All admin test data reset!'))
+        ScheduledSubscription.objects.all().delete()
+        self.stdout.write(self.style.WARNING('🗓️ Scheduled Subscriptions deleted.'))
+
+
+        self.stdout.write(self.style.SUCCESS('🎯 All admin-related test data reset!'))

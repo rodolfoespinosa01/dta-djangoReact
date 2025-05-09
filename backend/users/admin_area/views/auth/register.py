@@ -13,6 +13,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from users.admin_area.models import Plan, Profile, PendingSignup
 from users.admin_area.utils.account_logger import log_account_event
+from users.admin_area.utils.profile_creator import create_profile_with_stripe_data
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 User = get_user_model()
@@ -40,7 +41,6 @@ def register(request):
     except stripe.error.StripeError as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    # ✅ Now it's safe to access the subscription from the session
     subscription_id = pending.subscription_id or checkout_session.get("subscription")
 
     customer_obj = checkout_session.get("customer")
@@ -70,26 +70,43 @@ def register(request):
     user.role = 'admin'
     user.is_staff = True
     user.subscription_status = subscription_status
+    user.stripe_customer_id = customer_id  # ✅ Still store this on the User model
     user.save()
 
     now = timezone.now()
+    subscription_end = None
+    if is_trial:
+        subscription_end = now + relativedelta(days=14)
+    elif subscription_status == 'admin_monthly':
+        subscription_end = now + relativedelta(months=1)
+    elif subscription_status == 'admin_quarterly':
+        subscription_end = now + relativedelta(months=3)
+    elif subscription_status == 'admin_annual':
+        subscription_end = now + relativedelta(months=12)
+
     profile_data = {
-        'stripe_customer_id': customer_id,
+        'plan': plan,
+        'is_active': True,
+        'is_canceled': False,
+        'is_current': True,
+        'subscription_start_date': now,
+        'subscription_end_date': subscription_end,
         'stripe_subscription_id': subscription_id,
-        'subscription_started_at': now,
+        'stripe_customer_id': pending.stripe_customer_id,
+        'stripe_transaction_id': pending.stripe_transaction_id,
+        'next_billing_date': subscription_end,
     }
 
-    if is_trial:
-        profile_data['trial_start_date'] = now
-        profile_data['next_billing_date'] = now + relativedelta(days=14)
-    elif subscription_status == 'admin_monthly':
-        profile_data['next_billing_date'] = now + relativedelta(months=1)
-    elif subscription_status == 'admin_quarterly':
-        profile_data['next_billing_date'] = now + relativedelta(months=3)
-    elif subscription_status == 'admin_annual':
-        profile_data['next_billing_date'] = now + relativedelta(months=12)
 
-    Profile.objects.get_or_create(user=user, defaults=profile_data)
+    create_profile_with_stripe_data(
+        user=user,
+        plan=plan,
+        subscription_id=subscription_id,
+        transaction_id=checkout_session.get('payment_intent'),
+        subscription_start=now,
+        subscription_end=subscription_end,
+        next_billing_date=subscription_end
+    )
 
     if checkout_session.mode == 'setup':
         setup_intent = checkout_session.get('setup_intent')
@@ -129,3 +146,4 @@ def register(request):
         'role': user.role,
         'subscription_status': user.subscription_status,
     }, status=status.HTTP_201_CREATED)
+

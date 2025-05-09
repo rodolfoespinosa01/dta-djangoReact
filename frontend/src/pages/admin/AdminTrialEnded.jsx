@@ -16,27 +16,27 @@ function AdminTrialEnded() {
   };
 
   return (
-    <div style={{ padding: '2rem', textAlign: 'center' }}>
-      <h2>Your Free Trial Has Ended</h2>
-      <p style={{ marginTop: '1rem' }}>
-        Your trial has either expired or been cancelled. To regain access to your dashboard,
-        please choose a monthly or annual plan.
+    <div style={{ padding: '3rem', maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
+      <h2 style={{ color: '#dc2626' }}>🚫 Your Admin Access is Inactive</h2>
+      <p style={{ marginTop: '1rem', fontSize: '1.1rem', lineHeight: '1.6' }}>
+        Your free trial has ended or was cancelled. To continue using the DTA dashboard and tools,
+        you'll need to select a paid plan and reactivate your subscription.
       </p>
 
-      <div style={{ marginTop: '2rem' }}>
+      <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'center', gap: '1rem' }}>
         <button
-          onClick={() => navigate('/admin_plans')}
+          onClick={() => navigate('/admin_reactivate')}
           style={{
-            marginRight: '1rem',
             padding: '0.75rem 1.5rem',
-            backgroundColor: '#2563eb',
+            backgroundColor: '#10b981',
             color: 'white',
+            fontWeight: 'bold',
             border: 'none',
             borderRadius: '6px',
-            cursor: 'pointer'
+            cursor: 'pointer',
           }}
         >
-          View Plans
+          Reactivate Account
         </button>
 
         <button
@@ -47,12 +47,16 @@ function AdminTrialEnded() {
             color: 'white',
             border: 'none',
             borderRadius: '6px',
-            cursor: 'pointer'
+            cursor: 'pointer',
           }}
         >
           Log Out
         </button>
       </div>
+
+      <p style={{ marginTop: '2rem', fontSize: '0.95rem', color: '#6b7280' }}>
+        Need help? Contact support at <a href="mailto:support@dta.com">support@dta.com</a>
+      </p>
     </div>
   );
 }

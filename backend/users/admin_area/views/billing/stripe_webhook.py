@@ -8,9 +8,11 @@ from rest_framework.permissions import AllowAny
 
 from users.admin_area.models import Plan, PendingSignup, PreCheckoutEmail
 from users.admin_area.utils.account_logger import log_account_event
+from django.contrib.auth import get_user_model
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 endpoint_secret = settings.STRIPE_WEBHOOK_SECRET
+User = get_user_model()
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -26,11 +28,17 @@ def stripe_webhook(request):
 
     if event['type'] == 'checkout.session.completed':
         session = event['data']['object']
+
+        # ✅ Confirm payment was successful
+        if session.get("payment_status") != "paid":
+            print("⚠️ Session completed without payment. Skipping PendingSignup.")
+            return HttpResponse(status=200)
+
         session_id = session.get('id')
         customer_email = session.get('customer_email')
         subscription_id = session.get('subscription')
 
-        # Fallback for customer email
+        # Fallback: retrieve email from customer object
         if not customer_email:
             customer_id = session.get('customer')
             if customer_id:
@@ -40,6 +48,11 @@ def stripe_webhook(request):
         print(f"🔍 Webhook triggered for session: {session_id}")
         print(f"📧 Email: {customer_email}")
         print(f"🧾 Subscription ID: {subscription_id}")
+
+        # ✅ Skip registration if admin already exists (reactivation flow)
+        if User.objects.filter(email=customer_email).exists():
+            print(f"✅ Reactivation detected for {customer_email}. No PendingSignup will be created.")
+            return HttpResponse(status=200)
 
         raw_plan_name = session.get('metadata', {}).get('plan_name')
         if not raw_plan_name:
@@ -55,9 +68,9 @@ def stripe_webhook(request):
             return HttpResponse(status=500)
 
         token = get_random_string(64)
-        # Cleanup email from PreCheckoutEmail if it exists
-        PreCheckoutEmail.objects.filter(email=customer_email).delete()
 
+        # 🧹 Clean up pre-checkout email entry
+        PreCheckoutEmail.objects.filter(email=customer_email).delete()
 
         # Check if PendingSignup already exists
         existing = PendingSignup.objects.filter(session_id=session_id).first()
@@ -81,8 +94,11 @@ def stripe_webhook(request):
                 session_id=session_id,
                 token=token,
                 plan=raw_plan_name,
-                subscription_id=subscription_id
+                subscription_id=subscription_id,
+                stripe_customer_id=session.get('customer'),
+                stripe_transaction_id=session.get('payment_intent')
             )
+
 
             registration_link = f"http://localhost:3000/admin_register?token={token}"
             print("\n" + "=" * 60)

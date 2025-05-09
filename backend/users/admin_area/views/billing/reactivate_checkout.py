@@ -9,7 +9,6 @@ from users.admin_area.models import Profile, Plan, PendingPlanActivation
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
-
 class ReactivateCheckoutView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -21,7 +20,7 @@ class ReactivateCheckoutView(APIView):
             return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
 
         try:
-            current_profile = user.profile
+            current_profile = user.profiles.get(is_current=True)
         except Profile.DoesNotExist:
             return Response({"error": "Current profile not found."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -30,7 +29,6 @@ class ReactivateCheckoutView(APIView):
         except Plan.DoesNotExist:
             return Response({"error": "Invalid plan name."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Determine reactivation type
         is_canceled = current_profile.is_canceled
         sub_end = current_profile.subscription_end_date
         now_ts = now()
@@ -42,7 +40,7 @@ class ReactivateCheckoutView(APIView):
         else:
             return Response({"error": "Account not eligible for reactivation."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Prepare Stripe Checkout session kwargs
+        # ✅ Metadata must go inside subscription_data
         checkout_kwargs = {
             "success_url": settings.REACTIVATE_SUCCESS_URL,
             "cancel_url": settings.REACTIVATE_CANCEL_URL,
@@ -54,10 +52,12 @@ class ReactivateCheckoutView(APIView):
                     'quantity': 1,
                 }
             ],
-            "metadata": {
-                'reactivation_type': reactivation_type,
-                'user_id': str(user.id),
-                'plan_name': plan_name,
+            "subscription_data": {
+                "metadata": {
+                    'reactivation_type': reactivation_type,
+                    'user_id': str(user.id),
+                    'plan_name': plan_name,
+                }
             }
         }
 
@@ -69,7 +69,6 @@ class ReactivateCheckoutView(APIView):
         try:
             checkout_session = stripe.checkout.Session.create(**checkout_kwargs)
 
-            # Save scheduled reactivation if needed
             if reactivation_type == "scheduled":
                 PendingPlanActivation.objects.update_or_create(
                     user=user,
@@ -78,6 +77,7 @@ class ReactivateCheckoutView(APIView):
                         "scheduled_start": sub_end
                     }
                 )
+                print(f"🕓 Scheduled plan activation saved for {user.email} at {sub_end}")
 
             return Response({"url": checkout_session.url})
 

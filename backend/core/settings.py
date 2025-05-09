@@ -166,6 +166,5 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOW_CREDENTIALS = True
 
 # ✅ Stripe success/cancel URLs for reactivation flow
-REACTIVATE_SUCCESS_URL = "http://localhost:3000/admin_thankyou"
+REACTIVATE_SUCCESS_URL = "http://localhost:3000/admin_dashboard"
 REACTIVATE_CANCEL_URL = "http://localhost:3000/adminsettings"
-
