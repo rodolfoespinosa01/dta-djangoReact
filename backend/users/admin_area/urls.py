@@ -7,6 +7,8 @@ from users.admin_area.views.auth.token_login import TokenObtainPairView
 from users.admin_area.views.auth.get_pending_signup import get_pending_signup
 # Password
 from users.admin_area.views.password.reset_password_confirm import ResetPasswordConfirmView
+
+from users.admin_area.views.password.admin_forgot_password import AdminForgotPasswordView
 # 📊 Dashboard
 from users.admin_area.views.dashboard.dashboard import DashboardView
 # 💳 Billing
@@ -27,6 +29,7 @@ urlpatterns = [
     path('reset_password/confirm/', ResetPasswordConfirmView.as_view()),
 
     # 📊 Dashboard
+    path('forgot_password/', AdminForgotPasswordView.as_view(), name='forgot_password'),
     path('dashboard/', DashboardView.as_view()),
 
     # 💳 Billing

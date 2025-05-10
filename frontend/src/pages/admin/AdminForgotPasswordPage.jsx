@@ -6,27 +6,34 @@ function AdminForgotPasswordPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+  
     try {
       const res = await fetch('http://localhost:8000/api/users/admin/forgot_password/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
-
-      const data = await res.json();
-
+  
+      let data = null;
+      try {
+        data = await res.json();
+      } catch (jsonErr) {
+        console.warn('⚠️ Response not JSON:', jsonErr);
+      }
+  
       if (res.ok) {
         setStatus('success');
+      } else if (data && data.error) {
+        setStatus(data.error);
       } else {
-        setStatus(data?.email || 'Error sending reset link.');
+        setStatus('Email not found or not registered.');
       }
     } catch (err) {
       console.error('❌ Network error:', err);
       setStatus('A network error occurred.');
     }
   };
-
+  
   return (
     <div
       style={{
