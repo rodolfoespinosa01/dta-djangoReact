@@ -1,5 +1,3 @@
-# backend/users/admin_area/urls.py
-
 from django.urls import path
 # 🔐 Auth
 from users.admin_area.views.auth.register import register

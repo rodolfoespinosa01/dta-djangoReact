@@ -21,4 +21,3 @@ admin.site.register(CustomUser, CustomUserAdmin)  # 👉 registers the custom us
 # extends the django admin panel to support the custom user model.
 # adds role and subscription status fields to both the user list and detail views.
 # makes it easy for superusers to manage user roles and billing states in the admin interface.
-
