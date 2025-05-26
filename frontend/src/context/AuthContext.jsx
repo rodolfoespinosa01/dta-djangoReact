@@ -1,22 +1,23 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { jwtDecode } from 'jwt-decode';
-import { useNavigate } from 'react-router-dom';
+import { jwtDecode } from 'jwt-decode';  // 👉 used to decode the JWT and extract user info
+import { useNavigate } from 'react-router-dom';  // 👉 allows programmatic navigation
 
-const AuthContext = createContext();
+const AuthContext = createContext();  // 🧠 creates a context to hold auth-related data across the app
+
 
 export const AuthProvider = ({ children }) => {
   const [auth, setAuth] = useState({
-    user: null,
-    accessToken: null,
-    isAuthenticated: false,
-    loading: true,
+    user: null, // 👤 decoded user info from token
+    accessToken: null, // 🔑 raw JWT token for protected API calls
+    isAuthenticated: false, // ✅ whether the user is logged in
+    loading: true, // ⏳ whether auth state is still being resolved
   });
 
-  const navigate = useNavigate();
+  const navigate = useNavigate(); // 📍 router hook for redirects
 
   const login = (loginData) => {
     try {
-      const decoded = jwtDecode(loginData.access);
+      const decoded = jwtDecode(loginData.access); // 🧬 decode access token
 
       setAuth({
         user: decoded,
@@ -25,7 +26,7 @@ export const AuthProvider = ({ children }) => {
         loading: false,
       });
 
-      localStorage.setItem('access_token', loginData.access);
+      localStorage.setItem('access_token', loginData.access); // 💾 persist tokens
       localStorage.setItem('refresh_token', loginData.refresh);
     } catch (err) {
       console.error('❌ Failed to decode access token in login()', err);
@@ -33,7 +34,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('access_token');
+    localStorage.removeItem('access_token'); // 🧹 remove tokens for logout
     localStorage.removeItem('refresh_token');
     setAuth({ user: null, accessToken: null, isAuthenticated: false, loading: false });
     navigate('/admin_login');
@@ -52,7 +53,7 @@ export const AuthProvider = ({ children }) => {
 
     try {
       const decoded = jwtDecode(access);
-      const isExpired = decoded.exp * 1000 < Date.now();
+      const isExpired = decoded.exp * 1000 < Date.now(); // ⏰ check expiration
 
       if (isExpired) {
         console.warn('⏰ Token is expired, logging out...');
@@ -88,4 +89,10 @@ export const AuthProvider = ({ children }) => {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => useContext(AuthContext); // 🔄 custom hook to use auth state
+
+
+// 👉 summary:
+// Provides a global AuthContext for managing login state, token storage, and session restoration.
+// Decodes JWT tokens to extract user info, checks for expiration, and redirects canceled trial users.
+// Exposes `login` and `logout` functions and rehydrates session on page reload using localStorage.

@@ -1,9 +1,12 @@
-from users.admin_area.models import Profile
-from django.utils import timezone
+from users.admin_area.models import Profile  # 👉 imports the profile model used to track subscription history
+from django.utils import timezone  # 👉 used for date handling (not used directly here but good for future logic)
 
 
 def deactivate_previous_profiles(user):
+    # 👉 sets all current profiles for this user to not current
+    # 👉 ensures only one profile has is_current = true at any time
     Profile.objects.filter(user=user, is_current=True).update(is_current=False)
+
 
 
 def create_profile_with_stripe_data(
@@ -15,10 +18,10 @@ def create_profile_with_stripe_data(
     subscription_end,
     next_billing_date
 ):
-    # 🧼 Deactivate any previous current profiles
+    # 👉 deactivates any previous current profiles before creating a new one
     deactivate_previous_profiles(user)
 
-    # 🆕 Create a new active subscription snapshot
+    # 👉 creates a new profile snapshot representing this subscription period
     return Profile.objects.create(
         user=user,
         plan=plan,
@@ -31,3 +34,9 @@ def create_profile_with_stripe_data(
         stripe_transaction_id=transaction_id,
         next_billing_date=next_billing_date,
     )
+
+
+# 👉 summary:
+# creates a fresh subscription profile for a user after stripe checkout or reactivation.
+# ensures previous profiles are marked as inactive, keeping only one marked as current.
+# used for tracking billing state, plan history, and controlling dashboard access.

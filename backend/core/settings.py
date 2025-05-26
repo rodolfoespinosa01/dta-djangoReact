@@ -72,7 +72,6 @@ MIDDLEWARE = [
 ROOT_URLCONF = 'core.urls'
 # 👆 tells django to look in core/urls.py for the main url routing config
 
-
 WSGI_APPLICATION = 'core.wsgi.application'
 # 👆 tells django where to find the wsgi entry point for deploying with wsgi servers (like gunicorn or mod_wsgi)
 
@@ -93,7 +92,6 @@ REST_FRAMEWORK = {
     ),
 }
 
-
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30), # 👉 access tokens expire 30 minutes after login (user must refresh)
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1), # 👉 refresh tokens expire after 1 day (user must log in again after that)
@@ -101,7 +99,6 @@ SIMPLE_JWT = {
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',), # 👉 uses standard jwt access tokens
     'TOKEN_OBTAIN_SERIALIZER': 'users.serializers.CustomTokenObtainPairSerializer', # 👉 custom login serializer (e.g. adds email or roles to token)
 }
-
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -122,17 +119,18 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 AUTHENTICATION_BACKENDS = [
     'users.backends.EmailBackend', # 👉 custom backend that allows login using email instead of username
     'django.contrib.auth.backends.ModelBackend', # 👉 default django backend (username + password)
 ]
 
 LANGUAGE_CODE = 'en-us' # 👉 sets the default language for the project (used in built-in text and formatting)
-TIME_ZONE = 'America/New_York' # 👉 sets the server timezone (currently set to utc)
-USE_I18N = True  # 👉 enables django's internationalization system (for translations)
-USE_TZ = True  # 👉 stores all datetime objects in utc and converts to local time on display
 
+TIME_ZONE = 'America/New_York' # 👉 sets the server timezone (currently set to utc)
+
+USE_I18N = True  # 👉 enables django's internationalization system (for translations)
+
+USE_TZ = True  # 👉 stores all datetime objects in utc and converts to local time on display
 
 STATIC_URL = 'static/' # 👉 url prefix for serving static files like css, js, and images
 
@@ -154,12 +152,11 @@ CORS_ALLOWED_ORIGINS = [
 ]
 # 👆 allows the frontend to make cross-origin api calls to the backend (used by axios or fetch)
 
-
 CORS_ALLOW_CREDENTIALS = True
 
-# ✅ Stripe success/cancel URLs for reactivation flow
 REACTIVATE_SUCCESS_URL = "http://localhost:3000/admin_dashboard"
 REACTIVATE_CANCEL_URL = "http://localhost:3000/adminsettings"
+#  👆Stripe success/cancel URLs for reactivation flow
 
 
 # 👉 summary:

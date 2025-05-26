@@ -1,25 +1,25 @@
-import json
-import stripe
-from django.utils import timezone
-from django.conf import settings
-from django.contrib.auth import get_user_model
-from dateutil.relativedelta import relativedelta
+import json  # 👉 for parsing JSON if needed
+import stripe  # 👉 stripe api client
+from django.utils import timezone  # 👉 used for timestamps
+from django.conf import settings  # 👉 to access environment config like stripe keys
+from django.contrib.auth import get_user_model  # 👉 for dynamic access to custom user model
+from dateutil.relativedelta import relativedelta  # 👉 used to calculate future billing dates
 
-from rest_framework.response import Response
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
-from rest_framework import status
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.response import Response  # 👉 used to return API responses
+from rest_framework.decorators import api_view, permission_classes  # 👉 decorator for function-based API views
+from rest_framework.permissions import AllowAny  # 👉 allows non-authenticated access to this route
+from rest_framework import status  # 👉 standard HTTP status codes
+from rest_framework_simplejwt.tokens import RefreshToken  # 👉 generates JWT tokens for login response
 
-from users.admin_area.models import Plan, Profile, PendingSignup
-from users.admin_area.utils.account_logger import log_account_event
-from users.admin_area.utils.profile_creator import create_profile_with_stripe_data
+from users.admin_area.models import Plan, Profile, PendingSignup  # 👉 core admin billing models
+from users.admin_area.utils.account_logger import log_account_event  # 👉 logs lifecycle events like signup or cancel
+from users.admin_area.utils.profile_creator import create_profile_with_stripe_data  # 👉 creates billing profile snapshot
 
-stripe.api_key = settings.STRIPE_SECRET_KEY
-User = get_user_model()
+stripe.api_key = settings.STRIPE_SECRET_KEY  # 👉 initializes stripe with secret key
+User = get_user_model()  # 👉 loads the active custom user model
 
-@api_view(['POST'])
-@permission_classes([AllowAny])
+@api_view(['POST'])  # 👉 allows only POST requests
+@permission_classes([AllowAny])  # 👉 open to unauthenticated users (used for admin registration after Stripe checkout)
 def register(request):
     data = request.data
     email = data.get('email')
@@ -30,14 +30,14 @@ def register(request):
         return Response({'error': 'Missing fields'}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
-        pending = PendingSignup.objects.get(token=token)
+        pending = PendingSignup.objects.get(token=token)  # 👉 verifies signup token is valid
     except PendingSignup.DoesNotExist:
         return Response({'error': 'Invalid or expired token'}, status=status.HTTP_404_NOT_FOUND)
 
     session_id = pending.session_id
 
     try:
-        checkout_session = stripe.checkout.Session.retrieve(session_id, expand=['customer', 'setup_intent'])
+        checkout_session = stripe.checkout.Session.retrieve(session_id, expand=['customer', 'setup_intent'])  # 👉 fetch stripe session
     except stripe.error.StripeError as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -66,15 +66,16 @@ def register(request):
     if User.objects.filter(username=email).exists():
         return Response({'error': 'User already exists'}, status=status.HTTP_400_BAD_REQUEST)
 
+    # 👉 create user account
     user = User.objects.create_user(username=email, email=email, password=password)
     user.role = 'admin'
     user.is_staff = True
     user.subscription_status = subscription_status
-    user.stripe_customer_id = customer_id  # ✅ Still store this on the User model
+    user.stripe_customer_id = customer_id
     user.save()
 
     now = timezone.now()
-    subscription_end = None
+
     if is_trial:
         subscription_end = now + relativedelta(days=14)
     elif subscription_status == 'admin_monthly':
@@ -83,21 +84,10 @@ def register(request):
         subscription_end = now + relativedelta(months=3)
     elif subscription_status == 'admin_annual':
         subscription_end = now + relativedelta(months=12)
+    else:
+        subscription_end = None
 
-    profile_data = {
-        'plan': plan,
-        'is_active': True,
-        'is_canceled': False,
-        'is_current': True,
-        'subscription_start_date': now,
-        'subscription_end_date': subscription_end,
-        'stripe_subscription_id': subscription_id,
-        'stripe_customer_id': pending.stripe_customer_id,
-        'stripe_transaction_id': pending.stripe_transaction_id,
-        'next_billing_date': subscription_end,
-    }
-
-
+    # 👉 create initial billing profile snapshot
     create_profile_with_stripe_data(
         user=user,
         plan=plan,
@@ -108,6 +98,7 @@ def register(request):
         next_billing_date=subscription_end
     )
 
+    # 👉 attach default payment method if setup intent was used
     if checkout_session.mode == 'setup':
         setup_intent = checkout_session.get('setup_intent')
         if setup_intent and setup_intent.get('payment_method'):
@@ -119,8 +110,10 @@ def register(request):
             except stripe.error.StripeError as e:
                 return Response({'error': f'Failed to attach payment method: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
-    pending.delete()
+    pending.delete()  # 👉 remove used token to prevent reuse
 
+
+    # 👉 log signup event to account history
     log_account_event(
         user=user,
         email=user.email,
@@ -131,6 +124,7 @@ def register(request):
         subscription_start=now
     )
 
+    # 👉 generate jwt token for login response
     refresh = RefreshToken.for_user(user)
     refresh['email'] = user.email
     refresh['role'] = user.role
@@ -146,4 +140,11 @@ def register(request):
         'role': user.role,
         'subscription_status': user.subscription_status,
     }, status=status.HTTP_201_CREATED)
+
+
+# 👉 summary:
+# handles the full post-stripe registration flow for admin users.
+# verifies the pending token, pulls stripe session details, creates the user,
+# logs the subscription event, creates a profile, and returns a jwt login token.
+# designed for seamless onboarding after checkout and supports trial and paid plans.
 
