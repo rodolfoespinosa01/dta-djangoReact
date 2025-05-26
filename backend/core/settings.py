@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 
 from datetime import timedelta
 
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 # 👆 BASE_DIR ends up being /Desktop/dta-djangoreact/backend
 # __file__ = /backend/core/settings.py
@@ -40,32 +41,32 @@ ALLOWED_HOSTS = raw_hosts.split(",") if raw_hosts else []
 # 👆 List of domains allowed to serve this app when DEBUG is False. Required for production security.
 
 INSTALLED_APPS = [
-    'django.contrib.admin',         # 👉 built-in Django admin interface
-    'django.contrib.auth',          # 👉 handles user authentication (login, password, permissions)
-    'django.contrib.contenttypes',  # 👉 tracks model types for permissions and generic relations
-    'django.contrib.sessions',      # 👉 enables session storage (cookies and server-side sessions)
-    'django.contrib.messages',      # 👉 built-in messaging framework (used for alerts/notifications)
-    'django.contrib.staticfiles',   # 👉 manages serving static files (CSS, JS, images)
+    'django.contrib.admin', # 👉 built-in Django admin interface
+    'django.contrib.auth', # 👉 handles user authentication (login, password, permissions)
+    'django.contrib.contenttypes', # 👉 tracks model types for permissions and generic relations
+    'django.contrib.sessions', # 👉 enables session storage (cookies and server-side sessions)
+    'django.contrib.messages', # 👉 built-in messaging framework (used for alerts/notifications)
+    'django.contrib.staticfiles', # 👉 manages serving static files (CSS, JS, images)
 
-    'corsheaders',                  # 👉 handles Cross-Origin Resource Sharing (CORS) for API access
-    'rest_framework',               # 👉 django REST Framework (DRF) for building APIs
+    'corsheaders', # 👉 handles Cross-Origin Resource Sharing (CORS) for API access
+    'rest_framework', # 👉 django REST Framework (DRF) for building APIs
 
-    'core',                         # 👉 core app (settings, shared utils, base config)
-    'users',                        # 👉 custom app for user-related logic (models, views, auth)
-    'users.admin_area',             # 👉 submodule for admin-specific views and logic
-    'utility',                      # 👉 general utility functions/helpers used across the project
+    'core', # 👉 core app (settings, shared utils, base config)
+    'users', # 👉 custom app for user-related logic (models, views, auth)
+    'users.admin_area', # 👉 submodule for admin-specific views and logic
+    'utility', # 👉 general utility functions/helpers used across the project
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',                   # 👉 handles cors headers for cross-origin api requests
+    'corsheaders.middleware.CorsMiddleware', # 👉 handles cors headers for cross-origin api requests
 
-    'django.middleware.security.SecurityMiddleware',           # 👉 adds security headers (ssl redirect, hsts, etc.)
-    'django.contrib.sessions.middleware.SessionMiddleware',    # 👉 manages sessions across requests using cookies
-    'django.middleware.common.CommonMiddleware',               # 👉 performs basic request/response operations (e.g. url normalization)
-    'django.middleware.csrf.CsrfViewMiddleware',               # 👉 protects against cross-site request forgery attacks
+    'django.middleware.security.SecurityMiddleware', # 👉 adds security headers (ssl redirect, hsts, etc.)
+    'django.contrib.sessions.middleware.SessionMiddleware', # 👉 manages sessions across requests using cookies
+    'django.middleware.common.CommonMiddleware', # 👉 performs basic request/response operations (e.g. url normalization)
+    'django.middleware.csrf.CsrfViewMiddleware', # 👉 protects against cross-site request forgery attacks
     'django.contrib.auth.middleware.AuthenticationMiddleware', # 👉 associates users with requests using sessions
-    'django.contrib.messages.middleware.MessageMiddleware',    # 👉 enables temporary messages via the messages framework
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',  # 👉 prevents clickjacking by setting x-frame-options header
+    'django.contrib.messages.middleware.MessageMiddleware', # 👉 enables temporary messages via the messages framework
+    'django.middleware.clickjacking.XFrameOptionsMiddleware', # 👉 prevents clickjacking by setting x-frame-options header
 ]
 
 ROOT_URLCONF = 'core.urls'
@@ -94,11 +95,11 @@ REST_FRAMEWORK = {
 
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),  # 👉 access tokens expire 30 minutes after login (user must refresh)
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),     # 👉 refresh tokens expire after 1 day (user must log in again after that)
-    'AUTH_HEADER_TYPES': ('Bearer',),                # 👉 expects "authorization: bearer <token>" in request headers
-    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),  # 👉 uses standard jwt access tokens
-    'TOKEN_OBTAIN_SERIALIZER': 'users.serializers.CustomTokenObtainPairSerializer',  # 👉 custom login serializer (e.g. adds email or roles to token)
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30), # 👉 access tokens expire 30 minutes after login (user must refresh)
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1), # 👉 refresh tokens expire after 1 day (user must log in again after that)
+    'AUTH_HEADER_TYPES': ('Bearer',), # 👉 expects "authorization: bearer <token>" in request headers
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',), # 👉 uses standard jwt access tokens
+    'TOKEN_OBTAIN_SERIALIZER': 'users.serializers.CustomTokenObtainPairSerializer', # 👉 custom login serializer (e.g. adds email or roles to token)
 }
 
 
@@ -123,20 +124,17 @@ AUTH_PASSWORD_VALIDATORS = [
 
 
 AUTHENTICATION_BACKENDS = [
-    'users.backends.EmailBackend',               # 👉 custom backend that allows login using email instead of username
+    'users.backends.EmailBackend', # 👉 custom backend that allows login using email instead of username
     'django.contrib.auth.backends.ModelBackend', # 👉 default django backend (username + password)
 ]
 
-LANGUAGE_CODE = 'en-us'        # 👉 sets the default language for the project (used in built-in text and formatting)
+LANGUAGE_CODE = 'en-us' # 👉 sets the default language for the project (used in built-in text and formatting)
 TIME_ZONE = 'America/New_York' # 👉 sets the server timezone (currently set to utc)
-USE_I18N = True                # 👉 enables django's internationalization system (for translations)
-USE_TZ = True                  # 👉 stores all datetime objects in utc and converts to local time on display
+USE_I18N = True  # 👉 enables django's internationalization system (for translations)
+USE_TZ = True  # 👉 stores all datetime objects in utc and converts to local time on display
 
 
-STATIC_URL = 'static/'  # 👉 url prefix for serving static files like css, js, and images
-
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
+STATIC_URL = 'static/' # 👉 url prefix for serving static files like css, js, and images
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # 👆 sets the default primary key type for new models to bigautofield (large auto-incrementing integer)
@@ -162,3 +160,10 @@ CORS_ALLOW_CREDENTIALS = True
 # ✅ Stripe success/cancel URLs for reactivation flow
 REACTIVATE_SUCCESS_URL = "http://localhost:3000/admin_dashboard"
 REACTIVATE_CANCEL_URL = "http://localhost:3000/adminsettings"
+
+
+# 👉 summary:
+# this settings file defines the core configuration for the django backend.
+# it handles environment variables, installed apps, middleware, database setup,
+# custom user model, authentication (jwt), cors and csrf policies, and other
+# project-wide defaults required for development and production readiness.
