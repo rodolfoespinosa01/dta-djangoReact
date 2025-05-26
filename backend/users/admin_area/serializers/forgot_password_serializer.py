@@ -12,10 +12,9 @@ class ForgotPasswordSerializer(serializers.Serializer):  # 👉 handles the pass
     def validate_email(self, value):
         if not CustomUser.objects.filter(email=value, role='admin', is_active=True).exists():
             raise serializers.ValidationError("No active admin account found with this email.")
-        return value
-    # 👉 ensures that the email belongs to an active admin user
+        return value  # 👉 ensures that the email belongs to an active admin user
 
-        def save(self):
+    def save(self):
         email = self.validated_data['email']
         user = CustomUser.objects.get(email=email, role='admin', is_active=True)
 
@@ -32,8 +31,8 @@ class ForgotPasswordSerializer(serializers.Serializer):  # 👉 handles the pass
         print("Body:")
         print(f"Hi {user.username}, click the link below to reset your password:")
         print(f"➡️  {reset_link}")
-        print("===================================================================\n")
-    # 👉 simulates sending a password reset email (printed to console for development)
+        print("===================================================================\n")  # 👉 simulates sending a reset email (for dev)
+
 
 
 # 👉 summary:
