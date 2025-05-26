@@ -30,7 +30,7 @@ class ResetPasswordSerializer(serializers.Serializer):  # 👉 handles setting a
         return data
 
 
-        def save(self):
+    def save(self):
         self.user.password = make_password(self.validated_data['new_password'])  # 👉 securely hashes the new password
         self.user.save()  # 👉 saves the updated user to the database
         PasswordResetToken.objects.filter(user=self.user).delete()  # 👉 removes the used token to prevent reuse
