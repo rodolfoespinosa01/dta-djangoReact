@@ -72,6 +72,22 @@ MIDDLEWARE = [
 ROOT_URLCONF = 'core.urls'
 # 👆 tells django to look in core/urls.py for the main url routing config
 
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
+
 WSGI_APPLICATION = 'core.wsgi.application'
 # 👆 tells django where to find the wsgi entry point for deploying with wsgi servers (like gunicorn or mod_wsgi)
 
