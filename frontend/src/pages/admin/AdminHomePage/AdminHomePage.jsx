@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import './AdminHomePage.css';
 
 function AdminHomePage() {
   const navigate = useNavigate();
@@ -79,3 +80,8 @@ function AdminHomePage() {
 }
 
 export default AdminHomePage;
+
+// admin home page
+// this is the public landing page shown to admins before registration or login.
+// it offers two cta buttons: one to start the admin free trial by navigating to /admin_plans, and another to return to the main public homepage (/).
+// this page uses react-router's useNavigate hook to programmatically route users based on their selection.
