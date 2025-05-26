@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import './AdminResetPasswordPage.css';
 
 function AdminResetPasswordPage() {
   const [searchParams] = useSearchParams();
@@ -15,7 +16,7 @@ function AdminResetPasswordPage() {
 
   useEffect(() => {
     if (!uid || !token) {
-      setStatus('Missing or invalid reset link. Please try again.');
+      setStatus('missing or invalid reset link. please try again.');
     }
   }, [uid, token]);
 
@@ -23,7 +24,7 @@ function AdminResetPasswordPage() {
     e.preventDefault();
 
     if (newPassword !== confirmPassword) {
-      setStatus('Passwords do not match.');
+      setStatus('passwords do not match.');
       return;
     }
 
@@ -42,85 +43,53 @@ function AdminResetPasswordPage() {
         setTimeout(() => navigate('/admin_login'), 2000);
       } else {
         const data = await res.json();
-        setStatus(data?.detail || 'Reset failed. Try a new link.');
+        setStatus(data?.detail || 'reset failed. try a new link.');
       }
     } catch (err) {
-      console.error('Reset error:', err);
-      setStatus('Network error. Please try again.');
+      console.error('reset error:', err);
+      setStatus('network error. please try again.');
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div style={{ padding: '3rem', display: 'flex', justifyContent: 'center' }}>
-      <div
-        style={{
-          backgroundColor: '#fff',
-          padding: '2rem',
-          borderRadius: '10px',
-          boxShadow: '0 0 10px rgba(0,0,0,0.05)',
-          maxWidth: '400px',
-          width: '100%',
-        }}
-      >
-        <h2 style={{ textAlign: 'center', marginBottom: '1rem' }}>🔐 Reset Your Password</h2>
+    <div className="reset-password-wrapper">
+      <div className="reset-password-card">
+        <h2 className="reset-password-title">🔐 reset your password</h2>
         <form onSubmit={handleSubmit}>
           <input
             type="password"
-            placeholder="New password"
+            placeholder="new password"
             required
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
-            style={{
-              display: 'block',
-              marginBottom: '1rem',
-              width: '100%',
-              padding: '0.75rem',
-              borderRadius: '6px',
-              border: '1px solid #d1d5db',
-            }}
+            className="reset-password-input"
           />
           <input
             type="password"
-            placeholder="Confirm new password"
+            placeholder="confirm new password"
             required
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            style={{
-              display: 'block',
-              marginBottom: '1.5rem',
-              width: '100%',
-              padding: '0.75rem',
-              borderRadius: '6px',
-              border: '1px solid #d1d5db',
-            }}
+            className="reset-password-input"
           />
           <button
             type="submit"
             disabled={submitting}
-            style={{
-              width: '100%',
-              padding: '0.75rem',
-              backgroundColor: '#2563eb',
-              color: 'white',
-              fontWeight: 'bold',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-            }}
+            className="reset-password-button"
           >
-            {submitting ? 'Resetting...' : 'Reset Password'}
+            {submitting ? 'resetting...' : 'reset password'}
           </button>
         </form>
 
         {status === 'success' && (
-          <p style={{ color: 'green', marginTop: '1rem' }}>
-            ✅ Password updated! Redirecting to login...
+          <p className="reset-password-success">
+            ✅ password updated! redirecting to login...
           </p>
         )}
         {status && status !== 'success' && (
-          <p style={{ color: 'red', marginTop: '1rem' }}>{status}</p>
+          <p className="reset-password-error">{status}</p>
         )}
       </div>
     </div>
@@ -128,3 +97,8 @@ function AdminResetPasswordPage() {
 }
 
 export default AdminResetPasswordPage;
+
+// summary:
+// this page handles password resets for admins by submitting the uid, token, and new password to the backend.
+// if the reset is successful, the user is redirected to the login page after 2 seconds.
+// if the link is invalid or passwords don't match, appropriate error messages are shown.
