@@ -1,0 +1,15 @@
+.admin-thankyou-wrapper {
+  text-align: center;
+  padding: 3rem;
+}
+
+.admin-thankyou-title {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+
+.admin-thankyou-text {
+  font-size: 1.1rem;
+  color: #4b5563;
+  margin-bottom: 0.5rem;
+}

@@ -2,26 +2,27 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 
-// Public Pages
+// public pages
 import MainHomePage from './pages/MainHomePage';
 import SuperAdminLoginPage from './pages/superadmin/SuperAdminLoginPage';
-import AdminHomePage from './pages/admin/AdminHomePage';
-import AdminPlanSelectionPage from './pages/admin/AdminPlanSelectionPage';
-import AdminRegisterPage from './pages/admin/AdminRegisterPage';
-import AdminLoginPage from './pages/admin/AdminLoginPage';
-import AdminForgotPasswordPage from './pages/admin/AdminForgotPasswordPage';
-import AdminResetPasswordPage from './pages/admin/AdminResetPasswordPage';
-import AdminTrialEnded from './pages/admin/AdminTrialEnded';
-import AdminThankYou from './pages/admin/AdminThankYou';
-import AdminReactivatePage from './pages/admin/AdminReactivatePage'
+import AdminHomePage from './pages/admin/AdminHomePage/AdminHomePage';
+import AdminPlanSelectionPage from './pages/admin/AdminPlanSelectionPage/AdminPlanSelectionPage';
+import AdminRegisterPage from './pages/admin/AdminRegisterPage/AdminRegisterPage';
+import AdminLoginPage from './pages/admin/AdminLoginPage/AdminLoginPage';
+import AdminForgotPasswordPage from './pages/admin/AdminForgotPasswordPage/AdminForgotPasswordPage';
+import AdminResetPasswordPage from './pages/admin/AdminResetPasswordPage/AdminResetPasswordPage';
+import AdminTrialEnded from './pages/admin/AdminTrialEnded/AdminTrialEnded';
+import AdminThankYou from './pages/admin/AdminThankYou/AdminThankYou';
+import AdminReactivatePage from './pages/admin/AdminReactivatePage/AdminReactivatePage';
 
 import UserHomePage from './pages/user/UserHomePage';
 import UserPlanSelectionPage from './pages/user/UserPlanSelectionPage';
 
-// Protected Pages
-import AdminDashboard from './pages/admin/AdminDashboard';
-import AdminSettings from './pages/admin/AdminSettings';
+// protected pages
+import AdminDashboard from './pages/admin/AdminDashboard/AdminDashboard';
+import AdminSettings from './pages/admin/AdminSettings/AdminSettings';
 import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
+
 
 // Route Guards
 import AdminProtectedRoute from './routes/AdminProtectedRoute';

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../../context/AuthContext';
+import './AdminRegisterPage.css';
 
 function AdminRegisterPage() {
   const [email, setEmail] = useState('');
@@ -15,7 +16,7 @@ function AdminRegisterPage() {
   useEffect(() => {
     const tokenFromURL = searchParams.get('token');
     if (!tokenFromURL) {
-      alert('Missing registration token.');
+      alert('missing registration token.');
       navigate('/');
       return;
     }
@@ -25,11 +26,11 @@ function AdminRegisterPage() {
     const fetchPendingEmail = async () => {
       try {
         const res = await fetch(`http://localhost:8000/api/users/admin/pending_signup/${tokenFromURL}`);
-        
+
         if (!res.ok) {
           const text = await res.text();
-          console.error('Server responded with:', text);
-          alert('Invalid or expired registration link.');
+          console.error('server responded with:', text);
+          alert('invalid or expired registration link.');
           navigate('/');
           return;
         }
@@ -37,8 +38,8 @@ function AdminRegisterPage() {
         const data = await res.json();
         setEmail(data.email);
       } catch (err) {
-        console.error('Error fetching pending signup:', err);
-        alert('Something went wrong.');
+        console.error('error fetching pending signup:', err);
+        alert('something went wrong.');
         navigate('/');
       } finally {
         setLoading(false);
@@ -64,17 +65,17 @@ function AdminRegisterPage() {
         data = await res.json();
       } catch (jsonErr) {
         const text = await res.text();
-        console.error('❌ Response not JSON:', text);
-        alert('Server error during registration. Check logs.');
+        console.error('❌ response not json:', text);
+        alert('server error during registration. check logs.');
         return;
       }
 
       if (!res.ok) {
-        alert(data.error || 'Registration failed');
+        alert(data.error || 'registration failed');
         return;
       }
 
-      alert('✅ Account created successfully! Logging you in...');
+      alert('✅ account created successfully! logging you in...');
 
       const loginRes = await fetch('http://localhost:8000/api/users/admin/login/', {
         method: 'POST',
@@ -86,7 +87,7 @@ function AdminRegisterPage() {
       const loginData = await loginRes.json();
 
       if (!loginRes.ok) {
-        alert(loginData.error || 'Auto-login failed. Please login manually.');
+        alert(loginData.error || 'auto-login failed. please login manually.');
         navigate('/admin_login');
         return;
       }
@@ -94,76 +95,42 @@ function AdminRegisterPage() {
       login(loginData);
       navigate('/admin_dashboard');
     } catch (err) {
-      console.error('Unexpected error:', err);
-      alert('Unexpected error. Check console.');
+      console.error('unexpected error:', err);
+      alert('unexpected error. check console.');
     }
   };
 
   if (loading) {
     return (
-      <div style={{ padding: '2rem', textAlign: 'center' }}>
-        <p>🔄 Loading registration form...</p>
+      <div className="admin-register-loading">
+        <p>🔄 loading registration form...</p>
       </div>
     );
   }
 
   return (
-    <div style={{ padding: '3rem', display: 'flex', justifyContent: 'center' }}>
-      <div
-        style={{
-          backgroundColor: '#fff',
-          padding: '2rem',
-          borderRadius: '10px',
-          boxShadow: '0 0 12px rgba(0,0,0,0.05)',
-          maxWidth: '400px',
-          width: '100%',
-        }}
-      >
-        <h2 style={{ marginBottom: '1rem', textAlign: 'center' }}>📝 Complete Your Admin Registration</h2>
+    <div className="admin-register-wrapper">
+      <div className="admin-register-card">
+        <h2 className="admin-register-title">📝 complete your admin registration</h2>
         <form onSubmit={handleSubmit}>
-          <label>Email</label>
+          <label>email</label>
           <input
             type="email"
             value={email}
             disabled
-            style={{
-              marginBottom: '1rem',
-              width: '100%',
-              padding: '0.75rem',
-              border: '1px solid #d1d5db',
-              borderRadius: '6px',
-              backgroundColor: '#f9fafb',
-            }}
+            className="admin-register-input disabled"
           />
-          <label>Create a Password</label>
+          <label>create a password</label>
           <input
             type="password"
-            placeholder="Choose a password"
+            placeholder="choose a password"
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            style={{
-              marginBottom: '1.5rem',
-              width: '100%',
-              padding: '0.75rem',
-              border: '1px solid #d1d5db',
-              borderRadius: '6px',
-            }}
+            className="admin-register-input"
           />
-          <button
-            type="submit"
-            style={{
-              width: '100%',
-              padding: '0.75rem',
-              backgroundColor: '#2563eb',
-              color: 'white',
-              fontWeight: 'bold',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-            }}
-          >
-            Create Account
+          <button type="submit" className="admin-register-button">
+            create account
           </button>
         </form>
       </div>
@@ -172,3 +139,8 @@ function AdminRegisterPage() {
 }
 
 export default AdminRegisterPage;
+
+// summary:
+// this page completes admin signup by capturing a password and verifying the token from the stripe registration flow.
+// it fetches the pending email based on the token, then allows the user to submit a password and create the account.
+// after registration, the user is auto-logged in and redirected to the dashboard.

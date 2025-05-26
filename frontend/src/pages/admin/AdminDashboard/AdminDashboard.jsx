@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../../context/AuthContext';
+
+// import css specific to the admin dashboard
+import './AdminDashboard.css';
 
 function AdminDashboard() {
   const { user, isAuthenticated, accessToken, logout } = useAuth();
@@ -154,3 +157,8 @@ function AdminDashboard() {
 }
 
 export default AdminDashboard;
+
+// admin dashboard page
+// this component displays the logged-in admin's subscription status, including plan type, start dates, billing info, and trial countdown.
+// on component mount, it sends a GET request to /api/users/admin/dashboard/ with the jwt access token in the header.
+// the backend responds with subscription data, which is stored in local state and conditionally rendered based on trial or plan status.

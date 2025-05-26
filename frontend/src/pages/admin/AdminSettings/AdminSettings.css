@@ -1,0 +1,71 @@
+.admin-settings-wrapper {
+  padding: 2rem;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.admin-settings-email {
+  margin-bottom: 1rem;
+  color: #6b7280;
+}
+
+.admin-settings-card {
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  padding: 1.5rem;
+  border-radius: 8px;
+}
+
+.trial-days-left {
+  margin-top: 0.5rem;
+  color: #d97706;
+}
+
+.subscription-active {
+  margin-top: 0.75rem;
+  color: #16a34a;
+}
+
+.subscription-canceled {
+  margin-top: 0.75rem;
+  color: #dc2626;
+}
+
+.admin-settings-actions {
+  margin-top: 1.5rem;
+}
+
+.btn-cancel,
+.btn-reactivate,
+.btn-back {
+  background-color: #2563eb;
+  color: white;
+  padding: 0.6rem 1.25rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 1rem;
+}
+
+.btn-cancel {
+  background-color: #ef4444;
+}
+
+.btn-reactivate {
+  background-color: #10b981;
+}
+
+.reactivation-pending {
+  color: #2563eb;
+  margin-top: 1rem;
+}
+
+.cancel-message {
+  margin-top: 1rem;
+  color: green;
+}
+
+.load-error {
+  margin-top: 2rem;
+  color: #9ca3af;
+}

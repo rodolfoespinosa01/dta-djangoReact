@@ -1,0 +1,52 @@
+.admin-home-wrapper {
+  min-height: 100vh;
+  background-color: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.admin-home-card {
+  background-color: white;
+  padding: 3rem;
+  border-radius: 12px;
+  max-width: 500px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.admin-home-title {
+  margin-bottom: 1rem;
+  font-size: 2rem;
+  color: #111827;
+}
+
+.admin-home-subtitle {
+  margin-bottom: 2rem;
+  color: #4b5563;
+  font-size: 1.1rem;
+}
+
+.admin-home-button {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 1rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  margin-bottom: 1rem;
+}
+
+.admin-home-button.primary {
+  background-color: #2563eb;
+  color: white;
+}
+
+.admin-home-button.secondary {
+  background-color: #6b7280;
+  color: white;
+  margin-bottom: 0;
+}
