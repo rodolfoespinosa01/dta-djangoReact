@@ -4,11 +4,13 @@ import { useAuth } from '../../../context/AuthContext';
 import './AdminReactivatePage.css';
 
 function AdminReactivatePage() {
-  const { accessToken } = useAuth();
+  const { accessToken, logout } = useAuth();
   const navigate = useNavigate();
   const [selectedPlan, setSelectedPlan] = useState('adminMonthly');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+
 
   // handle reactivation button click
   const handleReactivate = async () => {
@@ -76,6 +78,9 @@ function AdminReactivatePage() {
         <div className="admin-reactivate-footer">
           <button onClick={() => navigate('/admin_settings')} className="admin-reactivate-settings-btn">
             back to settings
+          </button>
+          <button onClick={logout} className="admin-reactivate-logout-btn">
+            log out
           </button>
         </div>
       </div>
