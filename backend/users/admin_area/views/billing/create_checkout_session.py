@@ -62,7 +62,8 @@ def create_checkout_session(request):
                 'quantity': 1,
             }],
             metadata={
-                'plan_name': plan_name  # 👉 store original plan request (adminTrial vs adminMonthly)
+                'plan_name': plan_name,  # 👉 store original plan request (adminTrial vs adminMonthly)
+                "is_reactivation": "true"
             },
             success_url='http://localhost:3000/admin_thank_you?session_id={CHECKOUT_SESSION_ID}',
             cancel_url='http://localhost:3000/admin_plans',

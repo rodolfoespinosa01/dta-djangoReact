@@ -8,7 +8,7 @@ from rest_framework.permissions import AllowAny  # 👉 webhook must be publicly
 from core.models import CustomUser  # 👉 custom user model
 from users.admin_area.models import Plan, Profile, AccountHistory, ScheduledSubscription  # 👉 billing-related models
 from users.admin_area.utils.account_logger import log_account_event  # 👉 logs events to AccountHistory
-from users.admin_area.utils.scheduled_subscription_logger import create_scheduled_subscription  # 👉 stores future reactivations
+from users.admin_area.utils.reactivation import create_scheduled_subscription  # 👉 stores future reactivations
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 endpoint_secret = settings.STRIPE_WEBHOOK_SECRET
