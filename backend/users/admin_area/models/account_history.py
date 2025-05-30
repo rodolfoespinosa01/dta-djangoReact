@@ -4,12 +4,11 @@ from django.contrib.auth import get_user_model  # 👉 allows referencing the cu
 User = get_user_model()  # 👉 gets the project's configured custom user model
 
 
-class AccountHistory(models.Model):  # 👉 stores a history log of user account events (signup, cancel, reactivate, etc.)
+class AccountHistory(models.Model):  # 👉 stores a history log of user account events (signup, cancel, etc.)
 
     EVENT_CHOICES = [
         ('signup', 'Signup'),
         ('cancel', 'Cancel Subscription'),
-        ('reactivate', 'Reactivation'),
         ('stripe_payment', 'Stripe Payment Processed'),
     ]
     # 👉 defines the allowed types of events recorded in the history
@@ -47,9 +46,6 @@ class AccountHistory(models.Model):  # 👉 stores a history log of user account
     cancelled_at = models.DateTimeField(null=True, blank=True)
     # 👉 timestamp of when the user canceled their plan
 
-    reactivated_on = models.DateTimeField(null=True, blank=True)
-    # 👉 timestamp of when the user reactivated their plan
-
     timestamp = models.DateTimeField(auto_now_add=True)
     # 👉 records when this history record was created
 
@@ -65,5 +61,5 @@ class AccountHistory(models.Model):  # 👉 stores a history log of user account
 
 # 👉 summary:
 # stores a complete history of major admin account lifecycle events, including signups, cancellations,
-# reactivations, and stripe payments. designed to ensure accurate billing history, prevent abuse,
+# and stripe payments. designed to ensure accurate billing history, prevent abuse,
 # and support auditability across the subscription system.

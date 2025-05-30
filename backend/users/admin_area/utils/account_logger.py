@@ -3,7 +3,7 @@ from django.utils import timezone  # 👉 used to timestamp payment events when 
 
 # 👉 logs a user lifecycle event to the accounthistory table
 # 👉 accepts either a user instance (post-registration) or an email (pre-registration)
-# 👉 tracks events like signup, cancel, reactivation, or stripe payment
+# 👉 tracks events like signup, cancel, , or stripe payment
 def log_account_event(
     event_type,
     plan_name,
@@ -14,7 +14,6 @@ def log_account_event(
     subscription_start=None,
     subscription_end=None,
     cancelled_at=None,
-    reactivated_on=None,
     payment_processed_on=None,
     stripe_transaction_id=None,
 ):
@@ -22,7 +21,7 @@ def log_account_event(
     Logs a user lifecycle event to the AccountHistory model.
 
     Accepts either a user instance (post-registration) or an email (pre-registration)
-    and records key subscription or billing events such as signup, cancel, reactivation,
+    and records key subscription or billing events such as signup, cancel,
     or Stripe payment.
 
     Args:
@@ -35,7 +34,6 @@ def log_account_event(
         subscription_start (datetime, optional): Subscription start date.
         subscription_end (datetime, optional): Subscription end date.
         cancelled_at (datetime, optional): Time of cancellation.
-        reactivated_on (datetime, optional): Time of reactivation.
         payment_processed_on (datetime, optional): Time payment was processed.
         stripe_transaction_id (str, optional): Stripe transaction/charge ID.
     """
@@ -59,7 +57,6 @@ def log_account_event(
         'subscription_start': subscription_start,
         'subscription_end': subscription_end,
         'cancelled_at': cancelled_at,
-        'reactivated_on': reactivated_on,
         'payment_processed_on': payment_processed_on or (timezone.now() if event_type == 'stripe_payment' else None),
         'stripe_transaction_id': stripe_transaction_id,
     }
@@ -71,5 +68,5 @@ def log_account_event(
 
 # 👉 summary:
 # central logging utility for all admin subscription lifecycle events.
-# captures signups, cancellations, reactivations, and stripe payments tied to either an email or user.
+# captures signups, cancellations, and stripe payments tied to either an email or user.
 # ensures consistent and centralized tracking of billing history across the platform.

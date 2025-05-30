@@ -34,7 +34,7 @@ def create_checkout_session(request):
         existing_user = CustomUser.objects.filter(email=email).first()
         if existing_user:
             return Response({
-                'error': 'This email is already associated with an account. Please log in or reactivate your plan.'
+                'error': 'This email is already associated with an account. Please log-in.'
             }, status=status.HTTP_403_FORBIDDEN)
 
         # 🔒 prevents duplicate pending signups
@@ -62,8 +62,7 @@ def create_checkout_session(request):
                 'quantity': 1,
             }],
             metadata={
-                'plan_name': plan_name,  # 👉 store original plan request (adminTrial vs adminMonthly)
-                "is_reactivation": "true"
+                'plan_name': plan_name  # 👉 store original plan request (adminTrial vs adminMonthly)
             },
             success_url='http://localhost:3000/admin_thank_you?session_id={CHECKOUT_SESSION_ID}',
             cancel_url='http://localhost:3000/admin_plans',

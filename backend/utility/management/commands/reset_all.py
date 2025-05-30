@@ -6,8 +6,7 @@ from users.admin_area.models import (
     PendingSignup,
     PasswordResetToken,
     AccountHistory,
-    PreCheckoutEmail,
-    ScheduledSubscription
+    PreCheckoutEmail
 )
 
 class Command(BaseCommand):
@@ -41,9 +40,5 @@ class Command(BaseCommand):
         # Account history
         AccountHistory.objects.all().delete()
         self.stdout.write(self.style.WARNING('📚 Account history entries deleted.'))
-
-        ScheduledSubscription.objects.all().delete()
-        self.stdout.write(self.style.WARNING('🗓️ Scheduled Subscriptions deleted.'))
-
 
         self.stdout.write(self.style.SUCCESS('🎯 All admin-related test data reset!'))
