@@ -182,6 +182,8 @@ Feel free to open an issue or submit a PR if you're contributing.
 
 ## 🚧 Pending Features and Refactor Checklist
 
+- Inegrating Typescript
+
 ### ✅ Account History Tracking
 - [ ] Create `AdminAccountHistory` model to track:
   - Trial start
