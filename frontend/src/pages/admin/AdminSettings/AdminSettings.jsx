@@ -132,20 +132,6 @@ function AdminSettings() {
               </button>
             )}
 
-            {dashboardData.is_canceled && dashboardData.reactivation_pending && (
-              <p className="reactivation-pending">
-                🔄 new plan scheduled to start: <strong>{formatDate(dashboardData.reactivation_start_date)}</strong>
-              </p>
-            )}
-
-            {dashboardData.is_canceled && !dashboardData.reactivation_pending && (
-              <button
-                onClick={() => navigate('/admin_reactivate')}
-                className="btn-reactivate"
-              >
-                reactivate subscription
-              </button>
-            )}
           </div>
 
           {cancelMessage && (
@@ -166,6 +152,5 @@ function AdminSettings() {
 export default AdminSettings;
 
 // summary:
-// this page shows the admin's subscription details and provides options to cancel auto-renew or reactivate a canceled plan.
+// this page shows the admin's subscription details and provides options to cancel auto-renew 
 // it fetches subscription data from the dashboard api, handles cancel requests, and reflects changes in real time.
-// if a reactivation is pending, it also displays the scheduled start date for the new plan.

@@ -37,6 +37,6 @@ def create_profile_with_stripe_data(
 
 
 # 👉 summary:
-# creates a fresh subscription profile for a user after stripe checkout or reactivation.
+# creates a fresh subscription profile for a user after stripe checkout.
 # ensures previous profiles are marked as inactive, keeping only one marked as current.
 # used for tracking billing state, plan history, and controlling dashboard access.

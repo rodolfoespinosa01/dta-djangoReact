@@ -8,7 +8,7 @@ class Plan(models.Model):  # 👉 stores subscription plans available to admin u
         ('adminQuarterly', 'Quarterly Admin Plan'),
         ('adminAnnual', 'Annual Admin Plan'),
     ]
-    # 👉 defines the available plan types that can be selected during signup or reactivation
+    # 👉 defines the available plan types that can be selected during signup
 
     name = models.CharField(max_length=30, choices=PLAN_CHOICES, unique=True)  # 👉 stores the internal plan key (e.g. adminMonthly)
     description = models.TextField()  # 👉 short summary or marketing description of the plan

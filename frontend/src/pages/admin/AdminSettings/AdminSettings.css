@@ -35,8 +35,7 @@
   margin-top: 1.5rem;
 }
 
-.btn-cancel,
-.btn-reactivate,
+.btn-cancel
 .btn-back {
   background-color: #2563eb;
   color: white;
@@ -49,15 +48,6 @@
 
 .btn-cancel {
   background-color: #ef4444;
-}
-
-.btn-reactivate {
-  background-color: #10b981;
-}
-
-.reactivation-pending {
-  color: #2563eb;
-  margin-top: 1rem;
 }
 
 .cancel-message {

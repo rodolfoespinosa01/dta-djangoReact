@@ -7,7 +7,6 @@ from rest_framework.permissions import AllowAny
 from django.contrib.auth import get_user_model
 
 from users.admin_area.models import Plan, PendingSignup, PreCheckoutEmail
-from users.admin_area.utils.reactivate_profile import handle_admin_reactivation  # 🔁 helper module
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 endpoint_secret = settings.STRIPE_WEBHOOK_SECRET
@@ -43,17 +42,7 @@ def stripe_webhook(request):
         subscription_id = session.get('subscription')
 
         print(f"📡 stripe webhook triggered for: {customer_email} | session_id: {session_id}")
-
-        # ✅ handle reactivation flow for existing users
-        if User.objects.filter(email=customer_email).exists():
-            print(f"🔁 existing user detected — invoking reactivation handler for {customer_email}")
-            try:
-                handle_admin_reactivation(session)
-            except Exception as e:
-                print(f"❌ reactivation failed: {str(e)}")
-                return HttpResponse(status=500)
-            return HttpResponse(status=200)
-
+        
         # 🆕 handle first-time admin signup
         plan_name = session.get('metadata', {}).get('plan_name')
         if not plan_name:
