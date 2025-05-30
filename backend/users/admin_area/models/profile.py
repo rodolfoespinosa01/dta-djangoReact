@@ -32,5 +32,4 @@ class Profile(models.Model):  # 👉 stores subscription details tied to a user 
 
 # 👉 summary:
 # tracks individual subscription cycles for admin users, including stripe info, billing dates,
-# and plan status. supports reactivation, upgrades, and billing history by allowing multiple
-# profiles per user while keeping one marked as current.
+# and plan status. 

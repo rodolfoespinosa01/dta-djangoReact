@@ -3,7 +3,7 @@ from rest_framework.response import Response  # 👉 used to send structured JSO
 from rest_framework import permissions, status  # 👉 access control and HTTP status codes
 from django.utils.timezone import now  # 👉 provides current timestamp
 
-from users.admin_area.models import Profile, ScheduledSubscription  # 👉 models used to determine admin subscription state
+from users.admin_area.models import Profile  # 👉 models used to determine admin subscription state
 
 
 class DashboardView(APIView):
@@ -45,10 +45,6 @@ class DashboardView(APIView):
             "admin_annual": profile.subscription_start_date if subscription_status == "admin_annual" else None,
         }
 
-        # 🔄 check if this user has a reactivation scheduled for later
-        reactivation = ScheduledSubscription.objects.filter(user=user).first()
-        reactivation_pending = bool(reactivation)
-        reactivation_start_date = reactivation.start_date if reactivation else None
 
         # 📤 build the response object returned to the frontend dashboard
         response_data = {
@@ -64,8 +60,6 @@ class DashboardView(APIView):
             "quarterly_start": start_dates["admin_quarterly"],
             "annual_start": start_dates["admin_annual"],
             "next_billing_date": profile.next_billing_date if is_active else None,
-            "reactivation_pending": reactivation_pending,
-            "reactivation_start_date": reactivation_start_date,
         }
 
         return Response(response_data)
@@ -74,5 +68,5 @@ class DashboardView(APIView):
 # 👉 summary:
 # returns all billing-related metadata for an authenticated admin user.
 # determines if the subscription is active, canceled, expired, or trial-based.
-# includes plan start dates, remaining trial days, and reactivation status.
-# supports frontend logic for showing access warnings, countdowns, or reactivation options.
+# includes plan start dates and remaining trial days.
+# supports frontend logic

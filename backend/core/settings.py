@@ -170,10 +170,6 @@ CORS_ALLOWED_ORIGINS = [
 
 CORS_ALLOW_CREDENTIALS = True
 
-REACTIVATE_SUCCESS_URL = "http://localhost:3000/admin_dashboard"
-REACTIVATE_CANCEL_URL = "http://localhost:3000/adminsettings"
-#  👆Stripe success/cancel URLs for reactivation flow
-
 
 # 👉 summary:
 # this settings file defines the core configuration for the django backend.

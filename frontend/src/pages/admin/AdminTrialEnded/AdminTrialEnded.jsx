@@ -22,13 +22,10 @@ function AdminTrialEnded() {
       <h2 className="trial-ended-title">🚫 your admin access is inactive</h2>
       <p className="trial-ended-description">
         your free trial has ended or was cancelled. to continue using the dta dashboard and tools,
-        you'll need to select a paid plan and reactivate your subscription.
+        you'll need to select a plan.
       </p>
 
       <div className="trial-ended-buttons">
-        <button onClick={() => navigate('/admin_reactivate')} className="btn-reactivate">
-          reactivate account
-        </button>
 
         <button onClick={handleLogout} className="btn-logout">
           log out
@@ -45,6 +42,6 @@ function AdminTrialEnded() {
 export default AdminTrialEnded;
 
 // summary:
-// this page notifies the admin that their trial has ended and gives them the option to either reactivate or log out.
+// this page notifies the admin that their trial has ended
 // logging out clears all local storage values and redirects the user to the login page.
-// reactivation navigates the user to the admin_reactivate flow where they can choose a new plan.
+
