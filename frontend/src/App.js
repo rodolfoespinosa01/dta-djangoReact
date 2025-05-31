@@ -15,6 +15,8 @@ import AdminTrialEnded from './pages/admin/AdminTrialEnded/AdminTrialEnded';
 import AdminThankYou from './pages/admin/AdminThankYou/AdminThankYou';
 import AdminReactivatePage from './pages/admin/AdminReactivatePage/AdminReactivatePage';
 
+import AdminConfirmTrialPage from './pages/admin/AdminConfirmTrialPage/AdminConfirmTrialPage';
+
 import UserHomePage from './pages/user/UserHomePage';
 import UserPlanSelectionPage from './pages/user/UserPlanSelectionPage';
 
@@ -42,6 +44,7 @@ function App() {
           <Route path="/admin_forgot_password" element={<AdminForgotPasswordPage />} />
           <Route path="/admin_reset_password" element={<AdminResetPasswordPage />} />
           <Route path="/admin_thank_you" element={<AdminThankYou />} />
+          <Route path="/admin_confirm_trial" element={<AdminConfirmTrialPage />} /> {/* ✅ NEW ROUTE */}
           <Route path="/superadmin_login" element={<SuperAdminLoginPage />} />
           <Route path="/user_homepage" element={<UserHomePage />} />
           <Route path="/user_plans" element={<UserPlanSelectionPage />} />
@@ -79,7 +82,6 @@ function App() {
               </AdminProtectedRoute>
             }
           />
-
 
           {/* Protected SuperAdmin Routes */}
           <Route
