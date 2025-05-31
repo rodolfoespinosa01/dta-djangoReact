@@ -1,3 +1,4 @@
+// AdminPlanSelectionPage.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './AdminPlanSelectionPage.css';
@@ -62,7 +63,10 @@ function AdminPlanSelectionPage() {
         return;
       }
 
-      if (data.url) {
+      if (planId === 'adminTrial') {
+        const confirmUrl = `/admin_confirm_trial?subscription_id=${data.subscription_id}&customer_id=${data.customer_id}`;
+        navigate(confirmUrl);
+      } else if (data.url) {
         window.location.href = data.url;
       } else {
         setError('Could not initiate checkout session.');
@@ -123,9 +127,3 @@ function AdminPlanSelectionPage() {
 }
 
 export default AdminPlanSelectionPage;
-
-
-// admin plan selection page
-// this component displays all available admin subscription plans and allows the user to start the stripe checkout process.
-// it sends a POST request to /api/users/admin/create_checkout_session/ with the selected plan and email, and redirects to the stripe checkout url if successful.
-// this is the first step in the registration process before reaching the admin signup form.

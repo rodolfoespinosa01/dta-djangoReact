@@ -46,10 +46,28 @@ export const AuthProvider = ({ children }) => {
     const refresh = localStorage.getItem('refresh_token');
 
     if (!access || !refresh) {
-      console.warn('❌ No tokens found in localStorage');
       setAuth({ user: null, accessToken: null, isAuthenticated: false, loading: false });
-      return;
-    }
+
+      const publicPaths = [
+        '/admin_plans',
+        '/admin_checkout',
+        '/admin_thank_you',
+        '/admin_register',
+        '/admin_trial_ended',
+        '/'  // optionally your landing page
+      ];
+
+      const currentPath = window.location.pathname;
+      const isPublic = publicPaths.includes(currentPath);
+
+      if (!isPublic) {
+        console.warn('❌ No tokens found — redirecting to login');
+        navigate('/admin_login');
+      }
+
+  return;
+}
+
 
     try {
       const decoded = jwtDecode(access);

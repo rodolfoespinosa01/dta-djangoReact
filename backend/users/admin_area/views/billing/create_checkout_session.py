@@ -16,43 +16,36 @@ from users.admin_area.models import Plan, PendingSignup, PreCheckoutEmail  # �
 stripe.api_key = settings.STRIPE_SECRET_KEY  # 👉 sets the secret key to authenticate stripe api calls
 
 
-@api_view(['POST'])  # 👉 accepts only POST requests
-@permission_classes([AllowAny])  # 👉 accessible without authentication
+@api_view(['POST'])
+@permission_classes([AllowAny])
 def create_checkout_session(request):
     try:
         data = request.data
         plan_name = data.get('plan_name')
         email = data.get('email')
 
-        # 👉 stores emails for lead tracking or follow-up even before checkout completes
         PreCheckoutEmail.objects.get_or_create(email=email)
 
         if not plan_name or not email:
             return Response({'error': 'Missing plan or email'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 🔒 blocks signups from existing users (including canceled/inactive)
         existing_user = CustomUser.objects.filter(email=email).first()
         if existing_user:
-            return Response({
-                'error': 'This email is already associated with an account. Please log-in.'
-            }, status=status.HTTP_403_FORBIDDEN)
+            return Response({'error': 'This email is already associated with an account. Please log in.'}, status=status.HTTP_403_FORBIDDEN)
 
-        # 🔒 prevents duplicate pending signups
         if PendingSignup.objects.filter(email=email, is_used=False).exists():
-            return Response({
-                'error': 'A registration link has already been generated for this email. Please complete your registration or wait for it to expire.'
-            }, status=status.HTTP_403_FORBIDDEN)
+            return Response({'error': 'A registration link has already been generated for this email.'}, status=status.HTTP_403_FORBIDDEN)
 
-        # 👉 convert trial to monthly for internal plan logic
-        actual_plan_name = 'adminMonthly' if plan_name == 'adminTrial' else plan_name
+        # ✅ Always get the Stripe Plan (trial or paid)
+        if plan_name == 'adminTrial':
+            plan = Plan.objects.get(name='adminMonthly')  # trial uses same Stripe price as monthly
+        else:
+            plan = Plan.objects.get(name=plan_name)
 
-        # 👉 fetch the corresponding plan object
-        plan = Plan.objects.get(name=actual_plan_name)
-
-        # 👉 create a stripe customer tied to the user's email
+        # ✅ Create Stripe Customer
         customer = stripe.Customer.create(email=email)
 
-        # 👉 create the stripe checkout session for subscription
+        # ✅ Unified Checkout Session
         session = stripe.checkout.Session.create(
             mode='subscription',
             payment_method_types=['card'],
@@ -61,8 +54,10 @@ def create_checkout_session(request):
                 'price': plan.stripe_price_id,
                 'quantity': 1,
             }],
-            metadata={
-                'plan_name': plan_name  # 👉 store original plan request (adminTrial vs adminMonthly)
+            metadata={'plan_name': plan_name},
+            subscription_data={
+                'trial_period_days': 14 if plan_name == 'adminTrial' else None,
+                
             },
             success_url='http://localhost:3000/admin_thank_you?session_id={CHECKOUT_SESSION_ID}',
             cancel_url='http://localhost:3000/admin_plans',
@@ -70,13 +65,13 @@ def create_checkout_session(request):
 
         return Response({'url': session.url}, status=status.HTTP_200_OK)
 
-
     except Plan.DoesNotExist:
         return Response({'error': 'Plan not found'}, status=status.HTTP_404_NOT_FOUND)
-
     except Exception as e:
         print("❌ Error creating checkout session:", str(e))
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 
 
 # 👉 summary:

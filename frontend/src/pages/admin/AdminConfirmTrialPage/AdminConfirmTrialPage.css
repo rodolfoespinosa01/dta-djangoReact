@@ -1,0 +1,15 @@
+.admin-confirm-wrapper {
+  text-align: center;
+  padding: 4rem;
+  font-family: Arial, sans-serif;
+}
+
+.admin-confirm-wrapper h2 {
+  color: #4caf50;
+  margin-bottom: 1rem;
+}
+
+.admin-confirm-wrapper p {
+  font-size: 1.2rem;
+  color: #333;
+}
