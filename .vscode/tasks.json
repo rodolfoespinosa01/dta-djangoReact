@@ -27,20 +27,11 @@
       }
     },
     {
-      "label": "Run Invoice Paid Webhook",
-      "type": "shell",
-      "command": "stripe listen --forward-to localhost:8000/api/users/admin/invoice_paid_webhook/",
-      "options": {
-        "cwd": "${workspaceFolder}"
-      }
-    },
-    {
       "label": "Start All Services",
       "dependsOn": [
         "Run Django Server",
         "Run React App",
         "Run Stripe Webhook",
-        "Run Invoice Paid Webhook"
       ],
       "dependsOrder": "parallel"
     },
