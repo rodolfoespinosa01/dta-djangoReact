@@ -1,65 +1,53 @@
-from users.admin_area.models import AccountHistory  # 👉 imports the model that stores lifecycle event logs
-from django.utils import timezone  # 👉 used to timestamp payment events when not explicitly provided
+# users/utils/history_creator.py
 
-# 👉 logs a user lifecycle event to the accounthistory table
-# 👉 accepts either a user instance (post-registration) or an email (pre-registration)
-# 👉 tracks events like signup, cancel, , or stripe payment
+from django.utils import timezone
+from users.admin_area.models import AccountHistory
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+
 def log_history_event(
+    email,
     event_type,
     plan_name,
-    email=None,
-    user=None,
-    subscription_start=None,
-    subscription_end=None,
-    cancelled_at=None,
-    payment_processed_on=None,
+    is_trial=False,
     stripe_transaction_id=None,
+    stripe_subscription_id=None,
+    notes=None
 ):
     """
-    Logs a user lifecycle event to the AccountHistory model.
-
-    Accepts either a user instance (post-registration) or an email (pre-registration)
-    and records key subscription or billing events such as signup, cancel,
-    or Stripe payment.
+    Logs an account lifecycle event for an admin user.
 
     Args:
-        event_type (str): Type of the event (e.g., 'signup', 'cancel', etc.).
-        plan_name (str): Name of the associated plan.
-        email (str, optional): User's email if no user instance is available.
-        user (CustomUser, optional): The user object.
-        subscription_start (datetime, optional): Subscription start date.
-        subscription_end (datetime, optional): Subscription end date.
-        cancelled_at (datetime, optional): Time of cancellation.
-        payment_processed_on (datetime, optional): Time payment was processed.
+        email (str): Email of the admin user.
+        event_type (str): Type of event (e.g. 'trial_monthly_start', 'cancel', 'reactivation').
+        plan_name (str): The Stripe plan name ('adminMonthly', etc.).
+        is_trial (bool): Whether this event was part of a free trial.
+        stripe_transaction_id (str): Stripe invoice or session ID.
+        stripe_subscription_id (str): Stripe subscription ID.
+        notes (str): Optional notes.
+
+    Returns:
+        AccountHistory object.
     """
 
+    user = User.objects.filter(email=email).first()
 
-    resolved_email = email or (user.email if user and hasattr(user, "email") else None)  
-    # 👉 resolves the email from provided argument or user instance
+    if not user:
+        print(f"⚠️ Could not find user with email: {email}")
+        return None
 
-    if not resolved_email:
-        raise ValueError("You must provide either a user with email or an email string.")
-    # 👉 prevents logging if no email is available
+    history = AccountHistory.objects.create(
+        user=user,
+        event_type=event_type,
+        plan_name=plan_name,
+        is_trial=is_trial,
+        stripe_transaction_id=stripe_transaction_id,
+        stripe_subscription_id=stripe_subscription_id,
+        timestamp=timezone.now(),
+        notes=notes
+    )
 
-
-    history_data = {
-        'user': user,
-        'email': resolved_email,
-        'event_type': event_type,
-        'plan_name': plan_name,
-        'subscription_start': subscription_start,
-        'subscription_end': subscription_end,
-        'cancelled_at': cancelled_at,
-        'payment_processed_on': payment_processed_on or (timezone.now() if event_type == 'stripe_payment' else None),
-        'stripe_transaction_id': stripe_transaction_id,
-    }
-    # 👆 prepares all the fields to be recorded in the accounthistory table
-
-    AccountHistory.objects.create(**history_data)
-    # 👆 creates a new accounthistory record with all relevant info
-
-
-# 👉 summary:
-# central logging utility for all admin subscription lifecycle events.
-# captures signups, cancellations, and stripe payments tied to either an email or user.
-# ensures consistent and centralized tracking of billing history across the platform.
+    print(f"✅ Logged {event_type} for {email}")
+    return history
