@@ -4,13 +4,11 @@ from django.utils import timezone  # 👉 used to timestamp payment events when 
 # 👉 logs a user lifecycle event to the accounthistory table
 # 👉 accepts either a user instance (post-registration) or an email (pre-registration)
 # 👉 tracks events like signup, cancel, , or stripe payment
-def log_account_event(
+def log_history_event(
     event_type,
     plan_name,
     email=None,
     user=None,
-    stripe_customer_id=None,
-    stripe_subscription_id=None,
     subscription_start=None,
     subscription_end=None,
     cancelled_at=None,
@@ -29,13 +27,10 @@ def log_account_event(
         plan_name (str): Name of the associated plan.
         email (str, optional): User's email if no user instance is available.
         user (CustomUser, optional): The user object.
-        stripe_customer_id (str, optional): Stripe customer ID.
-        stripe_subscription_id (str, optional): Stripe subscription ID.
         subscription_start (datetime, optional): Subscription start date.
         subscription_end (datetime, optional): Subscription end date.
         cancelled_at (datetime, optional): Time of cancellation.
         payment_processed_on (datetime, optional): Time payment was processed.
-        stripe_transaction_id (str, optional): Stripe transaction/charge ID.
     """
 
 
@@ -52,8 +47,6 @@ def log_account_event(
         'email': resolved_email,
         'event_type': event_type,
         'plan_name': plan_name,
-        'stripe_customer_id': stripe_customer_id,
-        'stripe_subscription_id': stripe_subscription_id,
         'subscription_start': subscription_start,
         'subscription_end': subscription_end,
         'cancelled_at': cancelled_at,

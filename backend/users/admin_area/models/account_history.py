@@ -28,14 +28,6 @@ class AccountHistory(models.Model):  # 👉 stores a history log of user account
     payment_processed_on = models.DateTimeField(null=True, blank=True)
     # 👉 records when a stripe payment was completed
 
-    stripe_transaction_id = models.CharField(max_length=100, null=True, blank=True)
-    # 👉 stores the stripe charge or invoice id
-
-    stripe_customer_id = models.CharField(max_length=100, null=True, blank=True)
-    # 👉 stores the stripe customer id tied to this event
-
-    stripe_subscription_id = models.CharField(max_length=100, null=True, blank=True)
-    # 👉 stores the stripe subscription id tied to this event
 
     subscription_start = models.DateTimeField(null=True, blank=True)
     # 👉 timestamp of when a subscription period begins
@@ -48,6 +40,8 @@ class AccountHistory(models.Model):  # 👉 stores a history log of user account
 
     timestamp = models.DateTimeField(auto_now_add=True)
     # 👉 records when this history record was created
+
+    stripe_transaction_id = models.CharField(max_length=255, blank=True, null=True)
 
 
     def __str__(self):

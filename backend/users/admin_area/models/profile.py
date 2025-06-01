@@ -19,9 +19,7 @@ class Profile(models.Model):  # 👉 stores subscription details tied to a user 
     subscription_end_date = models.DateTimeField(null=True, blank=True)  # 👉 when the plan ended or will end
     next_billing_date = models.DateTimeField(null=True, blank=True)  # 👉 when the next payment is scheduled (used for paid plans)
 
-    stripe_subscription_id = models.CharField(max_length=255, null=True, blank=True)  # 👉 id from stripe for subscription tracking
     stripe_transaction_id = models.CharField(max_length=255, null=True, blank=True)  # 👉 last processed payment/charge id
-    stripe_customer_id = models.CharField(max_length=255, null=True, blank=True)  # 👉 stripe customer id for this user
 
     created_at = models.DateTimeField(auto_now_add=True)  # 👉 timestamp when this profile record was created
 

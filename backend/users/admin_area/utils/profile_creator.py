@@ -1,27 +1,30 @@
-from users.admin_area.models import Profile  # 👉 imports the profile model used to track subscription history
-from django.utils import timezone  # 👉 used for date handling (not used directly here but good for future logic)
+# users/admin_area/utils/profile_creator.py
 
+from users.admin_area.models import Profile
 
-def deactivate_previous_profiles(user):
-    # 👉 sets all current profiles for this user to not current
-    # 👉 ensures only one profile has is_current = true at any time
-    Profile.objects.filter(user=user, is_current=True).update(is_current=False)
-
-
-
-def create_profile_with_stripe_data(
+def log_profile_event(
     user,
     plan,
-    subscription_id,
     transaction_id,
     subscription_start,
     subscription_end,
     next_billing_date
 ):
-    # 👉 deactivates any previous current profiles before creating a new one
-    deactivate_previous_profiles(user)
+    """
+    Logs a new profile snapshot representing the user's current subscription cycle.
 
-    # 👉 creates a new profile snapshot representing this subscription period
+    Args:
+        user (CustomUser): The user tied to the subscription.
+        plan (Plan): The selected subscription plan object.
+        subscription_id (str): Stripe subscription ID.
+        transaction_id (str): Stripe payment intent or charge ID.
+        subscription_start (datetime): Start date of this billing period.
+        subscription_end (datetime or None): End date (null if still active).
+        next_billing_date (datetime): Next scheduled billing date.
+
+    Returns:
+        Profile: The newly created Profile instance.
+    """
     return Profile.objects.create(
         user=user,
         plan=plan,
@@ -30,13 +33,6 @@ def create_profile_with_stripe_data(
         is_current=True,
         subscription_start_date=subscription_start,
         subscription_end_date=subscription_end,
-        stripe_subscription_id=subscription_id,
         stripe_transaction_id=transaction_id,
         next_billing_date=next_billing_date,
     )
-
-
-# 👉 summary:
-# creates a fresh subscription profile for a user after stripe checkout.
-# ensures previous profiles are marked as inactive, keeping only one marked as current.
-# used for tracking billing state, plan history, and controlling dashboard access.
