@@ -14,6 +14,8 @@ from users.admin_area.views.billing.create_checkout_session import create_checko
 from users.admin_area.views.billing.stripe_webhook import stripe_webhook
 from users.admin_area.views.billing.cancel_subscription import cancel_subscription
 
+from users.admin_area.views.pendingsignup.get_pending_signup import get_pending_signup
+
 urlpatterns = [
     # 🔐 Auth
     path('register/', register, name='register'),
@@ -31,5 +33,6 @@ urlpatterns = [
     # 💳 Billing
     path('create_checkout_session/', create_checkout_session, name='create_checkout_session'),
     path('stripe_webhook/', stripe_webhook, name='stripe_webhook'),
-    path('cancel_subscription/', cancel_subscription, name='cancel_subscription')
+    path('cancel_subscription/', cancel_subscription, name='cancel_subscription'),
+    path('pending_signup/<str:token>/', get_pending_signup, name='get_pending_signup'),
 ]

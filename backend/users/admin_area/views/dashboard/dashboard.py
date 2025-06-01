@@ -30,8 +30,8 @@ class DashboardView(APIView):
 
         # ⚠️ determine if subscription is inactive due to cancellation or expiration
         is_trial = subscription_status == "admin_trial"
-        trial_expired = is_trial and (is_canceled or (profile.subscription_end_date and profile.subscription_end_date <= now_ts))
-        paid_expired = not is_trial and (is_canceled and profile.subscription_end_date and profile.subscription_end_date <= now_ts)
+        trial_expired = is_trial and (is_canceled or (profile.subscription_end and profile.subscription_end <= now_ts))
+        paid_expired = not is_trial and (is_canceled and profile.subscription_end and profile.subscription_end <= now_ts)
 
         inactive = trial_expired or paid_expired
         is_active = not inactive
@@ -39,10 +39,10 @@ class DashboardView(APIView):
 
         # 📅 map the subscription start dates based on plan type
         start_dates = {
-            "admin_trial": profile.subscription_start_date if subscription_status == "admin_trial" else None,
-            "admin_monthly": profile.subscription_start_date if subscription_status == "admin_monthly" else None,
-            "admin_quarterly": profile.subscription_start_date if subscription_status == "admin_quarterly" else None,
-            "admin_annual": profile.subscription_start_date if subscription_status == "admin_annual" else None,
+            "admin_trial": profile.subscription_start if subscription_status == "admin_trial" else None,
+            "admin_monthly": profile.subscription_start if subscription_status == "admin_monthly" else None,
+            "admin_quarterly": profile.subscription_start if subscription_status == "admin_quarterly" else None,
+            "admin_annual": profile.subscription_start if subscription_status == "admin_annual" else None,
         }
 
 
@@ -52,14 +52,14 @@ class DashboardView(APIView):
             "subscription_active": is_active,
             "is_canceled": is_canceled,
             "inactive": inactive,
-            "subscription_end_date": profile.subscription_end_date,
+            "subscription_end": profile.subscription_end,
             "trial_start": start_dates["admin_trial"],
             "is_trial": is_trial and is_active,
-            "days_remaining": (profile.subscription_end_date - now_ts).days if is_trial and profile.subscription_end_date else None,
+            "days_remaining": (profile.subscription_end_date - now_ts).days if is_trial and profile.subscription_end else None,
             "monthly_start": start_dates["admin_monthly"],
             "quarterly_start": start_dates["admin_quarterly"],
             "annual_start": start_dates["admin_annual"],
-            "next_billing_date": profile.next_billing_date if is_active else None,
+            "next_billing": profile.next_billing if is_active else None,
         }
 
         return Response(response_data)

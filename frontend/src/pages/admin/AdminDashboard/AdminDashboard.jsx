@@ -108,9 +108,9 @@ function AdminDashboard() {
             </p>
           )}
 
-          {dashboardData.is_canceled && dashboardData.subscription_end_date && (
+          {dashboardData.is_canceled && dashboardData.subscription_end && (
             <p style={{ marginTop: '1rem', color: '#ef4444' }}>
-              ⚠️ Your subscription has been canceled. Access ends on: <strong>{formatDate(dashboardData.subscription_end_date)}</strong>
+              ⚠️ Your subscription has been canceled. Access ends on: <strong>{formatDate(dashboardData.subscription_end)}</strong>
             </p>
           )}
         </div>
