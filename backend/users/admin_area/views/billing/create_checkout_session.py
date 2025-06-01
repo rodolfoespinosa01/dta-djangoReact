@@ -1,19 +1,19 @@
-import stripe  # 👉 stripe sdk for creating customers and checkout sessions
-import json  # 👉 included in case payload parsing is needed later
+import stripe
+import json
 
-from django.conf import settings  # 👉 accesses environment variables like stripe keys
-from django.utils.crypto import get_random_string  # 👉 unused here but could be used for generating tokens
-from django.utils import timezone  # 👉 unused here but helpful if tracking timestamps
+from django.conf import settings
+from django.utils.crypto import get_random_string  # 👉 future use: unique referral or invite tokens
+from django.utils import timezone  # 👉 for potential future timestamp tracking
 
-from rest_framework.decorators import api_view, permission_classes  # 👉 enables function-based views and permission control
-from rest_framework.permissions import AllowAny  # 👉 allows public access to this endpoint
-from rest_framework.response import Response  # 👉 formats api responses
-from rest_framework import status  # 👉 standard http status codes
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework import status
 
-from core.models import CustomUser  # 👉 custom user model to check for existing accounts
-from users.admin_area.models import Plan, PendingSignup, PreCheckoutEmail  # 👉 admin models for plan logic and signup tracking
+from core.models import CustomUser
+from users.admin_area.models import Plan, PendingSignup, PreCheckoutEmail
 
-stripe.api_key = settings.STRIPE_SECRET_KEY  # 👉 sets the secret key to authenticate stripe api calls
+stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
 @api_view(['POST'])
@@ -24,45 +24,49 @@ def create_checkout_session(request):
         plan_name = data.get('plan_name')
         email = data.get('email')
 
+        # ✅ Log pre-checkout email for early lead tracking
         PreCheckoutEmail.objects.get_or_create(email=email)
 
         if not plan_name or not email:
             return Response({'error': 'Missing plan or email'}, status=status.HTTP_400_BAD_REQUEST)
 
+        # ❌ Block reuse if user already exists
         existing_user = CustomUser.objects.filter(email=email).first()
         if existing_user:
             return Response({'error': 'This email is already associated with an account. Please log in.'}, status=status.HTTP_403_FORBIDDEN)
 
+        # ❌ Prevent multiple pending signups
         if PendingSignup.objects.filter(email=email, is_used=False).exists():
             return Response({'error': 'A registration link has already been generated for this email.'}, status=status.HTTP_403_FORBIDDEN)
 
-        # ✅ Always get the Stripe Plan (trial or paid)
+        # ✅ Use adminMonthly Stripe price ID for adminTrial logic
         if plan_name == 'adminTrial':
-            plan = Plan.objects.get(name='adminMonthly')  # trial uses same Stripe price as monthly
+            plan = Plan.objects.get(name='adminMonthly')
         else:
             plan = Plan.objects.get(name=plan_name)
 
-        # ✅ Create Stripe Customer
+        # ✅ Create a new Stripe customer (optional: store this ID if needed later)
         customer = stripe.Customer.create(email=email)
 
-        # ✅ Unified Checkout Session
+        # ✅ Create the Stripe Checkout session
         session = stripe.checkout.Session.create(
             mode='subscription',
             payment_method_types=['card'],
-            customer=customer.id,
+            customer_email=email,
             line_items=[{
                 'price': plan.stripe_price_id,
                 'quantity': 1,
             }],
-            metadata={'plan_name': plan_name},
+            metadata={
+                'plan_name': plan_name
+            },
             subscription_data={
                 'trial_period_days': 14 if plan_name == 'adminTrial' else None,
-                
             },
             success_url='http://localhost:3000/admin_thank_you?session_id={CHECKOUT_SESSION_ID}',
             cancel_url='http://localhost:3000/admin_plans',
         )
-
+        
         return Response({'url': session.url}, status=status.HTTP_200_OK)
 
     except Plan.DoesNotExist:
@@ -72,10 +76,10 @@ def create_checkout_session(request):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-
-
-# 👉 summary:
-# creates a stripe checkout session for an admin plan purchase (trial or paid).
-# prevents signups from duplicate or existing users, logs early email leads,
-# and returns a stripe-hosted url to complete checkout.
-# supports secure, scalable billing logic and prevents abuse of the trial flow.
+# ✅ Summary:
+# This view:
+# - Validates email and plan
+# - Prevents duplicate user signups or multiple pending registrations
+# - Creates Stripe Checkout session with correct trial or paid logic
+# - Logs pre-checkout emails for attribution
+# - Returns secure Stripe-hosted session URL to frontend

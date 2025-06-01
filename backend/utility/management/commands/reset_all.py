@@ -6,7 +6,8 @@ from users.admin_area.models import (
     PendingSignup,
     PasswordResetToken,
     AccountHistory,
-    PreCheckoutEmail
+    PreCheckoutEmail,
+    TransactionLog
 )
 
 class Command(BaseCommand):
@@ -40,5 +41,9 @@ class Command(BaseCommand):
         # Account history
         AccountHistory.objects.all().delete()
         self.stdout.write(self.style.WARNING('📚 Account history entries deleted.'))
+
+        # Transaction Log
+        TransactionLog.objects.all().delete()
+        self.stdout.write(self.style.WARNING('🗒️ TransactionLog entries deleted.'))
 
         self.stdout.write(self.style.SUCCESS('🎯 All admin-related test data reset!'))

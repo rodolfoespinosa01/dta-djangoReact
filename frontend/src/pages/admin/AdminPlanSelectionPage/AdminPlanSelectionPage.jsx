@@ -63,11 +63,8 @@ function AdminPlanSelectionPage() {
         return;
       }
 
-      if (planId === 'adminTrial') {
-        const confirmUrl = `/admin_confirm_trial?subscription_id=${data.subscription_id}&customer_id=${data.customer_id}`;
-        navigate(confirmUrl);
-      } else if (data.url) {
-        window.location.href = data.url;
+      if (data.url) {
+        window.location.href = data.url;;
       } else {
         setError('Could not initiate checkout session.');
       }
@@ -106,11 +103,7 @@ function AdminPlanSelectionPage() {
             <h3>{adminPlan.name}</h3>
             <p className="admin-plan-price">{adminPlan.price}</p>
             <p className="admin-plan-description">{adminPlan.description}</p>
-            <button
-              onClick={() => handleSelectAdminPlan(adminPlan.id)}
-              disabled={loading}
-              className="admin-plan-button"
-            >
+            <button onClick={() => handleSelectAdminPlan(adminPlan.id)} disabled={loading} className="admin-plan-button">
               {loading ? 'processing...' : 'continue to checkout'}
             </button>
           </div>

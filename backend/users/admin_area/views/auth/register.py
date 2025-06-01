@@ -12,8 +12,8 @@ from rest_framework import status  # 👉 standard HTTP status codes
 from rest_framework_simplejwt.tokens import RefreshToken  # 👉 generates JWT tokens for login response
 
 from users.admin_area.models import Plan, Profile, PendingSignup  # 👉 core admin billing models
-from users.admin_area.utils.account_logger import log_account_event  # 👉 logs lifecycle events like signup or cancel
-from users.admin_area.utils.profile_creator import create_profile_with_stripe_data  # 👉 creates billing profile snapshot
+from users.admin_area.utils.history_creator import log_history_event  # 👉 logs lifecycle events like signup or cancel
+from users.admin_area.utils.profile_creator import log_profile_event  # 👉 creates billing profile snapshot
 
 stripe.api_key = settings.STRIPE_SECRET_KEY  # 👉 initializes stripe with secret key
 User = get_user_model()  # 👉 loads the active custom user model
@@ -71,7 +71,6 @@ def register(request):
     user.role = 'admin'
     user.is_staff = True
     user.subscription_status = subscription_status
-    user.stripe_customer_id = customer_id
     user.save()
 
     now = timezone.now()
@@ -88,7 +87,7 @@ def register(request):
         subscription_end = None
 
     # 👉 create initial billing profile snapshot
-    create_profile_with_stripe_data(
+    log_profile_event(
         user=user,
         plan=plan,
         subscription_id=subscription_id,
@@ -114,13 +113,11 @@ def register(request):
 
 
     # 👉 log signup event to account history
-    log_account_event(
+    log_history_event(
         user=user,
         email=user.email,
         event_type='signup',
         plan_name=plan.name,
-        stripe_customer_id=customer_id,
-        stripe_subscription_id=subscription_id,
         subscription_start=now
     )
 
