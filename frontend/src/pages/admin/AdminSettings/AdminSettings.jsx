@@ -105,8 +105,8 @@ function AdminSettings() {
             </p>
           )}
 
-          {dashboardData.next_billing_date && dashboardData.subscription_active && (
-            <p><strong>next billing date:</strong> {formatDate(dashboardData.next_billing_date)}</p>
+          {dashboardData.next_billing && dashboardData.subscription_active && (
+            <p><strong>next billing date:</strong> {formatDate(dashboardData.next_billing)}</p>
           )}
 
           {dashboardData.subscription_active && !dashboardData.is_canceled && (
@@ -115,9 +115,9 @@ function AdminSettings() {
             </p>
           )}
 
-          {dashboardData.is_canceled && dashboardData.subscription_end_date && (
+          {dashboardData.is_canceled && dashboardData.subscription_end && (
             <p className="subscription-canceled">
-              🔒 your plan is canceled. access ends on <strong>{formatDate(dashboardData.subscription_end_date)}</strong>
+              🔒 your plan is canceled. access ends on <strong>{formatDate(dashboardData.subscription_end)}</strong>
             </p>
           )}
 

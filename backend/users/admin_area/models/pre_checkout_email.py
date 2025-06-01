@@ -5,7 +5,7 @@ class PreCheckoutEmail(models.Model):  # 👉 stores emails submitted before str
     created_at = models.DateTimeField(auto_now_add=True)  # 👉 timestamp of when the email was collected
 
     def __str__(self):
-        return self.email  # 👉 displays the email in admin or logs
+        return f"{self.email} - {self.created_at.strftime('%Y-%m-%d %H:%M:%S')}"
 
     # 👉 summary:
     # captures emails from users before they start the stripe checkout flow.

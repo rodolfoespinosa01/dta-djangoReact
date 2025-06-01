@@ -35,20 +35,20 @@ def dashboard(request):
         elif status_label == 'admin_trial':
             monthly_plan = Plan.objects.filter(name='adminMonthly').first()
             price = monthly_plan.price_dollars() if monthly_plan else "Unknown"
-            next_billing = profile.trial_start_date + timedelta(days=14) if profile.trial_start_date else None
+            next_billing = profile.trial_start + timedelta(days=14) if profile.trial_start else None
             next_billing_str = next_billing.strftime('%Y-%m-%d') if next_billing else ""
         else:
             # Paid plan
             plan_name = status_label.replace('admin_', 'admin').capitalize()
             plan = Plan.objects.filter(name__icontains=plan_name).first()
             price = plan.price_dollars() if plan else "Unknown"
-            next_billing_str = profile.next_billing_date.strftime('%Y-%m-%d') if profile.next_billing_date else ""
+            next_billing_str = profile.next_billing.strftime('%Y-%m-%d') if profile.next_billing else ""
 
         admin_data.append({
             "email": admin.email,
             "plan": status_label,
             "price": price,
-            "next_billing_date": next_billing_str,
+            "next_billing": next_billing_str,
         })
 
     return Response({

@@ -68,7 +68,7 @@ function SuperAdminDashboard() {
                   )}
                 </td>
                 <td style={{ padding: '0.5rem' }}>{admin.price || ''}</td>
-                <td style={{ padding: '0.5rem' }}>{admin.next_billing_date || ''}</td>
+                <td style={{ padding: '0.5rem' }}>{admin.next_billing || ''}</td>
               </tr>
             );
           })}

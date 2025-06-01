@@ -30,7 +30,7 @@ def register(request):
         return Response({'error': 'Missing fields'}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
-        pending = PendingSignup.objects.get(token=token)  # 👉 verifies signup token is valid
+        pending = PendingSignup.objects.get(token=token, is_used=False)  # 👉 verifies signup token is valid
     except PendingSignup.DoesNotExist:
         return Response({'error': 'Invalid or expired token'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -41,8 +41,8 @@ def register(request):
     except stripe.error.StripeError as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    subscription_id = pending.subscription_id or checkout_session.get("subscription")
-
+    
+    stripe_transaction_id = pending.stripe_transaction_id
     customer_obj = checkout_session.get("customer")
     customer_id = customer_obj["id"] if isinstance(customer_obj, dict) else customer_obj
     customer_email = checkout_session.get("customer_email") or customer_obj.get("email")
@@ -90,11 +90,10 @@ def register(request):
     log_profile_event(
         user=user,
         plan=plan,
-        subscription_id=subscription_id,
-        transaction_id=checkout_session.get('payment_intent'),
+        stripe_transaction_id=stripe_transaction_id,
         subscription_start=now,
         subscription_end=subscription_end,
-        next_billing_date=subscription_end
+        next_billing=subscription_end
     )
 
     # 👉 attach default payment method if setup intent was used
