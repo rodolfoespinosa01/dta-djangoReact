@@ -60,8 +60,8 @@ def cancel_subscription(request):
         return Response({'error': f'Stripe error: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
     # 👉 update profile with end date and clear next billing
-    profile.subscription_end_date = profile.next_billing_date
-    profile.next_billing_date = None
+    profile.subscription_end = profile.next_billing
+    profile.next_billing = None
     profile.save()
 
     log_history_event(
@@ -72,7 +72,7 @@ def cancel_subscription(request):
     )
 
     return Response({
-        'message': f'{plan_name} subscription canceled. You will retain access until {profile.subscription_end_date.date()}'
+        'message': f'{plan_name} subscription canceled. You will retain access until {profile.subscription_end.date()}'
     })
 
 

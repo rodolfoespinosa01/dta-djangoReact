@@ -7,4 +7,4 @@ class TransactionLog(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.email} | {self.stipe_transaction_id} | {self.created_at}"
+        return f"{self.email} | {self.stripe_transaction_id} | {self.created_at}"
