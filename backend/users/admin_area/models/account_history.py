@@ -1,4 +1,5 @@
 from django.db import models  # 👉 provides access to django model classes and fields
+from django.conf import settings
 from django.contrib.auth import get_user_model  # 👉 allows referencing the custom user model dynamically
 
 User = get_user_model()  # 👉 gets the project's configured custom user model
@@ -7,49 +8,45 @@ User = get_user_model()  # 👉 gets the project's configured custom user model
 class AccountHistory(models.Model):  # 👉 stores a history log of user account events (signup, cancel, etc.)
 
     EVENT_CHOICES = [
-        ('signup', 'Signup'),
-        ('cancel', 'Cancel Subscription'),
-        ('stripe_payment', 'Stripe Payment Processed'),
-    ]
-    # 👉 defines the allowed types of events recorded in the history
+    # 🟢 New Subscriptions
+    ('trial_monthly_start', 'Trial - Monthly Plan Started'),
+    ('monthly_start', 'Monthly Plan Started'),
+    ('trial_quarterly_start', 'Trial - Quarterly Plan Started'),
+    ('quarterly_start', 'Quarterly Plan Started'),
+    ('trial_yearly_start', 'Trial - Yearly Plan Started'),
+    ('yearly_start', 'Yearly Plan Started'),
+
+    # 🟡 Reactivations
+    ('reactivate_monthly', 'Reactivated - Monthly Plan'),
+    ('reactivate_quarterly', 'Reactivated - Quarterly Plan'),
+    ('reactivate_yearly', 'Reactivated - Yearly Plan'),
+
+    # 🔴 Cancellations
+    ('cancel_trial', 'Canceled - Trial Plan'),
+    ('cancel_monthly', 'Canceled - Monthly Plan'),
+    ('cancel_quarterly', 'Canceled - Quarterly Plan'),
+    ('cancel_yearly', 'Canceled - Yearly Plan'),
+
+    # 💵 Refunds
+    ('refund_full', 'Full Refund Issued'),
+    ('refund_partial', 'Partial Refund Issued'),
+
+    # 🧾 Stripe Events
+    ('stripe_payment_succeeded', 'Stripe Payment Succeeded'),
+    ('stripe_payment_failed', 'Stripe Payment Failed'),
+]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
-    # 👉 links the event to a user (nullable in case of pre-signup events)
-
-    email = models.EmailField(null=True, blank=True)
-    # 👉 stores email separately in case the user record doesn't exist yet
-
-    event_type = models.CharField(max_length=20, choices=EVENT_CHOICES)
-    # 👉 indicates the type of event being logged
-
-    plan_name = models.CharField(max_length=30)
-    # 👉 stores the name of the plan tied to the event (e.g. admin_monthly)
-
-    payment_processed_on = models.DateTimeField(null=True, blank=True)
-    # 👉 records when a stripe payment was completed
-
-
-    subscription_start = models.DateTimeField(null=True, blank=True)
-    # 👉 timestamp of when a subscription period begins
-
-    subscription_end = models.DateTimeField(null=True, blank=True)
-    # 👉 timestamp of when the subscription period ends or was canceled
-
-    cancelled_at = models.DateTimeField(null=True, blank=True)
-    # 👉 timestamp of when the user canceled their plan
-
-    timestamp = models.DateTimeField(auto_now_add=True)
-    # 👉 records when this history record was created
-
+    event_type = models.CharField(max_length=50)  # e.g. 'trial_monthly_start'
+    plan_name = models.CharField(max_length=50)  # 'adminMonthly', etc.
+    is_trial = models.BooleanField(default=False)
     stripe_transaction_id = models.CharField(max_length=255, blank=True, null=True)
-
+    stripe_subscription_id = models.CharField(max_length=255, blank=True, null=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    notes = models.TextField(blank=True, null=True)  # for future Stripe data dumps or internal logs
 
     def __str__(self):
-        if self.email:
-            return f"{self.email} - {self.event_type} on {self.timestamp.strftime('%Y-%m-%d')}"
-        elif self.user:
-            return f"{self.user.email} - {self.event_type} on {self.timestamp.strftime('%Y-%m-%d')}"
-        return f"Unlinked - {self.event_type} on {self.timestamp.strftime('%Y-%m-%d')}"
+        return f"{self.user.email} | {self.event_type} | {self.timestamp.strftime('%Y-%m-%d')}"
     # 👉 returns a readable string for this record, using either the user's email or linked user object
 
 

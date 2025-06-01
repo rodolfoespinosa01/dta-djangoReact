@@ -55,7 +55,7 @@ class DashboardView(APIView):
             "subscription_end": profile.subscription_end,
             "trial_start": start_dates["admin_trial"],
             "is_trial": is_trial and is_active,
-            "days_remaining": (profile.subscription_end_date - now_ts).days if is_trial and profile.subscription_end else None,
+            "days_remaining": (profile.subscription_end - now_ts).days if is_trial and profile.subscription_end else None,
             "monthly_start": start_dates["admin_monthly"],
             "quarterly_start": start_dates["admin_quarterly"],
             "annual_start": start_dates["admin_annual"],

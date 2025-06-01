@@ -61,6 +61,15 @@
         "cwd": "${workspaceFolder}/backend"
       },
       "problemMatcher": []
+    },
+    {
+      "label": "Full Reset DB",
+      "type": "shell",
+      "command": "source venv/bin/activate && python manage.py full_reset_db",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": []
     }
   ]
 }
