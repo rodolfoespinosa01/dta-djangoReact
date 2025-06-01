@@ -91,8 +91,8 @@ function AdminDashboard() {
             {dashboardData.annual_start && (
               <li><strong>Annual Plan Start:</strong> {formatDate(dashboardData.annual_start)}</li>
             )}
-            {dashboardData.next_billing_date && (
-              <li><strong>Next Billing:</strong> {formatDate(dashboardData.next_billing_date)}</li>
+            {dashboardData.next_billing && (
+              <li><strong>Next Billing:</strong> {formatDate(dashboardData.next_billing)}</li>
             )}
           </ul>
 
