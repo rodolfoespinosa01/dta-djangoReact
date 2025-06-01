@@ -9,6 +9,7 @@ class PendingSignup(models.Model):  # 👉 stores pending admin signups after st
     is_used = models.BooleanField(default=False)  # 👉 tracks whether the registration token has been used
     created_at = models.DateTimeField(auto_now_add=True)  # 👉 timestamp when this pending signup was created
     stripe_transaction_id = models.CharField(max_length=255, blank=True, null=True)
+    is_trial = models.BooleanField(default=False)  # 👉 tracks whether this signup came from a trial
 
     def __str__(self):
         return f"{self.email} ({self.plan})"  # 👉 displays email and plan in admin or logs

@@ -12,6 +12,7 @@ from rest_framework import status
 
 from core.models import CustomUser
 from users.admin_area.models import Plan, PendingSignup, PreCheckoutEmail
+from users.admin_area.utils import log_precheckout_event
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -25,7 +26,7 @@ def create_checkout_session(request):
         email = data.get('email')
 
         # ✅ Log pre-checkout email for early lead tracking
-        PreCheckoutEmail.objects.get_or_create(email=email)
+        log_precheckout_event(email=email, plan_name=plan_name)
 
         if not plan_name or not email:
             return Response({'error': 'Missing plan or email'}, status=status.HTTP_400_BAD_REQUEST)
