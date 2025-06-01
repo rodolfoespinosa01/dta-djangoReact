@@ -1,15 +1,8 @@
-// AdminPlanSelectionPage.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './AdminPlanSelectionPage.css';
 
 const adminPlans = [
-  {
-    id: 'adminTrial',
-    name: 'Free Admin Trial',
-    price: 'Free for 14 days',
-    description: 'Try all features free for 14 days. After the trial, you will be billed $29.99/month unless canceled.',
-  },
   {
     id: 'adminMonthly',
     name: 'Monthly Admin Plan',
@@ -40,7 +33,7 @@ function AdminPlanSelectionPage() {
     navigate('/');
   };
 
-  const handleSelectAdminPlan = async (planId) => {
+  const handleSelectAdminPlan = async (planId, isTrial) => {
     if (!email) {
       setError('Please enter your email before continuing to checkout.');
       return;
@@ -53,7 +46,7 @@ function AdminPlanSelectionPage() {
       const response = await fetch('http://localhost:8000/api/users/admin/create_checkout_session/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan_name: planId, email }),
+        body: JSON.stringify({ plan_name: planId, email, is_trial: isTrial }),
       });
 
       const data = await response.json();
@@ -64,13 +57,13 @@ function AdminPlanSelectionPage() {
       }
 
       if (data.url) {
-        window.location.href = data.url;;
+        window.location.href = data.url;
       } else {
         setError('Could not initiate checkout session.');
       }
     } catch (err) {
-      console.error('error starting checkout:', err);
-      setError('something went wrong. please try again.');
+      console.error('Error starting checkout:', err);
+      setError('Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -78,12 +71,12 @@ function AdminPlanSelectionPage() {
 
   return (
     <div className="admin-plan-wrapper">
-      <h2 className="admin-plan-title">🧾 choose your admin plan</h2>
+      <h2 className="admin-plan-title">🧾 Choose Your Admin Plan</h2>
 
       <div className="admin-plan-email">
         <input
           type="email"
-          placeholder="enter your email"
+          placeholder="Enter your email"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -93,18 +86,31 @@ function AdminPlanSelectionPage() {
       </div>
 
       <div className="admin-plan-list">
-        {adminPlans.map((adminPlan) => (
+        {adminPlans.map((plan) => (
           <div
-            key={adminPlan.id}
+            key={plan.id}
             className="admin-plan-card"
             onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.03)')}
             onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
           >
-            <h3>{adminPlan.name}</h3>
-            <p className="admin-plan-price">{adminPlan.price}</p>
-            <p className="admin-plan-description">{adminPlan.description}</p>
-            <button onClick={() => handleSelectAdminPlan(adminPlan.id)} disabled={loading} className="admin-plan-button">
-              {loading ? 'processing...' : 'continue to checkout'}
+            <h3>{plan.name}</h3>
+            <p className="admin-plan-price">{plan.price}</p>
+            <p className="admin-plan-description">{plan.description}</p>
+
+            <button
+              onClick={() => handleSelectAdminPlan(plan.id, true)}
+              disabled={loading}
+              className="admin-plan-button"
+            >
+              {loading ? 'Processing...' : 'Start Free Trial'}
+            </button>
+
+            <button
+              onClick={() => handleSelectAdminPlan(plan.id, false)}
+              disabled={loading}
+              className="admin-plan-button"
+            >
+              {loading ? 'Processing...' : 'Buy Now'}
             </button>
           </div>
         ))}
@@ -112,7 +118,7 @@ function AdminPlanSelectionPage() {
 
       <div className="admin-plan-footer">
         <button onClick={handleHomeCTA} className="admin-plan-back-button">
-          back to main page
+          Back to Main Page
         </button>
       </div>
     </div>

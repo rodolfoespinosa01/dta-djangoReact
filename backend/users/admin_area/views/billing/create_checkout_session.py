@@ -24,29 +24,27 @@ def create_checkout_session(request):
         data = request.data
         plan_name = data.get('plan_name')
         email = data.get('email')
+        is_trial = data.get('is_trial', False)
 
-        # ✅ Log pre-checkout email for early lead tracking
-        log_precheckout_event(email=email, plan_name=plan_name)
-
+        # ✅ Basic validation
         if not plan_name or not email:
             return Response({'error': 'Missing plan or email'}, status=status.HTTP_400_BAD_REQUEST)
 
+        # ✅ Log pre-checkout email for early lead tracking
+        log_precheckout_event(email=email, plan_name=plan_name, is_trial=is_trial)
+
         # ❌ Block reuse if user already exists
-        existing_user = CustomUser.objects.filter(email=email).first()
-        if existing_user:
+        if CustomUser.objects.filter(email=email).exists():
             return Response({'error': 'This email is already associated with an account. Please log in.'}, status=status.HTTP_403_FORBIDDEN)
 
         # ❌ Prevent multiple pending signups
         if PendingSignup.objects.filter(email=email, is_used=False).exists():
             return Response({'error': 'A registration link has already been generated for this email.'}, status=status.HTTP_403_FORBIDDEN)
 
-        # ✅ Use adminMonthly Stripe price ID for adminTrial logic
-        if plan_name == 'adminTrial':
-            plan = Plan.objects.get(name='adminMonthly')
-        else:
-            plan = Plan.objects.get(name=plan_name)
+        # ✅ Determine plan and Stripe price
+        plan = Plan.objects.get(name=plan_name)
 
-        # ✅ Create a new Stripe customer (optional: store this ID if needed later)
+        # ✅ Create a new Stripe customer
         customer = stripe.Customer.create(email=email)
 
         # ✅ Create the Stripe Checkout session
@@ -59,15 +57,16 @@ def create_checkout_session(request):
                 'quantity': 1,
             }],
             metadata={
-                'plan_name': plan_name
+                'plan_name': plan_name,
+                'is_trial': str(is_trial),
             },
             subscription_data={
-                'trial_period_days': 14 if plan_name == 'adminTrial' else None,
+                'trial_period_days': 14 if is_trial else None,
             },
             success_url='http://localhost:3000/admin_thank_you?session_id={CHECKOUT_SESSION_ID}',
             cancel_url='http://localhost:3000/admin_plans',
         )
-        
+
         return Response({'url': session.url}, status=status.HTTP_200_OK)
 
     except Plan.DoesNotExist:
@@ -75,6 +74,7 @@ def create_checkout_session(request):
     except Exception as e:
         print("❌ Error creating checkout session:", str(e))
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 # ✅ Summary:
