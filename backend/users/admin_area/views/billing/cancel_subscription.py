@@ -7,7 +7,7 @@ import stripe  # 👉 stripe api for subscription management
 from django.conf import settings  # 👉 access to stripe secret key from environment
 
 from users.admin_area.models import Profile, AccountHistory, Plan  # 👉 key models for subscription tracking
-from users.admin_area.utils.account_logger import log_account_event  # 👉 logs cancel event to AccountHistory
+from users.admin_area.utils.history_creator import log_history_event  # 👉 logs cancel event to AccountHistory
 
 stripe.api_key = settings.STRIPE_SECRET_KEY  # 👉 set the stripe api key for requests
 
@@ -39,12 +39,10 @@ def cancel_subscription(request):
         # 👉 trial: allow access until trial ends without stripe cancellation
         profile.save()
 
-        log_account_event(
+        log_history_event(
             event_type='cancel_subscription',
             email=user.email,
             plan_name=plan_name,
-            stripe_customer_id=profile.stripe_customer_id,
-            stripe_subscription_id=profile.stripe_subscription_id,
             cancelled_at=now,
         )
 
@@ -66,12 +64,10 @@ def cancel_subscription(request):
     profile.next_billing_date = None
     profile.save()
 
-    log_account_event(
+    log_history_event(
         event_type='cancel_subscription',
         email=user.email,
         plan_name=plan_name,
-        stripe_customer_id=profile.stripe_customer_id,
-        stripe_subscription_id=profile.stripe_subscription_id,
         cancelled_at=now,
     )
 
