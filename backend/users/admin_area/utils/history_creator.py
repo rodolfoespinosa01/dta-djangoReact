@@ -13,7 +13,6 @@ def log_history_event(
     plan_name,
     is_trial=False,
     stripe_transaction_id=None,
-    stripe_subscription_id=None,
     notes=None
 ):
     """
