@@ -60,7 +60,6 @@ def stripe_webhook(request):
             event_type='stripe_payment', 
             plan_name=plan_name, 
             stripe_transaction_id=stripe_transaction_id, 
-            payment_processed_on=timezone.now()
         )
 
 
