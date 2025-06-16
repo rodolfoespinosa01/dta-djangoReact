@@ -13,7 +13,9 @@ def log_history_event(
     plan_name,
     is_trial=False,
     stripe_transaction_id=None,
-    notes=None
+    stripe_subscription_id=None,
+    notes=None,
+    subscription_start=None
 ):
     """
     Logs an account lifecycle event for an admin user.
