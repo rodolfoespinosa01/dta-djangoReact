@@ -34,6 +34,10 @@ class AccountHistory(models.Model):  # 👉 stores a history log of user account
     # 🧾 Stripe Events
     ('stripe_payment_succeeded', 'Stripe Payment Succeeded'),
     ('stripe_payment_failed', 'Stripe Payment Failed'),
+
+    ('upgrade_trial_to_monthly', 'Upgraded: Trial → Monthly'),
+    ('upgrade_trial_to_quarterly', 'Upgraded: Trial → Quarterly'),
+    ('upgrade_trial_to_yearly', 'Upgraded: Trial → Yearly'),
 ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)

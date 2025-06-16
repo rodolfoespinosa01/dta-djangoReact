@@ -1,6 +1,7 @@
 import json  # 👉 for parsing JSON if needed
 import stripe  # 👉 stripe api client
 from django.utils import timezone  # 👉 used for timestamps
+from datetime import timedelta
 from django.conf import settings  # 👉 to access environment config like stripe keys
 from django.contrib.auth import get_user_model  # 👉 for dynamic access to custom user model
 from dateutil.relativedelta import relativedelta  # 👉 used to calculate future billing dates
@@ -75,26 +76,38 @@ def register(request):
 
     now = timezone.now()
 
+    # Set trial_start and subscription_start based on whether this is a trial
     if is_trial:
+        trial_start = now
+        subscription_start = None  # leave null for trial profiles
         subscription_end = now + relativedelta(days=14)
-    elif subscription_status == 'admin_monthly':
-        subscription_end = now + relativedelta(months=1)
-    elif subscription_status == 'admin_quarterly':
-        subscription_end = now + relativedelta(months=3)
-    elif subscription_status == 'admin_annual':
-        subscription_end = now + relativedelta(months=12)
     else:
-        subscription_end = None
+        trial_start = None
+        subscription_start = now
+
+        if subscription_status == 'admin_monthly':
+            subscription_end = now + relativedelta(months=1)
+        elif subscription_status == 'admin_quarterly':
+            subscription_end = now + relativedelta(months=3)
+        elif subscription_status == 'admin_annual':
+            subscription_end = now + relativedelta(months=12)
+        else:
+            subscription_end = None
+
 
     # 👉 create initial billing profile snapshot
+    next_billing_date = timezone.now() + timedelta(days=14)
     log_profile_event(
-        user=user,
-        plan=plan,
-        stripe_transaction_id=stripe_transaction_id,
-        subscription_start=now,
-        subscription_end=subscription_end,
-        next_billing=subscription_end
-    )
+            user=user,
+            plan=plan,
+            stripe_transaction_id=stripe_transaction_id,
+            is_trial=is_trial,
+            trial_start=trial_start,
+            subscription_start=subscription_start,
+            subscription_end=subscription_end,
+            next_billing=next_billing_date
+        )
+
 
     # 👉 attach default payment method if setup intent was used
     if checkout_session.mode == 'setup':
@@ -113,10 +126,10 @@ def register(request):
 
     # 👉 log signup event to account history
     log_history_event(
-        user=user,
         email=user.email,
         event_type='signup',
         plan_name=plan.name,
+        is_trial=is_trial,
         subscription_start=now
     )
 
