@@ -4,6 +4,7 @@ import json
 from django.conf import settings
 from django.utils.crypto import get_random_string  # 👉 future use: unique referral or invite tokens
 from django.utils import timezone  # 👉 for potential future timestamp tracking
+from users.admin_area.models import AccountHistory
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
@@ -21,10 +22,22 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 @permission_classes([AllowAny])
 def create_checkout_session(request):
     try:
+       
         data = request.data
         plan_name = data.get('plan_name')
         email = data.get('email')
         is_trial = data.get('is_trial', False)
+
+        has_had_trial = AccountHistory.objects.filter(
+            user__email=email,
+            event_type__startswith='trial_'
+        ).exists()
+
+        if is_trial and has_had_trial:
+            return Response({
+                'error': 'You have already used a trial. Please choose a paid plan.',
+                'redirect': '/admin_reactivate'
+            }, status=403)
 
         # ✅ Basic validation
         if not plan_name or not email:
