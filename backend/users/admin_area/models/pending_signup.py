@@ -6,7 +6,7 @@ class PendingSignup(models.Model):  # 👉 stores pending admin signups after st
     session_id = models.CharField(max_length=255, unique=True)  # 👉 stripe session id used to track the payment
     token = models.CharField(max_length=64, unique=True, default=uuid.uuid4)  # 👉 unique token used to complete registration
     plan = models.CharField(max_length=50)  # 👉 name of the plan selected (e.g. admin_trial, admin_monthly)
-    is_used = models.BooleanField(default=False)  # 👉 tracks whether the registration token has been used
+    
     created_at = models.DateTimeField(auto_now_add=True)  # 👉 timestamp when this pending signup was created
     stripe_transaction_id = models.CharField(max_length=255, blank=True, null=True)
     is_trial = models.BooleanField(default=False)  # 👉 tracks whether this signup came from a trial

@@ -11,6 +11,7 @@ def log_pendingsignup_event(
     session_id,
     plan_name,
     stripe_transaction_id,
+    created_at,
 ):
     """
     Logs a pending admin signup to the PendingSignup model after Stripe Checkout.
