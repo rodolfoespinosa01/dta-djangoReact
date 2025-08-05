@@ -51,8 +51,10 @@ def create_checkout_session(request):
             return Response({'error': 'This email is already associated with an account. Please log in.'}, status=status.HTTP_403_FORBIDDEN)
 
         # ❌ Prevent multiple pending signups
-        if PendingSignup.objects.filter(email=email, is_used=False).exists():
+        if PendingSignup.objects.filter(email=email).exists():
             return Response({'error': 'A registration link has already been generated for this email.'}, status=status.HTTP_403_FORBIDDEN)
+
+
 
         # ✅ Determine plan and Stripe price
         plan = Plan.objects.get(name=plan_name)
