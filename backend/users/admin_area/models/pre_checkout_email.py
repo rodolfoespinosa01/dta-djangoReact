@@ -1,14 +1,17 @@
-from django.db import models  # 👉 provides base model functionality for defining database tables
+from django.db import models
+from users.admin_area.models import AdminIdentity  # Make sure this is correct
 
-class PreCheckoutEmail(models.Model):  # 👉 stores emails submitted before stripe checkout begins
-    email = models.EmailField(unique=True)  # 👉 the user's email, must be unique to avoid duplicates
-    plan_name = models.CharField(max_length=50)  # 👉 the plan the user selected (e.g., adminTrial, adminMonthly, etc.)
-    created_at = models.DateTimeField(auto_now_add=True, null =True)  # 👉 timestamp of when the email was collected
+class PreCheckoutEmail(models.Model):
+    admin = models.ForeignKey(
+        AdminIdentity,
+        on_delete=models.CASCADE,
+        related_name="precheckouts",
+        null=True  
+    )
+
+    plan_name = models.CharField(max_length=50)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
     is_trial = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"{self.email} - {self.plan_name} - {self.created_at.strftime('%Y-%m-%d %H:%M:%S')}"
-
-    # 👉 summary:
-    # captures emails from users before they start the stripe checkout flow.
-    # now also stores the selected plan_name for context, analytics, and future filtering.
+        return f"{self.admin.admin_email} - {self.plan_name} - {self.created_at.strftime('%Y-%m-%d %H:%M:%S')}"

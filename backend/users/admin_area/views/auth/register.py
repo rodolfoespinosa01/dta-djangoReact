@@ -12,8 +12,8 @@ from rest_framework.permissions import AllowAny  # 👉 allows non-authenticated
 from rest_framework import status  # 👉 standard HTTP status codes
 from rest_framework_simplejwt.tokens import RefreshToken  # 👉 generates JWT tokens for login response
 
-from users.admin_area.models import Plan, Profile, PendingSignup  # 👉 core admin billing models
-from users.admin_area.utils.history_creator import log_history_event  # 👉 logs lifecycle events like signup or cancel
+from users.admin_area.models import Plan, Profile, PendingSignup, AdminIdentity, EventTracker 
+
 from users.admin_area.utils.profile_creator import log_profile_event  # 👉 creates billing profile snapshot
 
 stripe.api_key = settings.STRIPE_SECRET_KEY  # 👉 initializes stripe with secret key
@@ -31,7 +31,7 @@ def register(request):
         return Response({'error': 'Missing fields'}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
-        pending = PendingSignup.objects.get(token=token, is_used=False)  # 👉 verifies signup token is valid
+        pending = PendingSignup.objects.get(token=token)
     except PendingSignup.DoesNotExist:
         return Response({'error': 'Invalid or expired token'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -75,6 +75,19 @@ def register(request):
     user.save()
 
     now = timezone.now()
+
+    # 👉 Log event in EventTracker
+    admin_identity = AdminIdentity.objects.filter(admin_email=email).first()
+    if admin_identity:
+        EventTracker.objects.create(
+            admin=admin_identity,
+            event_type="registration_success",
+            timestamp=timezone.now()
+        )
+    else:
+        print(f"⚠️ No AdminIdentity found for {email}. Cannot log EventTracker.")
+
+
 
     # Set trial_start and subscription_start based on whether this is a trial
     if is_trial:
@@ -123,21 +136,16 @@ def register(request):
 
     pending.delete()  # 👉 remove used token to prevent reuse
 
-
-    # 👉 log signup event to account history
-    log_history_event(
-        email=user.email,
-        event_type='signup',
-        plan_name=plan.name,
-        is_trial=is_trial,
-        subscription_start=now
-    )
-
     # 👉 generate jwt token for login response
     refresh = RefreshToken.for_user(user)
     refresh['email'] = user.email
     refresh['role'] = user.role
     refresh['subscription_status'] = user.subscription_status
+
+
+    # 👉 generate jwt token for login response
+    refresh = RefreshToken.for_user(user)
+
 
     return Response({
         'success': True,

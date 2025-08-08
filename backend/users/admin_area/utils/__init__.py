@@ -1,5 +1,5 @@
-from .history_creator import log_history_event
 from .pendingsignup_creator import log_pendingsignup_event
 from .transaction_creator import log_transaction_event
 from .profile_creator import log_profile_event
-from .precheckout_creator import log_precheckout_event
+from .log_precheckout import log_precheckout
+from .log_admin_event import log_admin_event

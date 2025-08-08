@@ -4,18 +4,50 @@ from users.admin_area.models import (
     Profile,
     PendingSignup,
     PasswordResetToken,
-    AccountHistory,
     PreCheckoutEmail,
-    TransactionLog
+    TransactionLog,
+    AdminIdentity,
+    EventTracker
 )
 
-# ✅ Register core models with default admin interface
-admin.site.register(Plan)  # 👉 admin plans: trial, monthly, etc.
-admin.site.register(Profile) # 👉 subscription snapshots per admin
-admin.site.register(AccountHistory) # 👉 lifecycle event history (signup, cancel, etc.)
+# ✅ Core admin models
+admin.site.register(Plan)
+admin.site.register(Profile)
+admin.site.register(PasswordResetToken)
+admin.site.register(PreCheckoutEmail)
+admin.site.register(TransactionLog)
 
-# PENDING SIGNUP
+@admin.register(EventTracker)
+class EventTrackerAdmin(admin.ModelAdmin):
+    list_display = ('admin_id_column', 'event_type', 'timestamp')
+    list_filter = ('event_type', 'timestamp')
+    search_fields = ('admin__admin_email', 'event_type', 'details')
+    readonly_fields = ('admin_id_display', 'admin_email_display', 'timestamp')
+
+    fieldsets = (
+        (None, {
+            'fields': ('admin_id_display', 'admin_email_display', 'event_type', 'details', 'timestamp')
+        }),
+    )
+
+    def admin_id_column(self, obj):
+        return str(obj.admin.id)
+    admin_id_column.short_description = 'Admin ID'
+    admin_id_column.admin_order_field = 'id'
+
+    def admin_id_display(self, obj):
+        return obj.admin.id
+    admin_id_display.short_description = "Admin ID"
+
+    def admin_email_display(self, obj):
+        return obj.admin.admin_email
+    admin_email_display.short_description = "Admin Email"
+
+
+
+# 🕒 Pending Signup
 @admin.register(PendingSignup)
+
 class PendingSignupAdmin(admin.ModelAdmin):
     readonly_fields = ('created_at',)
     fields = (
@@ -28,13 +60,14 @@ class PendingSignupAdmin(admin.ModelAdmin):
         'created_at',
     )
     list_display = ('email', 'plan', 'is_trial', 'created_at')
-    
-admin.site.register(PasswordResetToken) # 👉 holds tokens for password resets
-admin.site.register(TransactionLog) # 👉 transaction log
-admin.site.register(PreCheckoutEmail)
 
 
-# 👉 summary:
-# registers all admin subscription-related models to the Django admin site.
-# includes custom display options for PreCheckoutEmail and ScheduledSubscription.
-# used by platform owners to monitor billing events, signups, and access lifecycle.
+@admin.register(AdminIdentity)
+class AdminIdentityAdmin(admin.ModelAdmin):
+    list_display = ('id', 'admin_email', 'adminID', 'created_at')
+    search_fields = ('admin_email',)
+    ordering = ('-created_at',)
+
+    readonly_fields = ('id', 'adminID', 'admin_email', 'created_at')
+    fields = ('id', 'adminID', 'admin_email', 'created_at')
+
