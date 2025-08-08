@@ -8,8 +8,7 @@ from django.http import HttpResponse
 from django.utils.crypto import get_random_string
 from django.contrib.auth import get_user_model
 
-from users.admin_area.models import PreCheckoutEmail, Profile
-from users.admin_area.utils.history_creator import log_history_event
+from users.admin_area.models import PreCheckoutEmail, Profile, EventTracker, AdminIdentity
 from users.admin_area.utils import (
     log_transaction_event,
     log_pendingsignup_event
@@ -65,18 +64,22 @@ def stripe_webhook(request):
         # Normalize trial alias
         plan_name = 'adminMonthly' if raw_plan_name == 'adminTrial' else raw_plan_name
 
-        # ✅ Log subscription history
-        log_history_event(
-            email=email,
-            event_type='signup',
-            plan_name=plan_name,
-            is_trial=is_trial,
-            subscription_start=timezone.now(),
-            stripe_transaction_id=session_id
+        # ✅ Get AdminIdentity for email
+        try:
+            admin_identity = AdminIdentity.objects.get(admin_email=email)
+        except AdminIdentity.DoesNotExist:
+            print(f"❌ AdminIdentity not found for {email}")
+            return HttpResponse(status=500)
+
+        # ✅ Log EventTracker entry for stripe_purchase
+        EventTracker.objects.create(
+            admin=admin_identity,
+            event_type='stripe_purchase',
+            details=f"Session: {session_id} | Plan: {plan_name} | Trial: {is_trial}"
         )
 
-        # ✅ Clean up pre-checkout record
-        PreCheckoutEmail.objects.filter(email=email).delete()
+        PreCheckoutEmail.objects.filter(admin__admin_email=email).delete()
+
 
         # ✅ Log transaction
         log_transaction_event(
@@ -91,7 +94,8 @@ def stripe_webhook(request):
             token=token,
             session_id=session_id,
             plan_name=plan_name,
-            stripe_transaction_id=stripe_transaction_id
+            stripe_transaction_id=stripe_transaction_id,
+            created_at=timezone.now()
         )
 
         registration_link = f"http://localhost:3000/admin_register?token={token}"
@@ -137,16 +141,7 @@ def stripe_webhook(request):
                 print(f"⚠️ No next_billing period found in invoice for {email}")
 
             log_transaction_event(email=email, stripe_transaction_id=stripe_transaction_id)
-            log_history_event(
-                email=email,
-                event_type='stripe_payment_succeeded',
-                plan_name=profile.plan.name,
-                stripe_transaction_id=stripe_transaction_id
-            )
         else:
             print(f"⚠️ No active profile found for {email}. Could be canceled or missing.")
-
-
-
 
     return HttpResponse(status=200)

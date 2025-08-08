@@ -5,9 +5,10 @@ from users.admin_area.models import (
     Profile,
     PendingSignup,
     PasswordResetToken,
-    AccountHistory,
     PreCheckoutEmail,
-    TransactionLog
+    TransactionLog,
+    AdminIdentity,
+    EventTracker  # ✅ New models
 )
 
 class Command(BaseCommand):
@@ -38,12 +39,15 @@ class Command(BaseCommand):
         PendingSignup.objects.all().delete()
         self.stdout.write(self.style.WARNING('⏳ Pending signup entries deleted.'))
 
-        # Account history
-        AccountHistory.objects.all().delete()
-        self.stdout.write(self.style.WARNING('📚 Account history entries deleted.'))
+        # Event tracking (replaces AccountHistory)
+        EventTracker.objects.all().delete()
+        self.stdout.write(self.style.WARNING('📚 Event tracker entries deleted.'))
+
+        AdminIdentity.objects.all().delete()
+        self.stdout.write(self.style.WARNING('🆔 Admin identities deleted.'))
 
         # Transaction Log
         TransactionLog.objects.all().delete()
-        self.stdout.write(self.style.WARNING('🗒️ TransactionLog entries deleted.'))
+        self.stdout.write(self.style.WARNING('🗒️ Transaction log entries deleted.'))
 
         self.stdout.write(self.style.SUCCESS('🎯 All admin-related test data reset!'))
