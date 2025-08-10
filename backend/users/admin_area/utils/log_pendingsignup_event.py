@@ -10,6 +10,7 @@ def log_pendingsignup_event(
     token,
     session_id,
     plan_name,
+    is_trial,
     stripe_transaction_id,
     created_at,
 ):
@@ -41,6 +42,7 @@ def log_pendingsignup_event(
         'session_id': session_id,
         'token': token,
         'plan': plan_name,
+        'is_trial': is_trial,
         'stripe_transaction_id': stripe_transaction_id, 
         'created_at': timezone.now(),
     }
