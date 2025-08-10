@@ -1,38 +1,53 @@
-from rest_framework_simplejwt.views import TokenObtainPairView as BaseTokenObtainPairView  # 👉 base login view
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer as BaseTokenObtainPairSerializer  # 👉 base jwt serializer
-from users.admin_area.models import Profile  # 👉 imports the profile model to check subscription status
+# backend/users/admin_area/views/auth/token_login.py
+from rest_framework_simplejwt.views import TokenObtainPairView as BaseTokenObtainPairView
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer as BaseTokenObtainPairSerializer
+from users.admin_area.models import Profile
+from django.contrib.auth import get_user_model
+from rest_framework.exceptions import AuthenticationFailed, NotFound
 
-
-class TokenObtainPairSerializer(BaseTokenObtainPairSerializer):  # 👉 customizes jwt token payload for admin users
-
+class TokenObtainPairSerializer(BaseTokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
-        token = super().get_token(user)  # 👉 gets the default jwt token
-
-        # 👉 core user info added to the token payload
+        token = super().get_token(user)
         token['email'] = user.email
-        token['role'] = user.role
-        token['subscription_status'] = user.subscription_status
-
-        # 👉 adds cancel status from the user's current profile
+        token['role'] = getattr(user, 'role', None)
+        token['subscription_status'] = getattr(user, 'subscription_status', None)
         try:
             current_profile = user.profiles.get(is_active=True)
             token['is_canceled'] = current_profile.is_canceled
         except Profile.DoesNotExist:
-            token['is_canceled'] = True  # 👉 safe default if no profile exists
-
+            token['is_canceled'] = True
         return token
 
     def validate(self, attrs):
-        data = super().validate(attrs)  # 👉 standard jwt username/password validation
-        return data
+        User = get_user_model()
+        username = attrs.get('username')
+        password = attrs.get('password')
 
+        # look up account
+        try:
+            user = User.objects.get(**{User.USERNAME_FIELD: username})
+        except User.DoesNotExist:
+            # 404 → "no account found"
+            raise NotFound(detail={"error": "No account found with that email.", "error_code": "USER_NOT_FOUND"})
 
-class TokenObtainPairView(BaseTokenObtainPairView):  # 👉 exposes the login endpoint with the custom serializer
+        if not user.is_active:
+            raise AuthenticationFailed(detail={"error": "This account is inactive.", "error_code": "INACTIVE"})
+
+        if not user.check_password(password):
+            # 401 → "wrong password"
+            raise AuthenticationFailed(detail={"error": "Account found, but the password is incorrect.", "error_code": "WRONG_PASSWORD"})
+
+        # OK → mint tokens (skip parent validate so we keep our flow)
+        refresh = self.get_token(user)
+        return {
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+            "email": user.email,
+            "role": getattr(user, 'role', None),
+            "subscription_status": getattr(user, 'subscription_status', None),
+            "is_canceled": refresh.get('is_canceled', True),
+        }
+
+class TokenObtainPairView(BaseTokenObtainPairView):
     serializer_class = TokenObtainPairSerializer
-
-
-# 👉 summary:
-# extends the default jwt login view to include custom user data in the token:
-# email, role, subscription status, and cancel status from the current profile.
-# used to support role-based access and billing logic immediately after login.

@@ -1,7 +1,6 @@
 from users.admin_area.models import Profile
 from django.utils import timezone
 
-
 def log_profile_event(
     user,
     plan,
@@ -10,30 +9,40 @@ def log_profile_event(
     trial_start=None,
     subscription_start=None,
     subscription_end=None,
-    next_billing=None
+    next_billing=None,
+    is_active=None,
+    is_canceled=False,
 ):
-
     """
-    Logs a new profile snapshot representing the user's current subscription cycle.
+    Create a snapshot Profile for the current cycle.
 
-    Args:
-        user (CustomUser): The user tied to the subscription.
-        plan (Plan): The selected subscription plan object.
-        stripe_transaction_id (str): Stripe session or invoice ID.
-        is_trial (bool): Whether this is a trial cycle.
-        subscription_start (datetime or None): When this plan begins (null for trials).
-        subscription_end (datetime or None): When it ends (optional).
-        next_billing (datetime or None): Next billing date (from Stripe).
-
-    Returns:
-        Profile: The newly created Profile instance.
+    Rules:
+    - Trial: subscription_start is None.
+    - Paid users keep access (is_active=True) until subscription_end; trials can be toggled by caller.
     """
+
+    # Normalize trial fields
+    if is_trial:
+        subscription_start = None
+
+
+
+    if is_active is None:
+        # Paid users keep access until subscription_end; trials are active by default here
+        if is_trial:
+            is_active = True
+        else:
+            # If we already have an end date in the past, turn off; otherwise keep on
+            if subscription_end and subscription_end <= timezone.now():
+                is_active = False
+            else:
+                is_active = True
 
     return Profile.objects.create(
         user=user,
         plan=plan,
-        is_active=True,
-        is_canceled=False,
+        is_active=is_active,
+        is_canceled=bool(is_canceled),
         is_trial=is_trial,
         trial_start=trial_start if is_trial else None,
         subscription_start=subscription_start,
