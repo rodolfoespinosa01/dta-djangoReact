@@ -55,7 +55,7 @@ def stripe_webhook(request):
 
         # ✅ Get plan and trial info from metadata
         raw_plan_name = metadata.get('plan_name')
-        is_trial = metadata.get('is_trial') == 'true'
+        is_trial = str(metadata.get('is_trial', '')).strip().lower() in ('true', '1', 'yes', 'y', 't')
 
         if not raw_plan_name:
             print("❌ Missing plan_name in metadata")
@@ -94,6 +94,7 @@ def stripe_webhook(request):
             token=token,
             session_id=session_id,
             plan_name=plan_name,
+            is_trial=is_trial,
             stripe_transaction_id=stripe_transaction_id,
             created_at=timezone.now()
         )
@@ -128,7 +129,7 @@ def stripe_webhook(request):
 
         User = get_user_model()
 
-        profile = Profile.objects.filter(user__email=email, is_current=True, is_canceled=False).first()
+        profile = Profile.objects.filter(user__email=email, is_active=True, is_canceled=False).first()
         if profile:
             next_billing_unix = invoice.get('lines', {}).get('data', [{}])[0].get('period', {}).get('end')
             if next_billing_unix:

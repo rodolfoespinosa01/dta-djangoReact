@@ -1,6 +1,6 @@
 from django.db import models
 from django.utils import timezone
-from .admin_identity import AdminIdentity  # FK to uniquely track admin-level events
+from .AdminIdentity import AdminIdentity  # FK to uniquely track admin-level events
 
 
 class EventTracker(models.Model):

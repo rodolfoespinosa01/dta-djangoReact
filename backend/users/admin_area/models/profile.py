@@ -12,7 +12,6 @@ class Profile(models.Model):  # 👉 stores subscription details tied to a user 
 
     is_active = models.BooleanField(default=True)  # 👉 legacy flag to show if the profile is still considered valid
     is_canceled = models.BooleanField(default=False)  # 👉 tracks if the user canceled during this cycle (used for frontend logic)
-    is_current = models.BooleanField(default=True)  # 👉 marks the currently active profile (only one per user should be true)
     is_trial = models.BooleanField(default=False)  # 👉 marks this subscription as a trial period or not
     trial_start = models.DateTimeField(null=True, blank=True)  # 👉 when the trial period began (if applicable)
 
@@ -25,7 +24,7 @@ class Profile(models.Model):  # 👉 stores subscription details tied to a user 
     created_at = models.DateTimeField(auto_now_add=True)  # 👉 timestamp when this profile record was created
 
     def __str__(self):
-        return f"{self.user.email} | {self.plan.name if self.plan else 'No Plan'} | Current: {self.is_current}"
+        return f"{self.user.email} | {self.plan.name if self.plan else 'No Plan'} | Current: {self.is_active}"
     # 👉 displays a readable summary of the user’s profile with plan and status
 
 

@@ -18,7 +18,7 @@ class DashboardView(APIView):
 
         # 📦 fetch the current active profile for this admin
         try:
-            profile = user.profiles.get(is_current=True)
+            profile = user.profiles.get(is_active=True)
         except Profile.DoesNotExist:
             return Response({"error": "Admin profile not found."}, status=status.HTTP_404_NOT_FOUND)
 
