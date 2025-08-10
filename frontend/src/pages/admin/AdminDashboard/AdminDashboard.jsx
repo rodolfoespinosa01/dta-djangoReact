@@ -138,7 +138,7 @@ function AdminDashboard() {
         </button>
 
         <button
-          onClick={logout}
+          onClick={() => logout()}
           style={{
             padding: '0.75rem 1.5rem',
             backgroundColor: '#ef4444',

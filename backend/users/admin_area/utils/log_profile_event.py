@@ -36,7 +36,7 @@ def log_profile_event(
         is_canceled=False,
         is_trial=is_trial,
         trial_start=trial_start if is_trial else None,
-        subscription_start=None if is_trial else subscription_start,
+        subscription_start=subscription_start,
         subscription_end=subscription_end,
         next_billing=next_billing,
         stripe_transaction_id=stripe_transaction_id,
