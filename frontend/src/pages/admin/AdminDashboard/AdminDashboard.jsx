@@ -1,15 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
-
-// import css specific to the admin dashboard
 import './AdminDashboard.css';
 
 function AdminDashboard() {
-  const { user, isAuthenticated, accessToken, logout } = useAuth();
+  const { isAuthenticated, accessToken, logout } = useAuth();
   const navigate = useNavigate();
+
   const [dashboardData, setDashboardData] = useState(null);
   const [daysLeft, setDaysLeft] = useState(null);
+  const [status, setStatus] = useState('loading'); // 'loading' | 'ok' | 'blocked' | 'error'
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -17,38 +17,37 @@ function AdminDashboard() {
       return;
     }
 
-    if (user?.role === 'admin' && user?.is_canceled === true) {
-      console.warn('🚫 Admin is canceled. Redirecting to reactivation...');
-      navigate('/admin_reactivate');
-      return;
-    }
-
     const fetchDashboard = async () => {
       try {
         const res = await fetch('http://localhost:8000/api/users/admin/dashboard/', {
-          headers: {
-            Authorization: `Bearer ${accessToken}`
-          }
+          headers: { Authorization: `Bearer ${accessToken}` }
         });
 
-        const data = await res.json();
-        if (res.ok) {
+        if (res.status === 401) { navigate('/admin_login'); return; }
+        if (res.status === 403 || res.status === 404) { setStatus('blocked'); return; }
+
+        let data = null;
+        try { data = await res.json(); } catch { /* ignore */ }
+
+        if (res.ok && data) {
           setDashboardData(data);
-          if (data.trial_active) {
+          if ((data.is_trial || data.trial_active) && typeof data.days_remaining === 'number') {
             setDaysLeft(data.days_remaining);
           }
+          setStatus('ok');
+        } else {
+          setStatus('error');
         }
       } catch (err) {
         console.error('Error loading dashboard data:', err);
+        setStatus('error');
       }
     };
 
     fetchDashboard();
-  }, [isAuthenticated, accessToken, user, navigate]);
+  }, [isAuthenticated, accessToken, navigate]);
 
-  const formatDate = (dateStr) => {
-    return dateStr ? new Date(dateStr).toLocaleDateString() : '—';
-  };
+  const formatDate = (d) => (d ? new Date(d).toLocaleDateString() : '—');
 
   const subscriptionLabels = {
     admin_trial: 'Free Trial',
@@ -57,98 +56,105 @@ function AdminDashboard() {
     admin_annual: 'Annual Plan',
   };
 
+  // Shows renewal/cancel state based on is_canceled
+  const RenewalBadge = ({ data }) => {
+    if (!data) return null;
+    if (data.is_active === false) return null; // banner handles inactive
+
+    if (!data.is_canceled) {
+      return <p className="badge badge-active">✅ Your subscription is active and set to auto-renew.</p>;
+    }
+    if (data.is_canceled && data.subscription_end) {
+      return (
+        <div className="banner">
+          <p>ℹ️ Auto-renew is <strong>off</strong>. You keep access until <strong>{formatDate(data.subscription_end)}</strong>.</p>
+          <button className="btn btn-reactivate" onClick={() => navigate('/admin_reactivate')}>
+            🔁 Reactivate (turn auto-renew on)
+          </button>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
-    <div style={{ padding: '2rem', maxWidth: '720px', margin: '0 auto', fontFamily: 'Arial, sans-serif' }}>
-      <h1 style={{ textAlign: 'center' }}>🎯 Admin Dashboard</h1>
-      <p style={{ textAlign: 'center' }}>
+    <div className="admin-dashboard-wrapper">
+      <h1 className="admin-dashboard-title">🎯 Admin Dashboard</h1>
+      <p className="admin-dashboard-subtitle">
         Your all-in-one platform for generating tailored diet plans for your clients.
       </p>
 
-      {dashboardData ? (
-        <div
-          style={{
-            marginTop: '2rem',
-            padding: '1.5rem',
-            backgroundColor: '#f1f5f9',
-            border: '1px solid #cbd5e1',
-            borderRadius: '10px',
-          }}
-        >
-          <h2 style={{ marginBottom: '1rem' }}>📊 Subscription Summary</h2>
+      {status === 'loading' && (
+        <p className="loading">Loading your subscription details...</p>
+      )}
 
-          <ul style={{ listStyle: 'none', paddingLeft: 0, lineHeight: 1.6 }}>
-            <li><strong>Plan:</strong> {subscriptionLabels[dashboardData.subscription_status]}</li>
+      {status === 'blocked' && (
+        <div className="banner banner-canceled">
+          <p>⚠️ Your plan is inactive.</p>
+          <p>It looks like your free trial ended or your subscription has been canceled. To regain access, please reactivate.</p>
+          <button className="btn btn-reactivate" onClick={() => navigate('/admin_reactivate')}>
+            🔁 Reactivate
+          </button>
+        </div>
+      )}
+
+      {status === 'ok' && dashboardData && (
+        <div className="admin-dashboard-card">
+          <h2 className="admin-dashboard-section-title">📊 Subscription Summary</h2>
+
+          <ul className="summary-list">
+            <li><span className="label">Plan:</span> {subscriptionLabels[dashboardData.subscription_status] || '—'}</li>
 
             {dashboardData.trial_start && (
-              <li><strong>Trial Started:</strong> {formatDate(dashboardData.trial_start)}</li>
+              <li><span className="label">Trial Started:</span> {formatDate(dashboardData.trial_start)}</li>
             )}
             {dashboardData.monthly_start && (
-              <li><strong>Monthly Plan Start:</strong> {formatDate(dashboardData.monthly_start)}</li>
+              <li><span className="label">Monthly Plan Start:</span> {formatDate(dashboardData.monthly_start)}</li>
             )}
             {dashboardData.quarterly_start && (
-              <li><strong>Quarterly Plan Start:</strong> {formatDate(dashboardData.quarterly_start)}</li>
+              <li><span className="label">Quarterly Plan Start:</span> {formatDate(dashboardData.quarterly_start)}</li>
             )}
             {dashboardData.annual_start && (
-              <li><strong>Annual Plan Start:</strong> {formatDate(dashboardData.annual_start)}</li>
+              <li><span className="label">Annual Plan Start:</span> {formatDate(dashboardData.annual_start)}</li>
             )}
-            {dashboardData.next_billing && (
-              <li><strong>Next Billing:</strong> {formatDate(dashboardData.next_billing)}</li>
+
+            {/* Show one of these depending on renewal state */}
+            {dashboardData.next_billing && !dashboardData.is_canceled && (
+              <li><span className="label">Next Billing:</span> {formatDate(dashboardData.next_billing)}</li>
+            )}
+            {dashboardData.is_canceled && dashboardData.subscription_end && (
+              <li><span className="label">Access Until:</span> {formatDate(dashboardData.subscription_end)}</li>
             )}
           </ul>
 
-          {dashboardData.is_trial && daysLeft !== null && (
-            <p style={{ marginTop: '1rem', color: '#d97706', fontWeight: 'bold' }}>
-              ⏳ Trial Days Remaining: {daysLeft}
-            </p>
+          {(dashboardData.is_trial || dashboardData.trial_active) && daysLeft !== null && (
+            <p className="badge badge-trial">⏳ Trial Days Remaining: {daysLeft}</p>
           )}
 
-          {dashboardData.subscription_active && !dashboardData.is_canceled && (
-            <p style={{ marginTop: '1rem', color: '#22c55e', fontWeight: 'bold' }}>
-              ✅ Your subscription is active and set to renew.
-            </p>
-          )}
+          {/* Renewal / scheduled-end messaging */}
+          <RenewalBadge data={dashboardData} />
 
-          {dashboardData.is_canceled && dashboardData.subscription_end && (
-            <p style={{ marginTop: '1rem', color: '#ef4444' }}>
-              ⚠️ Your subscription has been canceled. Access ends on: <strong>{formatDate(dashboardData.subscription_end)}</strong>
-            </p>
+          {/* Safety: if API returned ok but user has no access (edge), show reactivation banner */}
+          {dashboardData.is_active === false && (
+            <div className="banner banner-canceled">
+              <p>⚠️ Your account is currently inactive.</p>
+              <button className="btn btn-reactivate" onClick={() => navigate('/admin_reactivate')}>
+                🔁 Reactivate
+              </button>
+            </div>
           )}
         </div>
-      ) : (
-        <p style={{ marginTop: '2rem', textAlign: 'center', color: '#64748b' }}>
-          Loading your subscription details...
-        </p>
       )}
 
-      <div style={{ marginTop: '2.5rem', textAlign: 'center' }}>
-        <button
-          onClick={() => navigate('/admin_settings')}
-          style={{
-            marginRight: '1rem',
-            padding: '0.75rem 1.5rem',
-            backgroundColor: '#3b82f6',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '1rem'
-          }}
-        >
+      {status === 'error' && (
+        <p className="error">We couldn’t load your subscription details. Please try again.</p>
+      )}
+
+      <div className="actions">
+        <button onClick={() => navigate('/admin_settings')} className="btn btn-primary">
           ⚙️ Account Settings
         </button>
-
-        <button
-          onClick={() => logout()}
-          style={{
-            padding: '0.75rem 1.5rem',
-            backgroundColor: '#ef4444',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '1rem'
-          }}
-        >
+        <button onClick={() => logout()} className="btn btn-danger">
           🚪 Logout
         </button>
       </div>
@@ -157,8 +163,3 @@ function AdminDashboard() {
 }
 
 export default AdminDashboard;
-
-// admin dashboard page
-// this component displays the logged-in admin's subscription status, including plan type, start dates, billing info, and trial countdown.
-// on component mount, it sends a GET request to /api/users/admin/dashboard/ with the jwt access token in the header.
-// the backend responds with subscription data, which is stored in local state and conditionally rendered based on trial or plan status.
