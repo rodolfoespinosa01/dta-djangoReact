@@ -9,12 +9,10 @@ class Profile(models.Model):  # 👉 stores subscription details tied to a user 
 
     plan = models.ForeignKey(Plan, on_delete=models.SET_NULL, null=True)  
     # 👉 references the plan the user is on during this subscription cycle
-
     is_active = models.BooleanField(default=True)  # 👉 legacy flag to show if the profile is still considered valid
-    is_canceled = models.BooleanField(default=False)  # 👉 tracks if the user canceled during this cycle (used for frontend logic)
+    is_canceled = models.BooleanField(default=False)
     is_trial = models.BooleanField(default=False)  # 👉 marks this subscription as a trial period or not
     trial_start = models.DateTimeField(null=True, blank=True)  # 👉 when the trial period began (if applicable)
-
     subscription_start = models.DateTimeField(null=True, blank=True)
     subscription_end = models.DateTimeField(null=True, blank=True)  # 👉 when the plan ended or will end
     next_billing = models.DateTimeField(null=True, blank=True)  # 👉 when the next payment is scheduled (used for paid plans)

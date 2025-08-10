@@ -60,6 +60,7 @@ class DashboardView(APIView):
             "quarterly_start": start_dates["admin_quarterly"],
             "annual_start": start_dates["admin_annual"],
             "next_billing": profile.next_billing if is_active else None,
+            "auto_renew": bool(getattr(profile, "auto_renew", True)),
         }
 
         return Response(response_data)

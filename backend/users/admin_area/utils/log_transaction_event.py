@@ -1,40 +1,31 @@
-from users.admin_area.models import TransactionLog  # 👉 imports the model that stores Stripe transaction logs
-from django.utils import timezone  # 👉 used to timestamp payment events when not explicitly provided
+# users/admin_area/utils/log_transaction_event.py
+from django.db import IntegrityError, transaction
+from users.admin_area.models import TransactionLog
 
-
-# 👉 logs a Stripe payment transaction to the TransactionLog table
-# 👉 requires the user's email and Stripe transaction ID (PaymentIntent)
-# 👉 optionally accepts a timestamp override (default = now)
-def log_transaction_event(
-    email,
-    stripe_transaction_id,
-    timestamp=None,
-):
-    """
-    Logs a Stripe payment transaction to the TransactionLog model.
-
-    Args:
-        email (str): The email associated with the Stripe Checkout.
-        stripe_transaction_id (str): Unique Stripe PaymentIntent ID.
-        timestamp (datetime, optional): Time the transaction occurred. Defaults to now.
-    """
-
-    if not email:
-        raise ValueError("Email is required to log a transaction event.")  # 👉 ensures email is always provided
-
+def log_transaction_event(*, email: str, stripe_transaction_id: str | None, **extra_defaults):
     if not stripe_transaction_id:
-        raise ValueError("Stripe transaction ID is required to log a transaction event.")  # 👉 ensures a valid ID
+        return
 
-    log_data = {
-        'email': email,
-        'stripe_transaction_id': stripe_transaction_id,
-        'created_at': timestamp or timezone.now(),  # 👉 sets created_at to now unless explicitly overridden
-    }
+    # short‑circuit
+    if TransactionLog.objects.filter(stripe_transaction_id=stripe_transaction_id).exists():
+        return
 
-    TransactionLog.objects.create(**log_data)  # 👉 saves a new transaction log entry
+    # only include fields that actually exist on TransactionLog
+    valid = {f.name for f in TransactionLog._meta.get_fields()}
+    defaults = {}
+    if "admin_email" in valid:
+        defaults["admin_email"] = email
+    elif "email" in valid:
+        defaults["email"] = email
+    for k, v in (extra_defaults or {}).items():
+        if k in valid:
+            defaults[k] = v
 
-
-# 👉 summary:
-# Simple and scalable utility to capture Stripe payments in the TransactionLog.
-# Ensures email + transaction_id are required and supports timestamp override.
-# Keeps the logic clean and parallel to AccountHistory lifecycle tracking.
+    try:
+        with transaction.atomic():
+            TransactionLog.objects.get_or_create(
+                stripe_transaction_id=stripe_transaction_id,
+                defaults=defaults
+            )
+    except IntegrityError:
+        pass

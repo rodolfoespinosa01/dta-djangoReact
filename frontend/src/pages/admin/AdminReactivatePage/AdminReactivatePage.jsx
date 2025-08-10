@@ -79,7 +79,7 @@ function AdminReactivatePage() {
           <button onClick={() => navigate('/admin_settings')} className="admin-reactivate-settings-btn">
             back to settings
           </button>
-          <button onClick={logout} className="admin-reactivate-logout-btn">
+          <button onClick={() => logout()} className="admin-reactivate-logout-btn">
             log out
           </button>
         </div>
