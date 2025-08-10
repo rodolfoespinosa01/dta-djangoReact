@@ -71,7 +71,7 @@ def create_checkout_session(request):
             }],
             metadata={
                 'plan_name': plan_name,
-                'is_trial': str(is_trial),
+                'is_trial': 'true' if is_trial else 'false',
             },
             subscription_data={
                 'trial_period_days': 14 if is_trial else None,

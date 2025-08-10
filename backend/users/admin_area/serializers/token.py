@@ -12,7 +12,7 @@ class CustomAdminTokenSerializer(TokenObtainPairSerializer):  # 👉 extends the
         token['subscription_status'] = user.subscription_status  # 👉 includes the user's subscription status
 
         try:
-            current_profile = user.profiles.get(is_current=True)  # 👉 gets the current active subscription profile
+            current_profile = user.profiles.get(is_active=True)  # 👉 gets the current active subscription profile
             token['is_canceled'] = current_profile.is_canceled  # 👉 includes whether the plan was canceled
         except:
             token['is_canceled'] = True  # 👉 fallback value if no profile is found

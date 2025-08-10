@@ -16,7 +16,7 @@ class TokenObtainPairSerializer(BaseTokenObtainPairSerializer):  # 👉 customiz
 
         # 👉 adds cancel status from the user's current profile
         try:
-            current_profile = user.profiles.get(is_current=True)
+            current_profile = user.profiles.get(is_active=True)
             token['is_canceled'] = current_profile.is_canceled
         except Profile.DoesNotExist:
             token['is_canceled'] = True  # 👉 safe default if no profile exists
