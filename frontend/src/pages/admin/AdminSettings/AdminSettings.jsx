@@ -248,143 +248,167 @@ function AdminSettings() {
     }
   };
 
-  // ---------- render ----------
-  return (
-    <div className="admin-settings-wrapper">
-      <h2>⚙️ admin settings</h2>
+// ---------- render ----------
+const actions = dashboardData
+  ? getActions(
+      dashboardData.subscription_status,
+      dashboardData.subscription_active,
+      dashboardData.is_canceled
+    )
+  : { showUpgrade: false, showDowngrade: false, showCancel: false };
 
-      {user?.email && (
-        <p className="admin-settings-email">
-          logged in as: <strong>{user.email}</strong>
+const canReactivate =
+  !!dashboardData && (dashboardData.is_canceled || !dashboardData.subscription_active);
+
+return (
+  <div className="admin-settings-wrapper">
+    <h2>⚙️ admin settings</h2>
+
+    {user?.email && (
+      <p className="admin-settings-email">
+        logged in as: <strong>{user.email}</strong>
+      </p>
+    )}
+
+    {dashboardData ? (
+      <div className="admin-settings-card">
+        <h3>📄 subscription info</h3>
+
+        <p>
+          <strong>plan:</strong>{" "}
+          {subscriptionLabels[dashboardData.subscription_status] || "—"}
         </p>
-      )}
 
-      {dashboardData ? (
-        <div className="admin-settings-card">
-          <h3>📄 subscription info</h3>
+        {dashboardData.trial_start && (
+          <p>
+            <strong>trial start date:</strong> {formatDate(dashboardData.trial_start)}
+          </p>
+        )}
+        {dashboardData.monthly_start && (
+          <p>
+            <strong>monthly start date:</strong> {formatDate(dashboardData.monthly_start)}
+          </p>
+        )}
+        {dashboardData.quarterly_start && (
+          <p>
+            <strong>quarterly start date:</strong> {formatDate(dashboardData.quarterly_start)}
+          </p>
+        )}
+        {dashboardData.annual_start && (
+          <p>
+            <strong>annual start date:</strong> {formatDate(dashboardData.annual_start)}
+          </p>
+        )}
 
-          <p><strong>plan:</strong> {subscriptionLabels[dashboardData.subscription_status] || '—'}</p>
+        {dashboardData.is_trial && dashboardData.days_remaining !== null && (
+          <p className="trial-days-left">
+            ⏳ trial days left: <strong>{dashboardData.days_remaining}</strong>
+          </p>
+        )}
 
-          {dashboardData.trial_start && (
-            <p><strong>trial start date:</strong> {formatDate(dashboardData.trial_start)}</p>
+        {dashboardData.next_billing && dashboardData.subscription_active && (
+          <p>
+            <strong>next billing date:</strong> {formatDate(dashboardData.next_billing)}
+          </p>
+        )}
+
+        {dashboardData.subscription_active && !dashboardData.is_canceled && (
+          <p className="subscription-active">
+            ✅ your subscription is active and set to auto-renew.
+          </p>
+        )}
+
+        {dashboardData.is_canceled && dashboardData.subscription_end && (
+          <p className="subscription-canceled">
+            🔒 your plan is canceled. access ends on{" "}
+            <strong>{formatDate(dashboardData.subscription_end)}</strong>
+          </p>
+        )}
+
+        {/* Actions */}
+        <div className="admin-settings-actions">
+          {actions.showUpgrade && (
+            <button
+              onClick={onUpgradeClick}
+              disabled={!!loadingAction || modalOpen}
+              className="btn-upgrade"
+            >
+              {loadingAction === "upgrade" ? "processing…" : "upgrade"}
+            </button>
           )}
-          {dashboardData.monthly_start && (
-            <p><strong>monthly start date:</strong> {formatDate(dashboardData.monthly_start)}</p>
-          )}
-          {dashboardData.quarterly_start && (
-            <p><strong>quarterly start date:</strong> {formatDate(dashboardData.quarterly_start)}</p>
-          )}
-          {dashboardData.annual_start && (
-            <p><strong>annual start date:</strong> {formatDate(dashboardData.annual_start)}</p>
-          )}
 
-          {dashboardData.is_trial && dashboardData.days_remaining !== null && (
-            <p className="trial-days-left">
-              ⏳ trial days left: <strong>{dashboardData.days_remaining}</strong>
-            </p>
+          {actions.showDowngrade && (
+            <button
+              onClick={onDowngradeClick}
+              disabled={!!loadingAction || modalOpen}
+              className="btn-downgrade"
+            >
+              {loadingAction === "downgrade" ? "processing…" : "downgrade"}
+            </button>
           )}
 
-          {dashboardData.next_billing && dashboardData.subscription_active && (
-            <p><strong>next billing date:</strong> {formatDate(dashboardData.next_billing)}</p>
+          {actions.showCancel && (
+            <button
+              onClick={handleCancel}
+              disabled={!!loadingAction || modalOpen}
+              className="btn-cancel"
+            >
+              {loadingAction === "cancel" ? "processing…" : "cancel subscription"}
+            </button>
           )}
 
-          {dashboardData.subscription_active && !dashboardData.is_canceled && (
-            <p className="subscription-active">
-              ✅ your subscription is active and set to auto-renew.
-            </p>
+          {canReactivate && (
+            <button
+              type="button"
+              onClick={() => { console.log('[Settings] -> /admin_reactivate'); navigate('/admin_reactivate'); }}
+              className="btn-reactivate"
+            >
+              Reactivate plan
+            </button>
           )}
 
-          {dashboardData.is_canceled && dashboardData.subscription_end && (
-            <p className="subscription-canceled">
-              🔒 your plan is canceled. access ends on <strong>{formatDate(dashboardData.subscription_end)}</strong>
-            </p>
-          )}
-
-          {/* Actions */}
-          {(() => {
-            const { showUpgrade, showDowngrade, showCancel } = getActions(
-              dashboardData.subscription_status,
-              dashboardData.subscription_active,
-              dashboardData.is_canceled
-            );
-
-            return (
-              <div className="admin-settings-actions">
-                {showUpgrade && (
-                  <button
-                    onClick={onUpgradeClick}
-                    disabled={!!loadingAction || modalOpen}
-                    className="btn-upgrade"
-                  >
-                    {loadingAction === 'upgrade' ? 'processing…' : 'upgrade'}
-                  </button>
-                )}
-
-                {showDowngrade && (
-                  <button
-                    onClick={onDowngradeClick}
-                    disabled={!!loadingAction || modalOpen}
-                    className="btn-downgrade"
-                  >
-                    {loadingAction === 'downgrade' ? 'processing…' : 'downgrade'}
-                  </button>
-                )}
-
-                {showCancel && (
-                  <button
-                    onClick={handleCancel}
-                    disabled={!!loadingAction || modalOpen}
-                    className="btn-cancel"
-                  >
-                    {loadingAction === 'cancel' ? 'processing…' : 'cancel subscription'}
-                  </button>
-                )}
-              </div>
-            );
-          })()}
-
-          {message && <p className="cancel-message">{message}</p>}
-
-          {/* Minimal modal (no external libs) */}
-          {modalOpen && (
-            <div className="modal-overlay" role="dialog" aria-modal="true" aria-label={modalTitle}>
-              <div className="modal-card">
-                <h4>{modalTitle}</h4>
-                <div className="modal-options">
-                  {modalOptions.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => onModalOptionSelect(opt)}
-                      className="modal-option-btn"
-                      disabled={!!loadingAction}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-                <button onClick={() => setModalOpen(false)} className="modal-cancel-btn" disabled={!!loadingAction}>
-                  close
-                </button>
-              </div>
-            </div>
-          )}
         </div>
-      ) : (
-        <p className="load-error">unable to load your subscription details.</p>
-      )}
 
-      <button onClick={() => navigate('/admin_dashboard')} className="btn-back">
-        ← back to dashboard
-      </button>
+        {message && <p className="cancel-message">{message}</p>}
+
+        {/* Minimal modal (no external libs) */}
+        {modalOpen && (
+          <div className="modal-overlay" role="dialog" aria-modal="true" aria-label={modalTitle}>
+            <div className="modal-card">
+              <h4>{modalTitle}</h4>
+              <div className="modal-options">
+                {modalOptions.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => onModalOptionSelect(opt)}
+                    className="modal-option-btn"
+                    disabled={!!loadingAction}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setModalOpen(false)}
+                className="modal-cancel-btn"
+                disabled={!!loadingAction}
+              >
+                close
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    ) : (
+      <p className="load-error">unable to load your subscription details.</p>
+    )}
+
+    <button onClick={() => navigate("/admin_dashboard")} className="btn-back">
+      ← back to dashboard
+    </button>
     </div>
-  );
-}
+); // <- end of return
+}   // <- end of function AdminSettings
 
-export default AdminSettings;
+export default AdminSettings; // <- outside, top-level
 
-// summary:
-// - monthly upgrade -> picker (quarterly/annual) -> Stripe checkout
-// - quarterly upgrade -> annual (Stripe), downgrade -> monthly (no Stripe)
-// - annual downgrade -> picker (monthly/quarterly) (no Stripe)
-// - cancel stays the same
-// - uses backend snapshots and redirects to Stripe when needed
