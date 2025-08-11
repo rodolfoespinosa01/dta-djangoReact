@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import './AdminReactivatePage.css';
@@ -6,81 +6,204 @@ import './AdminReactivatePage.css';
 function AdminReactivatePage() {
   const { accessToken, logout } = useAuth();
   const navigate = useNavigate();
-  const [selectedPlan, setSelectedPlan] = useState('adminMonthly');
+
+  const [mode, setMode] = useState('loading'); // 'loading' | 'uncancel' | 'new_subscription' | 'none' | 'done' | 'error'
+  const [plans, setPlans] = useState([]);
+  const [selectedPriceId, setSelectedPriceId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // ✅ flip this on to force the plan picker while backend work continues
+  const DEV_FORCE_REACTIVATE = false; // set to true during FE-only testing
+  const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:8000';
 
+  useEffect(() => {
+    console.log('[AdminReactivatePage] mounted');
+    let alive = true;
 
-  // handle reactivation button click
+    if (DEV_FORCE_REACTIVATE) {
+      setMode('new_subscription');
+      const mockPlans = [
+        { id: 'p_basic', name: 'Basic', display_name: 'Basic', price_id: 'price_basic', price_display: '$9.99/mo' },
+        { id: 'p_pro',   name: 'Pro',   display_name: 'Pro',   price_id: 'price_pro',   price_display: '$19.99/mo' },
+      ];
+      setPlans(mockPlans);
+      setSelectedPriceId(mockPlans[0].price_id);
+      return () => { alive = false; };
+    }
+
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/users/admin/reactivation/preview/`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+
+        if (res.status === 401 || res.status === 403) {
+          navigate('/admin_login');
+          return;
+        }
+
+        const data = await res.json().catch(() => ({}));
+        if (!alive) return;
+
+        if (!res.ok) {
+          setError(data?.error || 'Failed to load reactivation status.');
+          setMode('error');
+          return;
+        }
+
+        const nextMode = data.reactivation_mode || 'none';
+        setMode(nextMode);
+        setPlans(Array.isArray(data.plans) ? data.plans : []);
+
+        if (nextMode === 'new_subscription') {
+          if (data.plan_price_id) {
+            setSelectedPriceId(data.plan_price_id);
+          } else if (data.plans?.length) {
+            setSelectedPriceId(data.plans[0].price_id);
+          } else {
+            setSelectedPriceId('');
+          }
+        }
+
+        // ⛔️ No auto-navigate on 'none' — keep the user on this page
+      } catch (e) {
+        if (!alive) return;
+        setError('Network error loading reactivation status.');
+        setMode('error');
+      }
+    })();
+
+    return () => { alive = false; };
+  }, [API_BASE, accessToken, navigate, DEV_FORCE_REACTIVATE]);
+
   const handleReactivate = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const res = await fetch('http://localhost:8000/api/users/admin/reactivate_checkout/', {
+      const needsPlan = mode === 'new_subscription';
+      const body = needsPlan ? JSON.stringify({ target_price_id: selectedPriceId }) : null;
+
+      const res = await fetch(`${API_BASE}/api/users/admin/reactivation/start/`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           Authorization: `Bearer ${accessToken}`,
+          ...(body ? { 'Content-Type': 'application/json' } : {}),
         },
-        body: JSON.stringify({ plan_name: selectedPlan }),
+        body,
       });
 
-      const data = await res.json();
-
-      if (res.ok && data.url) {
-        window.location.href = data.url;
-      } else {
-        setError(data.error || 'something went wrong.');
-        setLoading(false);
+      if (res.status === 401 || res.status === 403) {
+        navigate('/admin_login');
+        return;
       }
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setError(data?.error || 'Something went wrong.');
+        setLoading(false);
+        return;
+      }
+
+      if (data.action === 'checkout' && data.url) {
+        window.location.href = data.url; // Stripe Checkout
+        return;
+      }
+
+      // ✅ Stay on page and show success instead of navigating away
+      setMode('done');
+      setLoading(false);
     } catch (err) {
-      console.error('error:', err);
-      setError('network error.');
+      setError('Network error.');
       setLoading(false);
     }
   };
 
+  const disabled =
+    loading ||
+    mode === 'none' ||
+    (mode === 'new_subscription' && !selectedPriceId);
+
   return (
     <div className="admin-reactivate-wrapper">
       <div className="admin-reactivate-card">
-        <h2 className="admin-reactivate-title">🔄 reactivate your admin subscription</h2>
-        <p className="admin-reactivate-description">
-          select a plan to resume your access. your new billing cycle will start based on your current subscription status.
-        </p>
+        <h2 className="admin-reactivate-title">🔄 Reactivate your admin subscription</h2>
 
-        <label className="admin-reactivate-label">
-          choose a plan:
-        </label>
-        <select
-          value={selectedPlan}
-          onChange={(e) => setSelectedPlan(e.target.value)}
-          className="admin-reactivate-select"
-        >
-          <option value="adminMonthly">📆 monthly – $29/month</option>
-          <option value="adminQuarterly">📅 quarterly – $75/quarter</option>
-          <option value="adminAnnual">📈 annual – $250/year</option>
-        </select>
+        {mode === 'loading' && <p>Checking your subscription…</p>}
 
-        <button
-          onClick={handleReactivate}
-          disabled={loading}
-          className="admin-reactivate-button"
-        >
-          {loading ? 'redirecting to stripe...' : 'reactivate plan'}
-        </button>
+        {mode === 'error' && (
+          <p className="admin-reactivate-error">{error || 'Unable to load reactivation info.'}</p>
+        )}
 
-        {error && (
+        {mode === 'done' && (
+          <p className="admin-reactivate-success">✅ Reactivation updated. You’re all set.</p>
+        )}
+
+        {/* if backend says 'none', keep the user here and show a simple message rather than auto-redirect */}
+        {mode === 'none' && (
+          <p className="admin-reactivate-hint">
+            There’s nothing to change right now. You can pick a new plan below when available, or go back to settings.
+          </p>
+        )}
+
+        {mode !== 'loading' && mode !== 'error' && mode !== 'done' && (
+          <>
+            <p className="admin-reactivate-description">
+              {mode === 'uncancel'
+                ? 'Your subscription is still active but set to end at the period’s end. Click below to keep it going.'
+                : 'Select a plan to resume access. Trials are not available on reactivations.'}
+            </p>
+
+            {mode === 'new_subscription' && (
+              <>
+                <label className="admin-reactivate-label">Choose a plan:</label>
+                {plans.length > 0 ? (
+                  <select
+                    value={selectedPriceId}
+                    onChange={(e) => setSelectedPriceId(e.target.value)}
+                    className="admin-reactivate-select"
+                  >
+                    {plans.map((plan) => (
+                      <option key={plan.id} value={plan.price_id}>
+                        {(plan.display_name || plan.name) + (plan.price_display ? ` – ${plan.price_display}` : '')}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="admin-reactivate-hint">No plans available. Please contact support.</div>
+                )}
+              </>
+            )}
+
+            {(mode === 'uncancel' || mode === 'new_subscription') && (
+              <button
+                type="button"
+                onClick={handleReactivate}
+                disabled={disabled}
+                className="admin-reactivate-button"
+              >
+                {loading
+                  ? 'Redirecting…'
+                  : mode === 'uncancel'
+                  ? 'Keep my current plan'
+                  : 'Reactivate plan'}
+              </button>
+            )}
+          </>
+        )}
+
+        {error && mode !== 'error' && (
           <p className="admin-reactivate-error">{error}</p>
         )}
 
         <div className="admin-reactivate-footer">
-          <button onClick={() => navigate('/admin_settings')} className="admin-reactivate-settings-btn">
-            back to settings
+          <button type="button" onClick={() => navigate('/admin_settings')} className="admin-reactivate-settings-btn">
+            Back to settings
           </button>
-          <button onClick={() => logout()} className="admin-reactivate-logout-btn">
-            log out
+          <button type="button" onClick={() => logout()} className="admin-reactivate-logout-btn">
+            Log out
           </button>
         </div>
       </div>
@@ -89,9 +212,3 @@ function AdminReactivatePage() {
 }
 
 export default AdminReactivatePage;
-
-
-// summary:
-// this page allows canceled or inactive admins to reactivate their subscription by selecting a new paid plan.
-// it sends a POST request to /api/users/admin/reactivate_checkout/ with the selected plan and jwt token, then redirects to stripe checkout if successful.
-// if the request fails or there's a network issue, an error message is shown to the user.
