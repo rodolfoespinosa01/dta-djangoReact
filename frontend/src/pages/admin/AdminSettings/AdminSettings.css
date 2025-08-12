@@ -1,61 +1,163 @@
+/* Wrapper & headings */
 .admin-settings-wrapper {
   padding: 2rem;
-  max-width: 700px;
+  max-width: 720px;
   margin: 0 auto;
+  font-family: Arial, sans-serif;
+}
+
+.admin-settings-wrapper h2 {
+  text-transform: capitalize;
+  text-align: center;
+  margin: 0 0 0.25rem 0;
 }
 
 .admin-settings-email {
-  margin-bottom: 1rem;
-  color: #6b7280;
+  text-align: center;
+  color: #475569; /* slate-600 */
+  margin: 0;
 }
 
+/* Card */
 .admin-settings-card {
-  background-color: #f9fafb;
-  border: 1px solid #e5e7eb;
+  margin-top: 2rem;
   padding: 1.5rem;
-  border-radius: 8px;
+  background-color: #f1f5f9; /* slate-100 */
+  border: 1px solid #cbd5e1; /* slate-300 */
+  border-radius: 10px;
 }
 
+.admin-settings-card h3 {
+  margin: 0 0 1rem 0;
+  text-transform: lowercase;
+}
+
+/* Inline info */
 .trial-days-left {
   margin-top: 0.5rem;
-  color: #d97706;
+  color: #b45309; /* amber-700 */
+  font-weight: 700;
 }
 
 .subscription-active {
   margin-top: 0.75rem;
-  color: #16a34a;
+  color: #16a34a; /* green-600 */
+  font-weight: 700;
 }
 
 .subscription-canceled {
   margin-top: 0.75rem;
-  color: #dc2626;
+  color: #b91c1c; /* red-700 */
+  font-weight: 700;
 }
 
+/* Actions row */
 .admin-settings-actions {
-  margin-top: 1.5rem;
+  margin-top: 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
-.btn-cancel
-.btn-back {
-  background-color: #2563eb;
-  color: white;
-  padding: 0.6rem 1.25rem;
+/* Buttons (base) */
+.btn,
+.btn-upgrade,
+.btn-downgrade,
+.btn-cancel,
+.btn-reactivate,
+.btn-back,
+.modal-option-btn,
+.modal-cancel-btn {
+  padding: 0.6rem 1.1rem;
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  margin-top: 1rem;
+  font-size: 1rem;
 }
 
-.btn-cancel {
-  background-color: #ef4444;
+.btn:disabled,
+.btn-upgrade:disabled,
+.btn-downgrade:disabled,
+.btn-cancel:disabled,
+.btn-reactivate:disabled,
+.btn-back:disabled,
+.modal-option-btn:disabled,
+.modal-cancel-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
+/* Specific button intents */
+.btn-upgrade { background-color: #22c55e; color: #fff; }  /* green-500 */
+.btn-downgrade { background-color: #f59e0b; color: #fff; }/* amber-500 */
+.btn-cancel { background-color: #ef4444; color: #fff; }   /* red-500 */
+.btn-reactivate { background-color: #0ea5e9; color: #fff; }/* sky-500 */
+.btn-back { background-color: #3b82f6; color: #fff; }     /* blue-500 */
+
+.btn-back {
+  display: inline-block;
+  margin-top: 2rem;
+}
+
+/* Feedback text */
 .cancel-message {
-  margin-top: 1rem;
-  color: green;
+  margin-top: 0.75rem;
+  color: #334155; /* slate-700 */
 }
 
 .load-error {
   margin-top: 2rem;
-  color: #9ca3af;
+  text-align: center;
+  color: #b91c1c; /* red-700 */
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.35); /* slate-900 @ ~35% */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 50;
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 420px;
+  background: #f8fafc;            /* slate-50 */
+  border: 1px solid #cbd5e1;       /* slate-300 */
+  border-radius: 10px;
+  padding: 1rem;
+  box-shadow: 0 10px 20px rgba(2, 6, 23, 0.15);
+}
+
+.modal-card h4 {
+  margin: 0 0 0.75rem 0;
+}
+
+.modal-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.modal-option-btn {
+  background-color: #0ea5e9; /* sky-500 */
+  color: #fff;
+}
+
+.modal-cancel-btn {
+  width: 100%;
+  background-color: #94a3b8; /* slate-400 */
+  color: #0f172a;            /* slate-900 */
+}
+
+/* Small tweaks for narrow screens */
+@media (max-width: 420px) {
+  .modal-options {
+    grid-template-columns: 1fr;
+  }
 }
