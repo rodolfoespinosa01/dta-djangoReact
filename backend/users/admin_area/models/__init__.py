@@ -3,7 +3,7 @@ from .AdminIdentity import AdminIdentity
 from .Profile import Profile
 from .PendingSignup import PendingSignup
 from .PasswordResetToken import PasswordResetToken
-from .PreCheckoutEmail import PreCheckoutEmail
+from .PreCheckout import PreCheckout
 from .TransactionLog import TransactionLog
 from .EventTracker import EventTracker 
 __all__ = [
@@ -11,7 +11,7 @@ __all__ = [
     'Profile',
     'PendingSignup',
     'PasswordResetToken',
-    'PreCheckoutEmail',
+    'PreCheckout',
     'TransactionLog',
     'AdminIdentity',
     'EventTracker',

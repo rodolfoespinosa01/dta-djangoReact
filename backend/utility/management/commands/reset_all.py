@@ -7,7 +7,7 @@ from users.admin_area.models import (
     Profile,
     PendingSignup,
     PasswordResetToken,
-    PreCheckoutEmail,
+    PreCheckout,
     TransactionLog,
     AdminIdentity,
     EventTracker
@@ -27,7 +27,7 @@ class Command(BaseCommand):
             PasswordResetToken.objects.all().delete()
             self.stdout.write(self.style.WARNING('🔒 Password reset tokens deleted.'))
 
-            PreCheckoutEmail.objects.all().delete()
+            PreCheckout.objects.all().delete()
             self.stdout.write(self.style.WARNING('📬 Pre-checkout emails deleted.'))
 
             # Delete all profiles except superadmin's
@@ -57,7 +57,7 @@ class Command(BaseCommand):
             # ---- Reset auto-increment/sequence counters ----
             models_to_reset = [
                 PasswordResetToken,
-                PreCheckoutEmail,
+                PreCheckout,
                 PendingSignup,
                 EventTracker,
                 AdminIdentity,

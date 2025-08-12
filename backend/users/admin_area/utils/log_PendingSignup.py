@@ -5,7 +5,7 @@ from users.admin_area.models import PendingSignup  # 👉 model to store signups
 # 👉 logs a pending admin signup after Stripe checkout (before registration)
 # 👉 requires session ID, email, plan, customer ID, transaction ID, subscription ID
 # 👉 generates a secure token for use in the registration URL
-def log_pendingsignup_event(
+def log_PendingSignup(
     email,
     token,
     session_id,

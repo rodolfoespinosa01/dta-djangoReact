@@ -1,7 +1,7 @@
 from users.admin_area.models import Profile
 from django.utils import timezone
 
-def log_profile_event(
+def log_Profile(
     user,
     plan,
     stripe_transaction_id,

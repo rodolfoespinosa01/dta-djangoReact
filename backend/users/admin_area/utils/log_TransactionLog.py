@@ -1,8 +1,7 @@
-# users/admin_area/utils/log_transaction_event.py
 from django.db import IntegrityError, transaction
 from users.admin_area.models import TransactionLog
 
-def log_transaction_event(*, email: str, stripe_transaction_id: str | None, **extra_defaults):
+def log_TransactionLog(*, email: str, stripe_transaction_id: str | None, **extra_defaults):
     if not stripe_transaction_id:
         return
 
