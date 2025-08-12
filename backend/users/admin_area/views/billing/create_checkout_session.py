@@ -7,9 +7,9 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from core.models import CustomUser
-from users.admin_area.models import Plan, PendingSignup, PreCheckoutEmail, EventTracker, AdminIdentity
-from users.admin_area.utils import log_precheckout
-from users.admin_area.utils.log_admin_event import log_admin_event
+from users.admin_area.models import Plan, PendingSignup, PreCheckout, EventTracker, AdminIdentity
+from users.admin_area.utils import log_PreCheckout
+from users.admin_area.utils.log_EventTracker import log_EventTracker
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -64,10 +64,10 @@ def create_checkout_session(request):
             }, status=403)
 
         # ✅ Log pre-checkout intent
-        log_precheckout(email=email, plan_name=plan_name, is_trial=is_trial)
+        log_PreCheckout(email=email, plan_name=plan_name, is_trial=is_trial)
 
         # ✅ Log admin event (also ensures AdminIdentity for brand-new email per your logic)
-        log_admin_event(
+        log_EventTracker(
             admin_email=email,
             event_type="stripe_checkout_created",
             details=f"plan_name={plan_name}, is_trial={is_trial}"

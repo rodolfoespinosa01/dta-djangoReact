@@ -1,7 +1,7 @@
 from django.db import models
 from users.admin_area.models import AdminIdentity  # Make sure this is correct
 
-class PreCheckoutEmail(models.Model):
+class PreCheckout(models.Model):
     admin = models.ForeignKey(
         AdminIdentity,
         on_delete=models.CASCADE,

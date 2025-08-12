@@ -1,7 +1,7 @@
-from users.admin_area.models import AdminIdentity, PreCheckoutEmail, PendingSignup, EventTracker
+from users.admin_area.models import AdminIdentity, PreCheckout, PendingSignup, EventTracker
 from core.models import CustomUser
 
-def log_admin_event(admin_email, event_type, details=None):
+def log_EventTracker(admin_email, event_type, details=None):
     print(f"\n⚙️ Attempting to log event for: {admin_email}")
 
     # Check if user already exists or has an admin identity
