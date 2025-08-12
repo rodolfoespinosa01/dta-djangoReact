@@ -1,6 +1,6 @@
 # backend/users/admin_area/views/billing/cancel_subscription.py
 import stripe
-from datetime import datetime
+from datetime import datetime, timezone as dt_timezone
 from django.conf import settings
 from django.utils import timezone
 from django.db import transaction
@@ -15,8 +15,9 @@ from users.admin_area.models import Profile, EventTracker, AdminIdentity
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
-def _ts(ts):
-    return timezone.make_aware(datetime.utcfromtimestamp(ts)) if ts else None
+def _ts(ts: int | None):
+    # Robust: avoid Django's removed timezone.utc; create aware UTC dt directly
+    return datetime.fromtimestamp(ts, tz=dt_timezone.utc) if ts else None
 
 
 def _snapshot(p: Profile):
@@ -24,6 +25,7 @@ def _snapshot(p: Profile):
         "is_trial": bool(p.is_trial),
         "subscription_active": bool(p.subscription_active),
         "is_canceled": bool(p.is_canceled),
+        "cancel_at_period_end": bool(getattr(p, "cancel_at_period_end", False)),
         "auto_renew": bool(getattr(p, "auto_renew", True)),
         "subscription_end": p.subscription_end,
         "next_billing": p.next_billing,
@@ -49,20 +51,20 @@ def cancel_subscription(request):
     # ===== TRIAL USERS → cancel now + lock out =====
     if profile.is_trial:
         with transaction.atomic():
-            # Try to cancel at Stripe immediately if a sub exists (trialing)
             if sub_id:
                 try:
                     sub = stripe.Subscription.retrieve(sub_id)
                     if sub.get("status") in ("trialing", "active"):
-                        stripe.Subscription.delete(sub_id)
+                        stripe.Subscription.delete(sub_id)  # immediate cancel
                 except Exception:
-                    # Don't block on Stripe errors for trial immediate cancel
-                    pass
+                    pass  # don't block local cancel on Stripe errors
 
             now = timezone.now()
             profile.is_trial = False
             profile.subscription_active = False
             profile.is_canceled = True
+            profile.cancel_at_period_end = False
+            profile.auto_renew = False
             profile.subscription_end = now
             profile.next_billing = None
             profile.is_active = False          # 🔒 lock dashboard now
@@ -75,7 +77,7 @@ def cancel_subscription(request):
         )
 
     # ===== PAID USERS → schedule end, keep access =====
-    # Determine end date from Stripe (preferred) or fall back to existing next_billing
+    # Get period end from Stripe (preferred) or fall back
     cur_end = None
     if sub_id:
         try:
@@ -84,21 +86,21 @@ def cancel_subscription(request):
             if not bool(sub.get("cancel_at_period_end")) and sub.get("status") == "active":
                 sub = stripe.Subscription.modify(sub_id, cancel_at_period_end=True)
             cur_end = _ts(sub.get("current_period_end"))
-        except Exception as e:
-            # Fallback to what we already have locally
+        except Exception:
             cur_end = profile.next_billing or profile.subscription_end
     else:
-        # No Stripe sub id (edge case) → use next_billing as end if available
         cur_end = profile.next_billing or profile.subscription_end
 
     with transaction.atomic():
         profile.is_trial = False
-        profile.subscription_active = True     # still active on Stripe until period end
-        profile.is_canceled = True
+        profile.subscription_active = True      # ✅ still active until period end
+        profile.is_canceled = True              # auto‑renew OFF
+        profile.cancel_at_period_end = True
+        profile.auto_renew = False
         if cur_end:
-            profile.subscription_end = cur_end # end at period end
-        profile.next_billing = None            # no more renewals shown
-        profile.is_active = True               # ✅ keep dashboard access
+            profile.subscription_end = cur_end  # end when period ends
+        profile.next_billing = None             # no further renewals shown
+        profile.is_active = True                # ✅ keep dashboard access
         profile.save()
         _log_cancel_event(user.email, profile.subscription_end or timezone.now())
 
