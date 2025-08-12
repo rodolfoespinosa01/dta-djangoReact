@@ -16,7 +16,7 @@ from users.admin_area.views.dashboard.DashboardView import DashboardView
 from users.admin_area.views.billing.create_checkout_session import create_checkout_session
 from users.admin_area.views.billing.cancel_subscription import cancel_subscription
 from users.admin_area.views.billing.stripe_webhook import stripe_webhook
-from users.admin_area.views.billing import reactivation
+from users.admin_area.views.billing.reactivation import preview, start
 
 urlpatterns = [
     # 🔐 Auth
@@ -36,6 +36,6 @@ urlpatterns = [
     path('cancel_subscription/', cancel_subscription, name='cancel_subscription'),
     path('stripe_webhook/', stripe_webhook, name='stripe_webhook'),
     # 💳 Billing (reactivation)
-    path("reactivation/preview/", reactivation.preview, name="reactivation_preview"),
-    path("reactivation/start/", reactivation.start, name="reactivation_start"),
+    path("reactivation/preview/", preview, name="reactivation_preview"),
+    path("reactivation/start/", start, name="reactivation_start"),
 ]
