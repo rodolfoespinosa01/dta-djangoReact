@@ -4,7 +4,7 @@ from users.admin_area.models import (
     Profile,
     PendingSignup,
     PasswordResetToken,
-    PreCheckoutEmail,
+    PreCheckout,
     TransactionLog,
     AdminIdentity,
     EventTracker
@@ -14,7 +14,7 @@ from users.admin_area.models import (
 admin.site.register(Plan)
 admin.site.register(Profile)
 admin.site.register(PasswordResetToken)
-admin.site.register(PreCheckoutEmail)
+admin.site.register(PreCheckout)
 admin.site.register(TransactionLog)
 
 @admin.register(EventTracker)

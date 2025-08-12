@@ -12,7 +12,7 @@ from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from users.admin_area.models import Plan, PendingSignup, AdminIdentity, EventTracker
-from users.admin_area.utils.log_profile_event import log_profile_event
+from users.admin_area.utils.log_Profile import log_Profile
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 User = get_user_model()
@@ -170,7 +170,7 @@ def register(request):
     stripe_transaction_id = getattr(pending, 'stripe_transaction_id', None)
 
     # Create initial Profile snapshot (never pass None for is_canceled)
-    log_profile_event(
+    log_Profile(
         user=user,
         plan=plan,
         stripe_transaction_id=stripe_transaction_id,

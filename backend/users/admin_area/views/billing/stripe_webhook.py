@@ -9,15 +9,15 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import get_user_model
 
 from users.admin_area.models import (
-    PreCheckoutEmail,
+    PreCheckout,
     Profile,
     EventTracker,
     AdminIdentity,
     TransactionLog,
 )
 from users.admin_area.utils import (
-    log_transaction_event,
-    log_pendingsignup_event,
+    log_TransactionLog,
+    log_PendingSignup,
 )
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -89,18 +89,18 @@ def stripe_webhook(request):
         )
 
         # Remove any pre‑checkout placeholder rows
-        PreCheckoutEmail.objects.filter(admin__admin_email=email).delete()
+        PreCheckout.objects.filter(admin__admin_email=email).delete()
 
         # Idempotent: only log if we haven't already seen this invoice id
         if stripe_transaction_id and not TransactionLog.objects.filter(
             stripe_transaction_id=stripe_transaction_id
         ).exists():
-            log_transaction_event(email=email, stripe_transaction_id=stripe_transaction_id)
+            log_TransactionLog(email=email, stripe_transaction_id=stripe_transaction_id)
 
 
         # Create PendingSignup and "send" registration link (console)
         token = get_random_string(64)
-        log_pendingsignup_event(
+        log_PendingSignup(
             email=email,
             token=token,
             session_id=session_id,
@@ -187,7 +187,7 @@ def stripe_webhook(request):
         if stripe_transaction_id and not TransactionLog.objects.filter(
             stripe_transaction_id=stripe_transaction_id
         ).exists():
-            log_transaction_event(email=email, stripe_transaction_id=stripe_transaction_id)
+            log_TransactionLog(email=email, stripe_transaction_id=stripe_transaction_id)
 
         return HttpResponse(status=200)
 
