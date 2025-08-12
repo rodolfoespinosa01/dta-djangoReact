@@ -135,17 +135,6 @@ def register(request):
             except Exception:
                 pass
 
-            # ---- DEBUG (temporarily, to your console) ----
-            print("STRIPE SUB DEBUG:", {
-                "status": status_val,
-                "cur_start": sub.get('current_period_start'),
-                "cur_end": sub.get('current_period_end'),
-                "trial_end": sub.get('trial_end'),
-                "li_start": (line_period.get('start') if 'line_period' in locals() else None),
-                "li_end": (line_period.get('end') if 'line_period' in locals() else None),
-            })
-            # ---------------------------------------------
-
             if status_val == 'trialing' or is_trial:
                 is_trial = True
                 trial_start = cur_start or li_start or now
