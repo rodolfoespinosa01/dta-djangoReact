@@ -16,7 +16,8 @@ from users.admin_area.views.dashboard.DashboardView import DashboardView
 from users.admin_area.views.billing.create_checkout_session import create_checkout_session
 from users.admin_area.views.billing.cancel_subscription import cancel_subscription
 from users.admin_area.views.billing.stripe_webhook import stripe_webhook
-from users.admin_area.views.billing.reactivation import preview, start
+from users.admin_area.views.billing.reactivate import preview, start
+
 
 urlpatterns = [
     # 🔐 Auth
