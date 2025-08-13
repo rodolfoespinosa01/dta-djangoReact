@@ -1,3 +1,4 @@
+import uuid
 from django.db import models  # 👉 provides base model functionality
 from django.conf import settings  # 👉 allows access to the project's custom user model setting
 from users.admin_area.models import Plan  # 👉 imports the subscription plan model
@@ -6,6 +7,7 @@ from users.admin_area.models import Plan  # 👉 imports the subscription plan m
 class Profile(models.Model):  # 👉 stores subscription details tied to a user over time (historical + active)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profiles")  
     # 👉 links to the custom user model, one user can have multiple profiles
+    profile_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
 
     plan = models.ForeignKey(Plan, on_delete=models.SET_NULL, null=True)  
     # 👉 references the plan the user is on during this subscription cycle
