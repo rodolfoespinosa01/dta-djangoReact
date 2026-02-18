@@ -48,16 +48,6 @@ def _active_subscription_for_admin_email(email: str):
     except Exception:
         pass
 
-    try:
-        custs = stripe.Customer.list(email=email, limit=1)
-        if custs and custs.data:
-            subs = stripe.Subscription.list(customer=custs.data[0].id, status="all", limit=20)
-            picked = _pick(subs.data or [])
-            if picked:
-                return picked
-    except Exception:
-        pass
-
     return None
 
 

@@ -20,13 +20,6 @@ def _customer_for_user_email(email: str):
                 return res.data[0]
         except Exception:
             pass
-
-    try:
-        res = stripe.Customer.list(email=email, limit=1)
-        if res and res.data:
-            return res.data[0]
-    except Exception:
-        pass
     return None
 
 

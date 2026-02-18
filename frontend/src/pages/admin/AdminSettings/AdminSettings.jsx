@@ -422,6 +422,11 @@ return (
             <strong>current cycle ends:</strong> {formatDate(dashboardData.current_cycle_ends_on)} ({dashboardData.days_left_in_cycle ?? 0} day(s) left)
           </p>
         )}
+        {typeof dashboardData.days_left_in_cycle === "number" && (
+          <p>
+            <strong>days left on current plan:</strong> {dashboardData.days_left_in_cycle}
+          </p>
+        )}
         <p>
           <strong>next plan:</strong>{" "}
           {dashboardData.next_plan_status
