@@ -1,6 +1,5 @@
 .admin-home-wrapper {
   min-height: 100vh;
-  background-color: #f3f4f6;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -8,25 +7,28 @@
 }
 
 .admin-home-card {
-  background-color: white;
+  background: linear-gradient(165deg, rgba(8, 14, 16, 0.82), rgba(5, 9, 12, 0.64));
+  border: 1px solid var(--panel-border);
   padding: 3rem;
-  border-radius: 12px;
+  border-radius: 14px;
   max-width: 500px;
   width: 100%;
   text-align: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 20px 34px rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(8px);
 }
 
 .admin-home-title {
   margin-bottom: 1rem;
   font-size: 2rem;
-  color: #111827;
+  color: #f8dcff;
 }
 
 .admin-home-subtitle {
   margin-bottom: 2rem;
-  color: #4b5563;
+  color: #e7ecff;
   font-size: 1.1rem;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
 }
 
 .admin-home-button {
@@ -34,19 +36,24 @@
   padding: 0.75rem;
   font-size: 1rem;
   border: none;
-  border-radius: 6px;
+  border-radius: 10px;
   cursor: pointer;
   font-weight: bold;
   margin-bottom: 1rem;
 }
 
 .admin-home-button.primary {
-  background-color: #2563eb;
-  color: white;
+  background: linear-gradient(145deg, #f07dff, #8da3ff);
+  color: #111028;
 }
 
 .admin-home-button.secondary {
-  background-color: #6b7280;
-  color: white;
+  background: linear-gradient(145deg, #425b88, #2f456a);
+  color: #ffffff;
+}
+
+.admin-home-button.tertiary {
+  background: linear-gradient(145deg, #6f6f90, #4c4f78);
+  color: #ffffff;
   margin-bottom: 0;
 }

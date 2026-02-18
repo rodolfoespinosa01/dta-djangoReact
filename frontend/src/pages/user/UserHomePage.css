@@ -1,0 +1,20 @@
+.user-home-page {
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.user-home-page p {
+  color: var(--muted);
+}
+
+.user-home-button {
+  margin: 1rem 0.4rem 0;
+  padding: 0.9rem 1.3rem;
+  font-size: 0.95rem;
+  border-radius: 10px;
+  border: 1px solid rgba(236, 106, 255, 0.35);
+  color: #111028;
+  background: linear-gradient(145deg, #f07dff, #8da3ff);
+  font-weight: 700;
+  cursor: pointer;
+}

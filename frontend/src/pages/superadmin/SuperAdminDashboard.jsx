@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import './SuperAdminDashboard.css';
 
 function SuperAdminDashboard() {
   const { user, isAuthenticated, loading } = useAuth();
@@ -35,21 +36,21 @@ function SuperAdminDashboard() {
   }, [loading, isAuthenticated, user, navigate]);
 
   if (loading || !stats) {
-    return <p style={{ padding: '2rem' }}>Loading SuperAdmin dashboard...</p>;
+    return <p className="superadmin-loading">Loading SuperAdmin dashboard...</p>;
   }
 
   return (
-    <div style={{ padding: '2rem' }}>
+    <div className="superadmin-dashboard-page">
       <h2>SuperAdmin Dashboard</h2>
 
-      <h3 style={{ marginTop: '2rem' }}>All Admins</h3>
-      <table style={{ width: '100%', marginTop: '1rem', borderCollapse: 'collapse' }}>
+      <h3 className="superadmin-section-title">All Admins</h3>
+      <table className="superadmin-admins-table">
         <thead>
           <tr>
-            <th style={{ borderBottom: '1px solid #ccc', padding: '0.5rem' }}>Email</th>
-            <th style={{ borderBottom: '1px solid #ccc', padding: '0.5rem' }}>Plan</th>
-            <th style={{ borderBottom: '1px solid #ccc', padding: '0.5rem' }}>Price</th>
-            <th style={{ borderBottom: '1px solid #ccc', padding: '0.5rem' }}>Next Billing Date</th>
+            <th>Email</th>
+            <th>Plan</th>
+            <th>Price</th>
+            <th>Next Billing Date</th>
           </tr>
         </thead>
         <tbody>
@@ -57,18 +58,18 @@ function SuperAdminDashboard() {
             const isInactive = admin.plan === 'admin_inactive';
 
             return (
-              <tr key={idx} style={isInactive ? { color: 'red' } : {}}>
-                <td style={{ padding: '0.5rem' }}>{admin.email}</td>
-                <td style={{ padding: '0.5rem' }}>
+              <tr key={idx} className={isInactive ? 'row-inactive' : ''}>
+                <td>{admin.email}</td>
+                <td>
                   {admin.plan}
                   {admin.plan === 'admin_trial' && admin.cancelled && (
-                    <span style={{ color: 'red', marginLeft: '0.5rem' }}>
+                    <span className="superadmin-cancelled-tag">
                       (Cancelled)
                     </span>
                   )}
                 </td>
-                <td style={{ padding: '0.5rem' }}>{admin.price || ''}</td>
-                <td style={{ padding: '0.5rem' }}>{admin.next_billing || ''}</td>
+                <td>{admin.price || ''}</td>
+                <td>{admin.next_billing || ''}</td>
               </tr>
             );
           })}
@@ -82,15 +83,7 @@ function SuperAdminDashboard() {
           localStorage.removeItem('refresh_token');
           navigate('/superadmin_login');
         }}
-        style={{
-          marginTop: '2rem',
-          padding: '0.75rem 1.5rem',
-          backgroundColor: '#dc2626',
-          color: 'white',
-          border: 'none',
-          borderRadius: '6px',
-          cursor: 'pointer'
-        }}
+        className="superadmin-logout-button"
       >
         Logout
       </button>

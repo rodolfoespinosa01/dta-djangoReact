@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import './UserPlanSelectionPage.css';
 
 function UserPlanSelectionPage() {
   const navigate = useNavigate();
@@ -9,10 +10,10 @@ function UserPlanSelectionPage() {
   };
 
   return (
-    <div style={{ padding: '2rem', textAlign: 'center' }}>
+    <div className="user-plan-page">
       <h2>Select a User Plan</h2>
-    <p>Later will set up plans for user</p>
-    <button onClick={handleHomeCTA} style={{ marginTop: '1rem', padding: '1rem 2rem', fontSize: '1rem' }}>
+      <p>Later will set up plans for user</p>
+      <button onClick={handleHomeCTA} className="user-plan-button">
         Back to Main Page
       </button>
     </div>

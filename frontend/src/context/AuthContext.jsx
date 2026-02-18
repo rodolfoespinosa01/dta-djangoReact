@@ -7,6 +7,8 @@ const AuthContext = createContext(null);
 // Public routes (no auth required)
 const PUBLIC_PATHS = new Set([
   '/',
+  '/welcome',
+  '/admin_homepage',
   '/admin_plans',
   '/admin_checkout',
   '/admin_thank_you',
@@ -14,6 +16,9 @@ const PUBLIC_PATHS = new Set([
   '/admin_trial_ended',
   '/admin_login',
   '/admin_forgot_password',         // forgot page
+  '/user_homepage',
+  '/user_plans',
+  '/superadmin_login',
 ]);
 
 // Public routes that may include tokens / dynamic parts
@@ -85,7 +90,7 @@ export const AuthProvider = ({ children }) => {
     // Tokens present: validate access token
     if (isExpired(access)) {
       console.warn('⏰ Access token expired — logging out');
-      logout('/admin_login');
+      logout(isPublicRoute(location.pathname) ? location.pathname : '/admin_login');
       return;
     }
 
@@ -110,7 +115,7 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (err) {
       console.error('❌ Error decoding token on rehydrate:', err);
-      logout('/admin_login');
+      logout(isPublicRoute(location.pathname) ? location.pathname : '/admin_login');
     }
     // Re-run on path change so public-route checks apply to direct navigations
   }, [location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps

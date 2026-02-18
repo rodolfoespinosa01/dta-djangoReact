@@ -2,14 +2,15 @@
   max-width: 960px;
   margin: 40px auto;
   padding: 20px;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: #14203a;
 }
 
 .admin-plan-title {
   font-size: 28px;
   text-align: center;
   margin-bottom: 30px;
-  color: #333;
+  color: #132038;
+  text-shadow: none;
 }
 
 .admin-plan-email {
@@ -23,15 +24,40 @@
   width: 300px;
   padding: 12px;
   font-size: 16px;
-  border: 2px solid #ccc;
+  border: 1px solid rgba(28, 41, 69, 0.25);
   border-radius: 6px;
   margin-bottom: 8px;
+  background: #ffffff;
+  color: #111c2f;
+}
+
+.admin-plan-input.has-error {
+  border-color: #c1121f;
+  box-shadow: 0 0 0 3px rgba(193, 18, 31, 0.18);
 }
 
 .admin-plan-error {
-  color: red;
-  font-size: 14px;
-  margin-top: -4px;
+  color: #8f0f18;
+  background: #ffe7ea;
+  border: 1px solid #f28d99;
+  font-size: 15px;
+  font-weight: 700;
+  margin-top: 6px;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  box-shadow: 0 8px 16px rgba(193, 18, 31, 0.16);
+  animation: plan-error-pop 220ms ease;
+}
+
+@keyframes plan-error-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .admin-plan-list {
@@ -41,50 +67,58 @@
 }
 
 .admin-plan-card {
-  background-color: #f9f9f9;
+  background: linear-gradient(165deg, rgba(18, 16, 34, 0.9), rgba(10, 12, 22, 0.78));
+  border: 1px solid rgba(236, 106, 255, 0.25);
   padding: 20px;
   border-radius: 10px;
   text-align: center;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.38);
   cursor: pointer;
 }
 
 .admin-plan-card:hover {
   transform: scale(1.03);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.45);
+}
+
+.admin-plan-card h3 {
+  color: #ffe8ff;
 }
 
 .admin-plan-price {
   font-size: 18px;
-  color: #1a73e8;
+  color: #f6a4ff;
   margin: 8px 0;
 }
 
 .admin-plan-description {
   font-size: 14px;
-  color: #555;
+  color: #cbb4de;
   margin-bottom: 20px;
   min-height: 60px;
 }
 
 .admin-plan-button {
   padding: 10px 18px;
-  background-color: #1a73e8;
-  color: white;
+  background: linear-gradient(145deg, #f07dff, #8da3ff);
+  color: #111028;
   border: none;
   border-radius: 6px;
   font-size: 14px;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  font-weight: 700;
+  margin: 0 0.25rem;
+  transition: filter 0.2s ease;
 }
 
 .admin-plan-button:hover {
-  background-color: #155ec0;
+  filter: brightness(1.1);
 }
 
 .admin-plan-button:disabled {
-  background-color: #999;
+  background: #706f86;
+  color: #e5d8ee;
   cursor: not-allowed;
 }
 
@@ -94,9 +128,9 @@
 }
 
 .admin-plan-back-button {
-  background-color: transparent;
-  color: #1a73e8;
-  border: 2px solid #1a73e8;
+  background: #1c2945;
+  color: #ffffff;
+  border: 1px solid #0f1729;
   padding: 8px 16px;
   border-radius: 6px;
   font-size: 14px;
@@ -105,6 +139,6 @@
 }
 
 .admin-plan-back-button:hover {
-  background-color: #1a73e8;
-  color: white;
+  background: #24355a;
+  color: #ffffff;
 }

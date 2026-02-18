@@ -1,13 +1,112 @@
+:root {
+  --bg: #f4f7ff;
+  --panel: rgba(255, 255, 255, 0.9);
+  --panel-border: rgba(21, 31, 51, 0.18);
+  --text: #111c2f;
+  --muted: #36435f;
+  --accent: #1d2c49;
+  --accent-2: #2b3e68;
+  --danger: #ff4d5a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  font-family: "Avenir Next", "Trebuchet MS", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background:
+    radial-gradient(1000px 580px at 10% 0%, rgba(212, 222, 255, 0.9), transparent 58%),
+    radial-gradient(1100px 620px at 100% 30%, rgba(255, 224, 248, 0.9), transparent 60%),
+    linear-gradient(180deg, #fcfdff 0%, #f4f7ff 100%);
+}
+
+body::after {
+  display: none;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  transition: color 180ms ease;
+}
+
+a:hover {
+  color: #0f1a2d;
+}
+
+button,
+.btn,
+[class*="btn-"] {
+  position: relative;
+  isolation: isolate;
+  border: 1px solid #0f1729;
+  background: #1c2945;
+  color: #ffffff;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 150ms ease, filter 180ms ease, box-shadow 220ms ease;
+}
+
+button::after,
+.btn::after,
+[class*="btn-"]::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 12px;
+  border: 2px solid rgba(28, 41, 69, 0.38);
+  opacity: 0;
+  transform: scale(0.98);
+  pointer-events: none;
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+button:hover:not(:disabled),
+.btn:hover:not(:disabled),
+[class*="btn-"]:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+  box-shadow: 0 8px 18px rgba(19, 30, 52, 0.24);
+}
+
+button:hover:not(:disabled)::after,
+.btn:hover:not(:disabled)::after,
+[class*="btn-"]:hover:not(:disabled)::after {
+  opacity: 1;
+  transform: scale(1.01);
+}
+
+button:active:not(:disabled),
+.btn:active:not(:disabled),
+[class*="btn-"]:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+button:focus-visible,
+.btn:focus-visible,
+[class*="btn-"]:focus-visible {
+  outline: 3px solid rgba(28, 41, 69, 0.45);
+  outline-offset: 2px;
 }
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+main {
+  width: 100%;
 }

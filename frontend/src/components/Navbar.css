@@ -1,0 +1,64 @@
+.site-navbar {
+  position: sticky;
+  top: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.55rem 1rem;
+  background: rgba(255, 255, 255, 0.82);
+  border-bottom: 1px solid rgba(21, 31, 51, 0.12);
+  backdrop-filter: blur(8px);
+}
+
+.site-brand {
+  display: inline-flex;
+  align-items: center;
+}
+
+.site-brand-logo {
+  height: 38px;
+  width: auto;
+  display: block;
+}
+
+.site-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.site-nav-link {
+  font-weight: 700;
+  color: #1a2540;
+  padding: 0.38rem 0.55rem;
+  border-radius: 8px;
+}
+
+.site-nav-link:hover {
+  background: rgba(23, 36, 58, 0.08);
+}
+
+.site-logout-btn {
+  border: 1px solid #141f36;
+  background: #1b2947;
+  color: #ffffff;
+  border-radius: 10px;
+  padding: 0.43rem 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .site-navbar {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 0.7rem 0.85rem;
+  }
+
+  .site-brand-logo {
+    height: 34px;
+  }
+}
