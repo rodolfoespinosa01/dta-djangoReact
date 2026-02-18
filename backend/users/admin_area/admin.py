@@ -7,7 +7,8 @@ from users.admin_area.models import (
     PreCheckout,
     TransactionLog,
     AdminIdentity,
-    EventTracker
+    EventTracker,
+    AdminAccountHistory,
 )
 
 # ✅ Core admin models
@@ -71,3 +72,15 @@ class AdminIdentityAdmin(admin.ModelAdmin):
     readonly_fields = ('id', 'adminID', 'admin_email', 'created_at')
     fields = ('id', 'adminID', 'admin_email', 'created_at')
 
+
+@admin.register(AdminAccountHistory)
+class AdminAccountHistoryAdmin(admin.ModelAdmin):
+    list_display = ("admin_email", "event_type", "occurred_at")
+    list_filter = ("event_type", "occurred_at")
+    search_fields = ("admin__admin_email", "event_type", "details")
+    readonly_fields = ("admin", "source_event", "event_type", "details", "metadata", "occurred_at")
+
+    def admin_email(self, obj):
+        return obj.admin.admin_email
+
+    admin_email.short_description = "Admin Email"
