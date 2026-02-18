@@ -30,20 +30,13 @@ def _admin_identity_for(user):
 
 
 def _find_existing_customer_id(admin_id: str, email: str | None):
-    # Prefer Customer Search by metadata(admin_id); fallback to listing by email
+    # Use metadata(admin_id) only to avoid stale customers from old DB resets.
     try:
         res = stripe.Customer.search(query=f"metadata['admin_id']:'{admin_id}'", limit=1)
         if res and res.data:
             return res.data[0].id
     except Exception:
         pass
-    if email:
-        try:
-            res = stripe.Customer.list(email=email, limit=1)
-            if res and res.data:
-                return res.data[0].id
-        except Exception:
-            pass
     return None
 
 
