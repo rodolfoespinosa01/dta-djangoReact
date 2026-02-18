@@ -96,8 +96,10 @@ class DashboardView(APIView):
         if not profile:
             return Response({"error": "Admin profile not found."}, status=status.HTTP_404_NOT_FOUND)
 
+        data_source = "db_fallback"
         # Source of truth: Stripe first.
         if stripe_sub and stripe_sub.get("plan"):
+            data_source = "stripe"
             stripe_plan = stripe_sub["plan"]
             stripe_status = stripe_sub.get("status")
             subscription_status = PLAN_NAME_TO_STATUS.get(stripe_plan.name, getattr(user, "subscription_status", ""))
@@ -115,7 +117,12 @@ class DashboardView(APIView):
         else:
             profile_is_trial = bool(getattr(profile, "is_trial", False))
             profile_plan_name = getattr(getattr(profile, "plan", None), "name", None)
-            raw_status = PLAN_NAME_TO_STATUS.get(profile_plan_name) or getattr(user, "subscription_status", "")
+            # Prefer latest paid profile plan if present to avoid stale-trial reads.
+            latest_paid = user.profiles.filter(is_active=True, is_trial=False, plan__isnull=False).order_by("-created_at").first()
+            latest_paid_status = None
+            if latest_paid and latest_paid.plan:
+                latest_paid_status = PLAN_NAME_TO_STATUS.get(getattr(latest_paid.plan, "name", None))
+            raw_status = latest_paid_status or PLAN_NAME_TO_STATUS.get(profile_plan_name) or getattr(user, "subscription_status", "")
             subscription_status = "admin_trial" if profile_is_trial else raw_status
             is_trial = (subscription_status == "admin_trial")
             is_canceled = bool(getattr(profile, "is_canceled", False))
@@ -179,6 +186,12 @@ class DashboardView(APIView):
             "next_plan_price_cents": next_plan_price_cents,
             "next_plan_effective_on": next_plan_effective_on,
         }
+
+        if settings.DEBUG:
+            payload["debug_data_source"] = data_source
+            payload["debug_stripe_status"] = stripe_sub.get("status") if stripe_sub else None
+            payload["debug_stripe_plan"] = getattr(stripe_sub.get("plan"), "name", None) if stripe_sub else None
+            payload["debug_profile_id"] = str(profile.profile_id) if hasattr(profile, "profile_id") else None
 
         if not is_active:
             return Response(payload, status=status.HTTP_403_FORBIDDEN)
