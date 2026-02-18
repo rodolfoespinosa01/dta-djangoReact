@@ -55,6 +55,7 @@ function AdminDashboard() {
     admin_quarterly: 'Quarterly Plan',
     admin_annual: 'Annual Plan',
   };
+  const formatAmount = (cents) => (typeof cents === 'number' ? `$${(cents / 100).toFixed(2)}` : '—');
 
   // Shows renewal/cancel state based on is_canceled
   const RenewalBadge = ({ data }) => {
@@ -107,6 +108,31 @@ function AdminDashboard() {
 
             {dashboardData.trial_start && (
               <li><span className="label">Trial Started:</span> {formatDate(dashboardData.trial_start)}</li>
+            )}
+            {dashboardData.trial_ends_on && (
+              <li><span className="label">Trial Ends:</span> {formatDate(dashboardData.trial_ends_on)}</li>
+            )}
+            {dashboardData.is_trial && (
+              <li>
+                <span className="label">After Trial:</span> {dashboardData.next_plan_status ? (subscriptionLabels[dashboardData.next_plan_status] || '—') : 'No Plan'}
+              </li>
+            )}
+            {dashboardData.current_cycle_ends_on && (
+              <li><span className="label">Current Cycle Ends:</span> {formatDate(dashboardData.current_cycle_ends_on)}</li>
+            )}
+            {typeof dashboardData.days_left_in_cycle === 'number' && (
+              <li><span className="label">Days Left In Cycle:</span> {dashboardData.days_left_in_cycle}</li>
+            )}
+            {dashboardData.next_plan_effective_on && (
+              <li><span className="label">Next Plan Starts:</span> {formatDate(dashboardData.next_plan_effective_on)}</li>
+            )}
+            {!dashboardData.is_trial && (
+              <li>
+                <span className="label">Next Plan:</span> {dashboardData.next_plan_status ? (subscriptionLabels[dashboardData.next_plan_status] || '—') : 'No Plan'}
+              </li>
+            )}
+            {!dashboardData.is_trial && (
+              <li><span className="label">Next Charge:</span> {dashboardData.next_plan_status ? formatAmount(dashboardData.next_plan_price_cents) : 'No Charge'}</li>
             )}
             {dashboardData.monthly_start && (
               <li><span className="label">Monthly Plan Start:</span> {formatDate(dashboardData.monthly_start)}</li>

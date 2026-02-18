@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from users.admin_area.models import Profile, AdminIdentity, Plan  # Plan optional if you want to validate price -> plan
+from users.admin_area.utils.log_EventTracker import log_EventTracker
 
 stripe.api_key = getattr(settings, "STRIPE_SECRET_KEY", None)
 
@@ -90,6 +91,18 @@ def start(request):
     admin_id, admin_email = _admin_identity_for(user)
     email = _candidate_email(user, profile) or admin_email
 
+    # Existing admins are never trial-eligible again.
+    if with_trial:
+        log_EventTracker(
+            admin_email=email,
+            event_type="trial_blocked_existing_admin",
+            details="source=reactivation_start"
+        )
+        return Response(
+            {"error": "Free trial is only available one time for first-time signups."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
     frontend_url = getattr(settings, "FRONTEND_URL", None) or "http://localhost:3000"
     success_url = f"{frontend_url}/admin_dashboard?status=success&src=reactivation"
     cancel_url = f"{frontend_url}/admin_billing?status=cancel&src=reactivation"
@@ -109,14 +122,18 @@ def start(request):
         # Mirror locally
         profile.is_canceled = False
         profile.save(update_fields=["is_canceled"])
+        log_EventTracker(
+            admin_email=email,
+            event_type="subscription_uncancelled",
+            details=f"admin_id={admin_id}"
+        )
         return Response({"action": "uncancelled"})
 
     # ---------------- CHECKOUT (reactivate/upgrade) ----------------
-    # Optionally validate the price belongs to a known Plan (nice safety, can be removed)
-    try:
-        _ = Plan.objects.get(stripe_price_id=target_price_id)
-    except Exception:
-        pass  # skip if you don't want to enforce
+    # Validate the price belongs to a known Plan so we can persist target plan metadata.
+    target_plan_obj = Plan.objects.filter(stripe_price_id=target_price_id).first()
+    if not target_plan_obj:
+        return Response({"error": "Target plan is not configured."}, status=status.HTTP_400_BAD_REQUEST)
 
     # Reuse existing Customer if possible; otherwise let Checkout create (via email)
     customer_id = _find_existing_customer_id(admin_id, email)
@@ -127,6 +144,7 @@ def start(request):
             "admin_id": admin_id,
             "admin_email": email or "",
             "admin_user_id": str(getattr(user, "id", "")),
+            "target_plan_name": target_plan_obj.name,
         }
     }
     if with_trial:
@@ -144,6 +162,7 @@ def start(request):
             "admin_id": admin_id,
             "admin_email": email or "",
             "admin_user_id": str(getattr(user, "id", "")),
+            "target_plan_name": target_plan_obj.name,
         },
     )
 
@@ -160,4 +179,9 @@ def start(request):
     except Exception:
         return Response({"error": "Could not create checkout session."}, status=status.HTTP_400_BAD_REQUEST)
 
+    log_EventTracker(
+        admin_email=email,
+        event_type="plan_change_checkout_started",
+        details=f"target_price_id={target_price_id}"
+    )
     return Response({"action": "checkout", "url": session.url})
