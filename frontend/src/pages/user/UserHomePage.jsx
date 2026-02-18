@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import './UserHomePage.css';
 
 function UserHomePage() {
   const navigate = useNavigate();
@@ -13,15 +14,15 @@ function UserHomePage() {
   };
 
   return (
-    <div style={{ padding: '2rem', textAlign: 'center' }}>
+    <div className="user-home-page">
       <h1>Welcome to DTA - Users</h1>
       <p>Your all-in-one platform for creating personalized diet plans.</p>
 
-      <button onClick={handleCTA} style={{ marginTop: '1rem', padding: '1rem 2rem', fontSize: '1rem' }}>
+      <button onClick={handleCTA} className="user-home-button">
         See Available plans for Users
       </button>
 
-      <button onClick={handleHomeCTA} style={{ marginTop: '1rem', padding: '1rem 2rem', fontSize: '1rem' }}>
+      <button onClick={handleHomeCTA} className="user-home-button">
         Back to Main Page
       </button>
     </div>

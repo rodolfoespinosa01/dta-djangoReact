@@ -1,0 +1,50 @@
+.superadmin-loading {
+  padding: 2rem;
+}
+
+.superadmin-dashboard-page {
+  padding: 2rem 1rem;
+}
+
+.superadmin-section-title {
+  margin-top: 2rem;
+}
+
+.superadmin-admins-table {
+  width: 100%;
+  margin-top: 1rem;
+  border-collapse: collapse;
+  border: 1px solid rgba(236, 106, 255, 0.2);
+  background: rgba(6, 8, 16, 0.45);
+}
+
+.superadmin-admins-table th,
+.superadmin-admins-table td {
+  padding: 0.55rem;
+  border-bottom: 1px solid rgba(236, 106, 255, 0.18);
+}
+
+.superadmin-admins-table th {
+  text-align: left;
+  color: #f7c5ff;
+}
+
+.superadmin-admins-table .row-inactive {
+  color: #ff8d96;
+}
+
+.superadmin-cancelled-tag {
+  color: #ff8d96;
+  margin-left: 0.5rem;
+}
+
+.superadmin-logout-button {
+  margin-top: 2rem;
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(145deg, #ff5f7f, #be3148);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 700;
+}

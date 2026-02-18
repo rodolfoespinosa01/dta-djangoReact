@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import './SuperAdminLoginPage.css';
 
 function SuperAdminLoginPage() {
   const [username, setUsername] = useState('');
@@ -29,16 +30,16 @@ function SuperAdminLoginPage() {
   };
 
   return (
-    <div style={{ padding: '2rem' }}>
+    <div className="superadmin-login-page">
       <h2>SuperAdmin Login</h2>
-      <form onSubmit={handleSubmit} style={{ maxWidth: '400px' }}>
+      <form onSubmit={handleSubmit} className="superadmin-login-form">
         <input
           type="text"
           placeholder="Username"
           required
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          style={{ display: 'block', marginBottom: '1rem', width: '100%' }}
+          className="superadmin-login-input"
         />
         <input
           type="password"
@@ -46,9 +47,9 @@ function SuperAdminLoginPage() {
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          style={{ display: 'block', marginBottom: '1rem', width: '100%' }}
+          className="superadmin-login-input"
         />
-        <button type="submit">Log In</button>
+        <button type="submit" className="superadmin-login-button">Log In</button>
       </form>
     </div>
   );

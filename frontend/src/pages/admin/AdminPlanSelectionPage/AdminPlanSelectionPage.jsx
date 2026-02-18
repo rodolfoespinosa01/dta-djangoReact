@@ -26,21 +26,24 @@ const adminPlans = [
 function AdminPlanSelectionPage() {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loadingAction, setLoadingAction] = useState(null);
   const navigate = useNavigate();
+  const getActionKey = (planId, isTrial) => `${planId}:${isTrial ? 'trial' : 'paid'}`;
 
   const handleHomeCTA = () => {
     navigate('/');
   };
 
   const handleSelectAdminPlan = async (planId, isTrial) => {
+    if (loadingAction) return;
     if (!email) {
       setError('Please enter your email before continuing to checkout.');
       return;
     }
 
+    const actionKey = getActionKey(planId, isTrial);
     setError('');
-    setLoading(true);
+    setLoadingAction(actionKey);
 
     try {
       const response = await fetch('http://localhost:8000/api/users/admin/create_checkout_session/', {
@@ -65,7 +68,7 @@ function AdminPlanSelectionPage() {
       console.error('Error starting checkout:', err);
       setError('Something went wrong. Please try again.');
     } finally {
-      setLoading(false);
+      setLoadingAction(null);
     }
   };
 
@@ -79,10 +82,13 @@ function AdminPlanSelectionPage() {
           placeholder="Enter your email"
           required
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="admin-plan-input"
+          onChange={(e) => {
+            setEmail(e.target.value);
+            if (error) setError('');
+          }}
+          className={`admin-plan-input ${error ? 'has-error' : ''}`}
         />
-        {error && <p className="admin-plan-error">{error}</p>}
+        {error && <p className="admin-plan-error" role="alert" aria-live="assertive">⚠ {error}</p>}
       </div>
 
       <div className="admin-plan-list">
@@ -99,18 +105,18 @@ function AdminPlanSelectionPage() {
 
             <button
               onClick={() => handleSelectAdminPlan(plan.id, true)}
-              disabled={loading}
+              disabled={!!loadingAction}
               className="admin-plan-button"
             >
-              {loading ? 'Processing...' : 'Start Free Trial'}
+              {loadingAction === getActionKey(plan.id, true) ? 'Processing...' : 'Start Free Trial'}
             </button>
 
             <button
               onClick={() => handleSelectAdminPlan(plan.id, false)}
-              disabled={loading}
+              disabled={!!loadingAction}
               className="admin-plan-button"
             >
-              {loading ? 'Processing...' : 'Buy Now'}
+              {loadingAction === getActionKey(plan.id, false) ? 'Processing...' : 'Buy Now'}
             </button>
           </div>
         ))}

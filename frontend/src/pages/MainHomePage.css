@@ -1,0 +1,34 @@
+.main-home-page {
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+.main-home-title {
+  margin: 0;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.main-home-subtitle {
+  margin: 0.65rem 0 0;
+  color: var(--muted);
+}
+
+.main-home-actions {
+  margin-top: 2rem;
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.main-home-button {
+  padding: 1rem 1.4rem;
+  font-size: 0.96rem;
+  border-radius: 10px;
+  border: 1px solid rgba(236, 106, 255, 0.35);
+  cursor: pointer;
+  color: #111028;
+  background: linear-gradient(145deg, #f07dff, #8da3ff);
+  font-weight: 700;
+}
