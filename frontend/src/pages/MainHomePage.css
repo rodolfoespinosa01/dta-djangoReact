@@ -1,6 +1,8 @@
 .main-home-page {
   text-align: center;
   padding: 3rem 1rem;
+  max-width: 760px;
+  margin: 0 auto;
 }
 
 .main-home-title {
@@ -31,4 +33,19 @@
   color: #111028;
   background: linear-gradient(145deg, #f07dff, #8da3ff);
   font-weight: 700;
+}
+
+@media (max-width: 640px) {
+  .main-home-page {
+    padding: 2rem 0.9rem;
+  }
+
+  .main-home-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .main-home-button {
+    width: 100%;
+  }
 }

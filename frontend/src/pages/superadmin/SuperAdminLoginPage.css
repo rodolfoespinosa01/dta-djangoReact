@@ -1,10 +1,13 @@
 .superadmin-login-page {
   padding: 2rem 1rem;
+  max-width: 720px;
+  margin: 0 auto;
 }
 
 .superadmin-login-form {
   max-width: 420px;
-  margin-top: 1rem;
+  margin: 1rem auto 0;
+  width: 100%;
 }
 
 .superadmin-login-input {
@@ -26,4 +29,14 @@
   background: linear-gradient(145deg, #f07dff, #8da3ff);
   font-weight: 700;
   cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .superadmin-login-page {
+    padding: 1.6rem 0.9rem;
+  }
+
+  .superadmin-login-button {
+    width: 100%;
+  }
 }

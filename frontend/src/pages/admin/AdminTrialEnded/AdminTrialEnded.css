@@ -1,5 +1,5 @@
 .trial-ended-wrapper {
-  padding: 3rem;
+  padding: 3rem 1rem;
   max-width: 600px;
   margin: 0 auto;
   text-align: center;
@@ -35,4 +35,19 @@
   margin-top: 2rem;
   font-size: 0.95rem;
   color: #6b7280;
+}
+
+@media (max-width: 640px) {
+  .trial-ended-wrapper {
+    padding: 2rem 0.9rem;
+  }
+
+  .trial-ended-buttons {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .btn-logout {
+    width: 100%;
+  }
 }

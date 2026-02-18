@@ -1,7 +1,7 @@
 .admin-plan-wrapper {
   max-width: 960px;
   margin: 40px auto;
-  padding: 20px;
+  padding: 20px 16px;
   color: #14203a;
 }
 
@@ -21,7 +21,8 @@
 }
 
 .admin-plan-input {
-  width: 300px;
+  width: 100%;
+  max-width: 320px;
   padding: 12px;
   font-size: 16px;
   border: 1px solid rgba(28, 41, 69, 0.25);
@@ -141,4 +142,20 @@
 .admin-plan-back-button:hover {
   background: #24355a;
   color: #ffffff;
+}
+
+@media (max-width: 720px) {
+  .admin-plan-wrapper {
+    margin: 24px auto;
+    padding: 16px 12px 28px;
+  }
+
+  .admin-plan-list {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-plan-button {
+    width: 100%;
+    margin: 0.35rem 0 0;
+  }
 }
