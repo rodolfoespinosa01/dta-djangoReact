@@ -4,6 +4,8 @@
 
 .superadmin-dashboard-page {
   padding: 2rem 1rem;
+  max-width: 980px;
+  margin: 0 auto;
 }
 
 .superadmin-section-title {
@@ -47,4 +49,16 @@
   border-radius: 10px;
   cursor: pointer;
   font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .superadmin-dashboard-page {
+    padding: 1.6rem 0.9rem 2rem;
+  }
+
+  .superadmin-admins-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
 }

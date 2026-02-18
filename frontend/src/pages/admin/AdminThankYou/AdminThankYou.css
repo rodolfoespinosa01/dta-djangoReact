@@ -1,6 +1,8 @@
 .admin-thankyou-wrapper {
   text-align: center;
-  padding: 3rem;
+  padding: 3rem 1rem;
+  max-width: 720px;
+  margin: 0 auto;
 }
 
 .admin-thankyou-title {
@@ -12,4 +14,10 @@
   font-size: 1.1rem;
   color: #4b5563;
   margin-bottom: 0.5rem;
+}
+
+@media (max-width: 640px) {
+  .admin-thankyou-wrapper {
+    padding: 2rem 0.9rem;
+  }
 }
