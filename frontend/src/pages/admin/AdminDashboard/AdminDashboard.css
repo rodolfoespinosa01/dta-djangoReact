@@ -127,3 +127,18 @@
     transform: translateY(0);
   }
 }
+
+@media (max-width: 720px) {
+  .admin-dashboard-wrapper {
+    padding: 2rem 0.9rem 2.6rem;
+  }
+
+  .actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .btn {
+    width: 100%;
+  }
+}

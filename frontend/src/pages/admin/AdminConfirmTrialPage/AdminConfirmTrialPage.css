@@ -1,7 +1,9 @@
 .admin-confirm-wrapper {
   text-align: center;
-  padding: 4rem;
-  font-family: Arial, sans-serif;
+  padding: 3rem 1rem;
+  font-family: inherit;
+  max-width: 680px;
+  margin: 0 auto;
 }
 
 .admin-confirm-wrapper h2 {
@@ -10,6 +12,12 @@
 }
 
 .admin-confirm-wrapper p {
-  font-size: 1.2rem;
+  font-size: clamp(1rem, 3.2vw, 1.2rem);
   color: #333;
+}
+
+@media (max-width: 640px) {
+  .admin-confirm-wrapper {
+    padding: 2.2rem 0.9rem;
+  }
 }

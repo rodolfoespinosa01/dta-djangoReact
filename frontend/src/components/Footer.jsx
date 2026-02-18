@@ -7,6 +7,7 @@ function Footer() {
     <footer className="site-footer">
       <img src={logo} alt="DTA logo" className="site-footer-logo" />
       <p className="site-footer-copy">DTA Platform</p>
+      <p className="site-footer-note">Developed by Rodolfo E.N.</p>
     </footer>
   );
 }

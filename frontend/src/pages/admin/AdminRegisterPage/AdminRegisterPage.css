@@ -4,7 +4,7 @@
 }
 
 .admin-register-wrapper {
-  padding: 3rem;
+  padding: 2.4rem 1rem;
   display: flex;
   justify-content: center;
 }
@@ -44,4 +44,10 @@
   border: none;
   border-radius: 6px;
   cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .admin-register-wrapper {
+    padding: 1.8rem 0.9rem;
+  }
 }

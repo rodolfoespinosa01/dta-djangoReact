@@ -1,6 +1,8 @@
 .user-plan-page {
   padding: 2rem 1rem;
   text-align: center;
+  max-width: 720px;
+  margin: 0 auto;
 }
 
 .user-plan-page p {
@@ -17,4 +19,14 @@
   background: linear-gradient(145deg, #f07dff, #8da3ff);
   font-weight: 700;
   cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .user-plan-page {
+    padding: 1.6rem 0.9rem;
+  }
+
+  .user-plan-button {
+    width: 100%;
+  }
 }

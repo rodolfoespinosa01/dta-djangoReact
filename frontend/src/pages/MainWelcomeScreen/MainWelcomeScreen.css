@@ -1,32 +1,44 @@
 .main-welcome-page {
   padding: 1.4rem 1rem 2.2rem;
+  display: flex;
+  justify-content: center;
 }
 
 .main-welcome-hero {
   max-width: 1100px;
+  width: 100%;
   margin: 0 auto;
   position: relative;
   overflow: hidden;
   border-radius: 18px;
   border: 1px solid rgba(18, 26, 44, 0.18);
   box-shadow: 0 20px 40px rgba(16, 24, 40, 0.14);
+  background: rgba(247, 249, 255, 0.92);
 }
 
 .main-welcome-image-wrap {
-  max-height: 72vh;
+  max-height: 70vh;
   overflow: hidden;
 }
 
 .main-welcome-image {
   width: 100%;
   display: block;
+  transform: translateY(clamp(26px, 6vw, 64px));
 }
 
 .main-welcome-overlay {
-  position: absolute;
-  inset: auto 0 0 0;
-  padding: 1.1rem 1rem 1.25rem;
-  background: linear-gradient(to top, rgba(250, 251, 255, 0.95), rgba(250, 251, 255, 0.28));
+  position: relative;
+  inset: auto;
+  padding: 1.1rem 1rem 1.3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  background:
+    linear-gradient(180deg, rgba(250, 251, 255, 0.98), rgba(250, 251, 255, 0.9)),
+    radial-gradient(320px 120px at 50% 0%, rgba(186, 214, 255, 0.5), transparent 70%);
+  border-top: 1px solid rgba(18, 26, 44, 0.12);
 }
 
 .main-welcome-overlay h1 {
@@ -44,6 +56,8 @@
   display: flex;
   gap: 0.7rem;
   flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
 }
 
 .main-welcome-btn {
@@ -54,8 +68,28 @@
   padding: 0.62rem 1.05rem;
   font-weight: 700;
   cursor: pointer;
+  min-width: 190px;
 }
 
 .main-welcome-btn.secondary {
   background: #354561;
+}
+
+
+@media (max-width: 720px) {
+  .main-welcome-page {
+    padding: 1rem 0.6rem 1.6rem;
+  }
+
+  .main-welcome-hero {
+    border-radius: 16px;
+  }
+
+  .main-welcome-image-wrap {
+    max-height: 60vh;
+  }
+
+  .main-welcome-btn {
+    width: 100%;
+  }
 }
