@@ -6,6 +6,7 @@ from .PasswordResetToken import PasswordResetToken
 from .PreCheckout import PreCheckout
 from .TransactionLog import TransactionLog
 from .EventTracker import EventTracker 
+from .AdminAccountHistory import AdminAccountHistory
 __all__ = [
     'Plan',
     'Profile',
@@ -15,4 +16,5 @@ __all__ = [
     'TransactionLog',
     'AdminIdentity',
     'EventTracker',
+    'AdminAccountHistory',
 ]

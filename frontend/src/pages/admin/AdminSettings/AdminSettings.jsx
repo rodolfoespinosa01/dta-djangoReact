@@ -8,6 +8,8 @@ function AdminSettings() {
   const navigate = useNavigate();
 
   const [dashboardData, setDashboardData] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState(null);
+  const [planPriceMap, setPlanPriceMap] = useState({});
   const [message, setMessage] = useState('');
   const [loadingAction, setLoadingAction] = useState(null); // 'cancel' | 'upgrade' | 'downgrade' | null
 
@@ -15,6 +17,9 @@ function AdminSettings() {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalTitle, setModalTitle] = useState('');
   const [modalOptions, setModalOptions] = useState([]); // [{label, value, action:'upgrade'|'downgrade'}]
+  const [modalRequireAcknowledge, setModalRequireAcknowledge] = useState(false);
+  const [selectedModalOption, setSelectedModalOption] = useState(null);
+  const [acknowledgePlanChange, setAcknowledgePlanChange] = useState(false);
 
   // ---------- helpers ----------
   const authHeaders = () => ({
@@ -48,12 +53,29 @@ function AdminSettings() {
   };
 
   const formatDate = (str) => (str ? new Date(str).toLocaleDateString() : '—');
+  const formatAmount = (cents) => (typeof cents === 'number' ? `$${(cents / 100).toFixed(2)}` : '—');
+  const daysUntil = (str) => {
+    if (!str) return null;
+    const end = new Date(str);
+    const now = new Date();
+    const ms = end.getTime() - now.getTime();
+    if (Number.isNaN(ms)) return null;
+    return Math.max(Math.ceil(ms / (1000 * 60 * 60 * 24)), 0);
+  };
 
   const subscriptionLabels = {
     admin_trial: 'Free Trial',
     admin_monthly: 'Monthly Plan',
     admin_quarterly: 'Quarterly Plan',
     admin_annual: 'Annual Plan',
+  };
+
+  const toPlanKeyFromDisplay = (displayName = '') => {
+    const v = displayName.toLowerCase();
+    if (v.includes('monthly')) return 'admin_monthly';
+    if (v.includes('quarterly')) return 'admin_quarterly';
+    if (v.includes('annual')) return 'admin_annual';
+    return null;
   };
 
   // ---------- initial load ----------
@@ -78,9 +100,53 @@ function AdminSettings() {
       }
     };
 
+    const fetchPlanMap = async () => {
+      try {
+        const res = await fetch('http://localhost:8000/api/users/admin/reactivation/preview/', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (!isAuthedGuard(res)) return;
+        const data = await res.json();
+        if (!ignore && res.ok && Array.isArray(data.plans)) {
+          const map = {};
+          data.plans.forEach((p) => {
+            const key = toPlanKeyFromDisplay(p.display_name);
+            if (key && p.price_id) map[key] = p.price_id;
+          });
+          setPlanPriceMap(map);
+        }
+      } catch (err) {
+        console.error('error fetching plan map:', err);
+      }
+    };
+
+    const fetchPaymentMethod = async () => {
+      try {
+        const res = await fetch('http://localhost:8000/api/users/admin/payment_method/', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (!isAuthedGuard(res)) return;
+        const data = await res.json();
+        if (!ignore && res.ok) setPaymentMethod(data);
+      } catch (err) {
+        console.error('error fetching payment method:', err);
+      }
+    };
+
     fetchDashboard();
+    fetchPlanMap();
+    fetchPaymentMethod();
     return () => { ignore = true; };
   }, [accessToken, isAuthenticated, navigate]);
+
+  const openPlanModal = (title, options, requireAcknowledge = false) => {
+    setModalTitle(title);
+    setModalOptions(options);
+    setModalRequireAcknowledge(requireAcknowledge);
+    setSelectedModalOption(null);
+    setAcknowledgePlanChange(false);
+    setModalOpen(true);
+  };
 
   // ---------- actions ----------
   const handleCancel = async () => {
@@ -119,18 +185,28 @@ function AdminSettings() {
     try {
       setLoadingAction('upgrade');
       setMessage('');
-      const res = await fetch('http://localhost:8000/api/users/admin/create_checkout_session/', {
+      const targetPriceId = planPriceMap[target_plan];
+      if (!targetPriceId) {
+        setMessage('Could not resolve plan pricing. Refresh and try again.');
+        return;
+      }
+
+      const res = await fetch('http://localhost:8000/api/users/admin/reactivation/start/', {
         method: 'POST',
         headers: authHeaders(),
-        body: JSON.stringify({ target_plan }),
+        body: JSON.stringify({ target_price_id: targetPriceId, with_trial: false }),
       });
       if (!isAuthedGuard(res)) return;
 
       if (res.ok) {
-        const { url, message: msg } = await res.json();
-        setMessage(msg || 'redirecting to checkout…');
+        const { action, url, error: errMsg } = await res.json();
+        if (action === 'checkout' && url) {
+          setMessage('redirecting to checkout…');
+          window.location.assign(url);
+          return;
+        }
+        setMessage(errMsg || 'Could not start checkout.');
         // Redirect to Stripe
-        if (url) window.location.assign(url);
       } else {
         setMessage(await extractError(res));
       }
@@ -143,10 +219,10 @@ function AdminSettings() {
     }
   };
 
-  // Plan change at next cycle (no Stripe)
+  // Plan change path uses the authenticated reactivation checkout flow.
   const changePlan = async (target_plan) => {
     try {
-      setLoadingAction('downgrade'); // may also be used for auto-upgrade from quarterly->annual if you handle it server-side without Stripe
+      setLoadingAction('downgrade');
       setMessage('');
       const res = await fetch('http://localhost:8000/api/users/admin/change_subscription/', {
         method: 'POST',
@@ -155,11 +231,18 @@ function AdminSettings() {
       });
       if (!isAuthedGuard(res)) return;
 
+      const payload = await res.json().catch(() => ({}));
       if (res.ok) {
-        const payload = await res.json();
-        updateFromSnapshot(payload, 'plan changed');
+        setMessage(payload.message || 'Plan change scheduled for next billing cycle.');
+        const refreshed = await fetch('http://localhost:8000/api/users/admin/dashboard/', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (refreshed.ok) {
+          const data = await refreshed.json();
+          setDashboardData(data);
+        }
       } else {
-        setMessage(await extractError(res));
+        setMessage(payload.error || 'Could not schedule plan change.');
       }
     } catch (err) {
       console.error('change plan error:', err);
@@ -167,6 +250,8 @@ function AdminSettings() {
     } finally {
       setLoadingAction(null);
       setModalOpen(false);
+      setSelectedModalOption(null);
+      setAcknowledgePlanChange(false);
     }
   };
 
@@ -175,20 +260,27 @@ function AdminSettings() {
     if (!dashboardData) return;
     const { subscription_status } = dashboardData;
 
-    if (subscription_status === 'admin_monthly') {
-      // choose Quarterly or Annual (Stripe)
-      setModalTitle('Choose your upgrade plan');
-      setModalOptions([
+    if (subscription_status === 'admin_trial') {
+      openPlanModal('Choose your upgrade plan', [
+        { label: 'Monthly', value: 'admin_monthly', action: 'upgrade' },
         { label: 'Quarterly', value: 'admin_quarterly', action: 'upgrade' },
         { label: 'Annual', value: 'admin_annual', action: 'upgrade' },
-      ]);
-      setModalOpen(true);
+      ], false);
+      return;
+    }
+
+    if (subscription_status === 'admin_monthly') {
+      openPlanModal('Schedule your upgrade', [
+        { label: 'Quarterly', value: 'admin_quarterly', action: 'schedule' },
+        { label: 'Annual', value: 'admin_annual', action: 'schedule' },
+      ], true);
       return;
     }
 
     if (subscription_status === 'admin_quarterly') {
-      // direct to Annual (Stripe)
-      startCheckout('admin_annual');
+      openPlanModal('Schedule your upgrade', [
+        { label: 'Annual', value: 'admin_annual', action: 'schedule' },
+      ], true);
       return;
     }
 
@@ -200,19 +292,17 @@ function AdminSettings() {
     const { subscription_status } = dashboardData;
 
     if (subscription_status === 'admin_quarterly') {
-      // direct to Monthly (no Stripe)
-      changePlan('admin_monthly');
+      openPlanModal('Schedule your downgrade', [
+        { label: 'Monthly', value: 'admin_monthly', action: 'schedule' },
+      ], true);
       return;
     }
 
     if (subscription_status === 'admin_annual') {
-      // choose Monthly or Quarterly (no Stripe)
-      setModalTitle('Choose your downgrade plan');
-      setModalOptions([
-        { label: 'Quarterly', value: 'admin_quarterly', action: 'downgrade' },
-        { label: 'Monthly', value: 'admin_monthly', action: 'downgrade' },
-      ]);
-      setModalOpen(true);
+      openPlanModal('Schedule your downgrade', [
+        { label: 'Quarterly', value: 'admin_quarterly', action: 'schedule' },
+        { label: 'Monthly', value: 'admin_monthly', action: 'schedule' },
+      ], true);
       return;
     }
 
@@ -224,9 +314,35 @@ function AdminSettings() {
     if (opt.action === 'upgrade') {
       // upgrades via Stripe
       startCheckout(opt.value);
+    } else if (opt.action === 'schedule') {
+      setSelectedModalOption(opt);
     } else {
-      // downgrades without Stripe
       changePlan(opt.value);
+    }
+  };
+
+  const onConfirmScheduledChange = () => {
+    if (!selectedModalOption || !acknowledgePlanChange) return;
+    changePlan(selectedModalOption.value);
+  };
+
+  const onUpdateCard = async () => {
+    try {
+      setMessage('');
+      const res = await fetch('http://localhost:8000/api/users/admin/payment_method/update_session/', {
+        method: 'POST',
+        headers: authHeaders(),
+      });
+      if (!isAuthedGuard(res)) return;
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.url) {
+        window.location.assign(data.url);
+        return;
+      }
+      setMessage(data.error || 'Could not open billing portal.');
+    } catch (err) {
+      console.error('update card error:', err);
+      setMessage('network error.');
     }
   };
 
@@ -236,6 +352,8 @@ function AdminSettings() {
       return { showUpgrade: false, showDowngrade: false, showCancel: false };
     }
     switch (status) {
+      case 'admin_trial':
+        return { showUpgrade: true, showDowngrade: false, showCancel: true };
       case 'admin_monthly':
         return { showUpgrade: true, showDowngrade: false, showCancel: true };
       case 'admin_quarterly':
@@ -243,7 +361,7 @@ function AdminSettings() {
       case 'admin_annual':
         return { showUpgrade: false, showDowngrade: true, showCancel: true };
       default:
-        // trial/unknown: no changes
+        // unknown: no actions
         return { showUpgrade: false, showDowngrade: false, showCancel: false };
     }
   };
@@ -284,6 +402,41 @@ return (
             <strong>trial start date:</strong> {formatDate(dashboardData.trial_start)}
           </p>
         )}
+        {dashboardData.trial_ends_on && (
+          <p>
+            <strong>trial end date:</strong> {formatDate(dashboardData.trial_ends_on)}
+          </p>
+        )}
+        {dashboardData.trial_converts_to && (
+          <p>
+            <strong>after trial:</strong> {subscriptionLabels[dashboardData.trial_converts_to] || "—"}
+          </p>
+        )}
+        {dashboardData.is_trial && !dashboardData.trial_converts_to && dashboardData.is_canceled && (
+          <p>
+            <strong>after trial:</strong> No Plan
+          </p>
+        )}
+        {dashboardData.current_cycle_ends_on && (
+          <p>
+            <strong>current cycle ends:</strong> {formatDate(dashboardData.current_cycle_ends_on)} ({dashboardData.days_left_in_cycle ?? 0} day(s) left)
+          </p>
+        )}
+        <p>
+          <strong>next plan:</strong>{" "}
+          {dashboardData.next_plan_status
+            ? (subscriptionLabels[dashboardData.next_plan_status] || "—")
+            : "No Plan"}
+        </p>
+        <p>
+          <strong>next charge:</strong>{" "}
+          {dashboardData.next_plan_status ? formatAmount(dashboardData.next_plan_price_cents) : "No Charge"}
+        </p>
+        {dashboardData.next_plan_effective_on && (
+          <p>
+            <strong>next plan starts:</strong> {formatDate(dashboardData.next_plan_effective_on)}
+          </p>
+        )}
         {dashboardData.monthly_start && (
           <p>
             <strong>monthly start date:</strong> {formatDate(dashboardData.monthly_start)}
@@ -322,8 +475,22 @@ return (
           <p className="subscription-canceled">
             🔒 your plan is canceled. access ends on{" "}
             <strong>{formatDate(dashboardData.subscription_end)}</strong>
+            {" "}({daysUntil(dashboardData.subscription_end)} day(s) left)
           </p>
         )}
+
+        <hr />
+        <h3>💳 payment method</h3>
+        {paymentMethod?.has_payment_method ? (
+          <p>
+            <strong>card on file:</strong> {String(paymentMethod.brand || '').toUpperCase()} ****{paymentMethod.last4} (exp {paymentMethod.exp_month}/{paymentMethod.exp_year})
+          </p>
+        ) : (
+          <p><strong>card on file:</strong> No card available</p>
+        )}
+        <button type="button" onClick={onUpdateCard} className="btn-upgrade">
+          update card
+        </button>
 
         {/* Actions */}
         <div className="admin-settings-actions">
@@ -388,8 +555,35 @@ return (
                   </button>
                 ))}
               </div>
+              {modalRequireAcknowledge && (
+                <>
+                  <p>
+                    Your current plan stays active until this billing cycle ends.
+                    Then your selected plan begins and is charged on the next renewal date.
+                  </p>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={acknowledgePlanChange}
+                      onChange={(e) => setAcknowledgePlanChange(e.target.checked)}
+                    />
+                    {' '}I understand and confirm this scheduled plan change.
+                  </label>
+                  <button
+                    onClick={onConfirmScheduledChange}
+                    className="modal-option-btn"
+                    disabled={!selectedModalOption || !acknowledgePlanChange || !!loadingAction}
+                  >
+                    {loadingAction ? 'processing…' : 'confirm scheduled change'}
+                  </button>
+                </>
+              )}
               <button
-                onClick={() => setModalOpen(false)}
+                onClick={() => {
+                  setModalOpen(false);
+                  setSelectedModalOption(null);
+                  setAcknowledgePlanChange(false);
+                }}
                 className="modal-cancel-btn"
                 disabled={!!loadingAction}
               >
@@ -411,4 +605,3 @@ return (
 }   // <- end of function AdminSettings
 
 export default AdminSettings; // <- outside, top-level
-

@@ -7,7 +7,14 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from core.models import CustomUser
-from users.admin_area.models import Plan, PendingSignup, PreCheckout, EventTracker, AdminIdentity
+from users.admin_area.models import (
+    Plan,
+    PendingSignup,
+    PreCheckout,
+    EventTracker,
+    AdminIdentity,
+    TransactionLog,
+)
 from users.admin_area.utils import log_PreCheckout
 from users.admin_area.utils.log_EventTracker import log_EventTracker
 
@@ -19,6 +26,22 @@ PLAN_NAME_ALIASES = {
     "admin_quarterly": "adminQuarterly",
     "admin_annual": "adminAnnual",
 }
+
+def _has_any_prior_plan_activity(email: str) -> bool:
+    admin_identity = AdminIdentity.objects.filter(admin_email=email).first()
+    has_events = False
+    has_precheckout = False
+    if admin_identity:
+        has_events = EventTracker.objects.filter(admin=admin_identity).exists()
+        has_precheckout = PreCheckout.objects.filter(admin=admin_identity).exists()
+
+    return any([
+        CustomUser.objects.filter(email=email).exists(),
+        PendingSignup.objects.filter(email=email).exists(),
+        TransactionLog.objects.filter(email=email).exists(),
+        has_events,
+        has_precheckout,
+    ])
 
 
 @api_view(['POST'])
@@ -59,15 +82,15 @@ def create_checkout_session(request):
         if PendingSignup.objects.filter(email=email).exists():
             return Response({'error': 'A registration link has already been generated for this email.'}, status=status.HTTP_403_FORBIDDEN)
 
-        # ✅ Trial logic — block if a previous trial event was logged
-        had_trial = EventTracker.objects.filter(
-            admin__admin_email=email,
-            event_type__startswith='trial_'
-        ).exists()
-
-        if is_trial and had_trial:
+        # ✅ Trial logic — one-time only, and voided once any plan flow has started.
+        if is_trial and _has_any_prior_plan_activity(email):
+            log_EventTracker(
+                admin_email=email,
+                event_type="trial_blocked_ineligible",
+                details="reason=prior_plan_activity_detected"
+            )
             return Response({
-                'error': 'You have already used a trial. Please choose a paid plan.',
+                'error': 'Free trial is no longer available for this email. Please choose a paid plan.',
                 'redirect': '/admin_reactivate'
             }, status=403)
 
