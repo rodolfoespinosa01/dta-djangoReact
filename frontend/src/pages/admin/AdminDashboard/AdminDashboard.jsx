@@ -8,7 +8,6 @@ function AdminDashboard() {
   const navigate = useNavigate();
 
   const [dashboardData, setDashboardData] = useState(null);
-  const [daysLeft, setDaysLeft] = useState(null);
   const [status, setStatus] = useState('loading'); // 'loading' | 'ok' | 'blocked' | 'error'
 
   useEffect(() => {
@@ -31,9 +30,6 @@ function AdminDashboard() {
 
         if (res.ok && data) {
           setDashboardData(data);
-          if ((data.is_trial || data.trial_active) && typeof data.days_remaining === 'number') {
-            setDaysLeft(data.days_remaining);
-          }
           setStatus('ok');
         } else {
           setStatus('error');
@@ -47,43 +43,10 @@ function AdminDashboard() {
     fetchDashboard();
   }, [isAuthenticated, accessToken, navigate]);
 
-  const formatDate = (d) => (d ? new Date(d).toLocaleDateString() : '—');
-
-  const subscriptionLabels = {
-    admin_trial: 'Free Trial',
-    admin_monthly: 'Monthly Plan',
-    admin_quarterly: 'Quarterly Plan',
-    admin_annual: 'Annual Plan',
-  };
-  const formatAmount = (cents) => (typeof cents === 'number' ? `$${(cents / 100).toFixed(2)}` : '—');
-
-  // Shows renewal/cancel state based on is_canceled
-  const RenewalBadge = ({ data }) => {
-    if (!data) return null;
-    if (data.is_active === false) return null; // banner handles inactive
-
-    if (!data.is_canceled) {
-      return <p className="badge badge-active">✅ Your subscription is active and set to auto-renew.</p>;
-    }
-    if (data.is_canceled && data.subscription_end) {
-      return (
-        <div className="banner">
-          <p>ℹ️ Auto-renew is <strong>off</strong>. You keep access until <strong>{formatDate(data.subscription_end)}</strong>.</p>
-          <button className="btn btn-reactivate" onClick={() => navigate('/admin_reactivate')}>
-            🔁 Reactivate (turn auto-renew on)
-          </button>
-        </div>
-      );
-    }
-    return null;
-  };
-
   return (
     <div className="admin-dashboard-wrapper">
       <h1 className="admin-dashboard-title">🎯 Admin Dashboard</h1>
-      <p className="admin-dashboard-subtitle">
-        Your all-in-one platform for generating tailored diet plans for your clients.
-      </p>
+      <p className="admin-dashboard-subtitle">LETS GET YOUR CLIENTS IN PRIME SHAPE!</p>
 
       {status === 'loading' && (
         <p className="loading">Loading your subscription details...</p>
@@ -101,64 +64,11 @@ function AdminDashboard() {
 
       {status === 'ok' && dashboardData && (
         <div className="admin-dashboard-card">
-          <h2 className="admin-dashboard-section-title">📊 Subscription Summary</h2>
-
-          <ul className="summary-list">
-            <li><span className="label">Plan:</span> {subscriptionLabels[dashboardData.subscription_status] || '—'}</li>
-
-            {dashboardData.trial_start && (
-              <li><span className="label">Trial Started:</span> {formatDate(dashboardData.trial_start)}</li>
-            )}
-            {dashboardData.trial_ends_on && (
-              <li><span className="label">Trial Ends:</span> {formatDate(dashboardData.trial_ends_on)}</li>
-            )}
-            {dashboardData.is_trial && (
-              <li>
-                <span className="label">After Trial:</span> {dashboardData.next_plan_status ? (subscriptionLabels[dashboardData.next_plan_status] || '—') : 'No Plan'}
-              </li>
-            )}
-            {dashboardData.current_cycle_ends_on && (
-              <li><span className="label">Current Cycle Ends:</span> {formatDate(dashboardData.current_cycle_ends_on)}</li>
-            )}
-            {typeof dashboardData.days_left_in_cycle === 'number' && (
-              <li><span className="label">Days Left In Cycle:</span> {dashboardData.days_left_in_cycle}</li>
-            )}
-            {dashboardData.next_plan_effective_on && (
-              <li><span className="label">Next Plan Starts:</span> {formatDate(dashboardData.next_plan_effective_on)}</li>
-            )}
-            {!dashboardData.is_trial && (
-              <li>
-                <span className="label">Next Plan:</span> {dashboardData.next_plan_status ? (subscriptionLabels[dashboardData.next_plan_status] || '—') : 'No Plan'}
-              </li>
-            )}
-            {!dashboardData.is_trial && (
-              <li><span className="label">Next Charge:</span> {dashboardData.next_plan_status ? formatAmount(dashboardData.next_plan_price_cents) : 'No Charge'}</li>
-            )}
-            {dashboardData.monthly_start && (
-              <li><span className="label">Monthly Plan Start:</span> {formatDate(dashboardData.monthly_start)}</li>
-            )}
-            {dashboardData.quarterly_start && (
-              <li><span className="label">Quarterly Plan Start:</span> {formatDate(dashboardData.quarterly_start)}</li>
-            )}
-            {dashboardData.annual_start && (
-              <li><span className="label">Annual Plan Start:</span> {formatDate(dashboardData.annual_start)}</li>
-            )}
-
-            {/* Show one of these depending on renewal state */}
-            {dashboardData.next_billing && !dashboardData.is_canceled && (
-              <li><span className="label">Next Billing:</span> {formatDate(dashboardData.next_billing)}</li>
-            )}
-            {dashboardData.is_canceled && dashboardData.subscription_end && (
-              <li><span className="label">Access Until:</span> {formatDate(dashboardData.subscription_end)}</li>
-            )}
-          </ul>
-
-          {(dashboardData.is_trial || dashboardData.trial_active) && daysLeft !== null && (
-            <p className="badge badge-trial">⏳ Trial Days Remaining: {daysLeft}</p>
+          {dashboardData.is_active ? (
+            <p className="badge badge-active">✅ Your account is currently active.</p>
+          ) : (
+            <p className="error">⚠️ Your account is currently inactive.</p>
           )}
-
-          {/* Renewal / scheduled-end messaging */}
-          <RenewalBadge data={dashboardData} />
 
           {/* Safety: if API returned ok but user has no access (edge), show reactivation banner */}
           {dashboardData.is_active === false && (

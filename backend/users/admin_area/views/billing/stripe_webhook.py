@@ -19,7 +19,6 @@ from users.admin_area.utils import (
     log_TransactionLog,
     log_PendingSignup,
 )
-from users.admin_area.utils.log_EventTracker import log_EventTracker
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 endpoint_secret = settings.STRIPE_WEBHOOK_SECRET
@@ -31,117 +30,6 @@ def _ts_to_aware(ts: int | None):
     # Stripe timestamps are seconds since epoch (UTC)
     return timezone.make_aware(datetime.utcfromtimestamp(ts))
 
-<<<<<<< HEAD
-=======
-def _stripe_customer_id_by_email(email: str) -> str | None:
-    try:
-        res = stripe.Customer.list(email=email, limit=1)
-        if res and res.data:
-            return res.data[0].id
-    except Exception:
-        pass
-    return None
-
-def _active_subscription_id_for_email(email: str) -> str | None:
-    cust_id = _stripe_customer_id_by_email(email)
-    if not cust_id:
-        return None
-    try:
-        subs = stripe.Subscription.list(customer=cust_id, status="active", limit=1)
-        if subs and subs.data:
-            return subs.data[0].id
-    except Exception:
-        pass
-    return None
-
-def _is_reactivation_session(session: dict) -> bool:
-    md = session.get("metadata") or {}
-    return str(md.get("reactivation", "")).strip() == "1"
-
-def _subscription_has_reactivation_meta(sub_id: str | None) -> bool:
-    if not sub_id:
-        return False
-    try:
-        sub = stripe.Subscription.retrieve(sub_id)
-        return (sub.get("metadata") or {}).get("reactivation") == "1"
-    except Exception:
-        return False
-
-def _plan_from_price_id(price_id: str | None):
-    if not price_id:
-        return None
-    try:
-        return Plan.objects.get(stripe_price_id=price_id)
-    except Plan.DoesNotExist:
-        return None
-
-def _user_from_admin_id(admin_id: str):
-    if not admin_id:
-        return None
-    try:
-        ident = AdminIdentity.objects.get(adminID=admin_id)
-    except AdminIdentity.DoesNotExist:
-        return None
-    return get_user_model().objects.filter(email=ident.admin_email).first()
-
-def _active_subscription_id_for_admin_id(admin_id: str) -> str | None:
-    # Prefer Search API by metadata (fast, robust). Falls back to email.
-    try:
-        custs = stripe.Customer.search(query=f"metadata['admin_id']:'{admin_id}'", limit=1)
-        if custs and custs.data:
-            subs = stripe.Subscription.list(customer=custs.data[0].id, status="active", limit=1)
-            if subs and subs.data:
-                return subs.data[0].id
-    except Exception:
-        pass
-    try:
-        ident = AdminIdentity.objects.get(adminID=admin_id)
-        custs = stripe.Customer.list(email=ident.admin_email, limit=1)
-        if custs and custs.data:
-            subs = stripe.Subscription.list(customer=custs.data[0].id, status="active", limit=1)
-            if subs and subs.data:
-                return subs.data[0].id
-    except Exception:
-        pass
-    return None
-
-def _log_admin_event(email: str | None, event_type: str, details: str = ""):
-    if not email:
-        return
-    try:
-        log_EventTracker(admin_email=email, event_type=event_type, details=details)
-    except Exception:
-        pass
-
-def _subscription_status_from_plan_name(plan_name: str | None) -> str:
-    mapping = {
-        "adminMonthly": "admin_monthly",
-        "adminQuarterly": "admin_quarterly",
-        "adminAnnual": "admin_annual",
-    }
-    return mapping.get(plan_name or "")
-
-def _cancel_other_trialing_subscriptions(customer_id: str | None, keep_sub_id: str | None):
-    if not customer_id:
-        return
-    try:
-        subs = stripe.Subscription.list(customer=customer_id, status="all", limit=100)
-    except Exception:
-        return
-
-    for sub in (subs.data or []):
-        sid = sub.get("id")
-        if sid == keep_sub_id:
-            continue
-        if sub.get("status") == "trialing":
-            try:
-                stripe.Subscription.delete(sid)
-            except Exception:
-                pass
-
-
-# ------------------------ webhook ------------------------
->>>>>>> f5fcba9 (Added Codex, working on upgrade, cancel, and reactivation flow)
 
 @csrf_exempt
 def stripe_webhook(request):
@@ -158,216 +46,12 @@ def stripe_webhook(request):
     obj = event['data']['object']
 
     # ============================================================
-<<<<<<< HEAD
     # 1) After Checkout completes: create PendingSignup + link
-=======
-    # REACTIVATION: checkout.session.completed (metadata.reactivation == "1")
-    # ============================================================
-    if etype == 'checkout.session.completed' and _is_reactivation_session(obj):
-        session = obj
-        md = session.get("metadata") or {}
-        admin_id = md.get("admin_id")
-        target_plan_name = md.get("target_plan_name")
-
-        # Resolve email
-        email = md.get("admin_email") or session.get('customer_email')
-        if not email and session.get('customer'):
-            try:
-                email = stripe.Customer.retrieve(session['customer']).get('email')
-            except Exception:
-                email = None
-        if not email:
-            return HttpResponse(status=200)
-
-        # Minimal TX log (email + tx id)
-        tx_id = session.get('payment_intent') or session.get('invoice')
-        if tx_id:
-            log_TransactionLog(email=email, stripe_transaction_id=tx_id)
-            _log_admin_event(email, "reactivation_checkout_completed", f"tx_id={tx_id}")
-
-        # New subscription created by Checkout (we may cancel it if user already active)
-        new_sub_id = session.get('subscription')
-        new_price_id, new_period_end = None, None
-        try:
-            if new_sub_id:
-                sub = stripe.Subscription.retrieve(new_sub_id, expand=["items.data.price"])
-                items = (sub.get("items") or {}).get("data") or []
-                if items:
-                    new_price_id = items[0]["price"]["id"]
-                new_period_end = sub.get("current_period_end")
-        except Exception:
-            pass
-        plan = _plan_from_price_id(new_price_id)
-        if not plan and target_plan_name:
-            plan = Plan.objects.filter(name=target_plan_name).first()
-
-        # Find the Django user and their active profile
-        user = get_user_model().objects.filter(email=email).first()
-        active = Profile.objects.filter(user__email=email, is_active=True).first()
-
-        # If currently trialing, upgrade should be immediate:
-        # end trial now, activate paid plan now, and cancel old trial subscription(s).
-        if user and active and bool(getattr(active, "is_trial", False)):
-            now_dt = timezone.now()
-            Profile.objects.filter(user=user, is_active=True).update(
-                is_active=False,
-                subscription_end=now_dt,
-                is_canceled=False,
-            )
-            Profile.objects.create(
-                user=user,
-                plan=plan,
-                is_active=True,
-                is_canceled=False,
-                is_trial=False,
-                subscription_start=now_dt,
-                subscription_end=None,
-                next_billing=_ts_to_aware(new_period_end),
-            )
-            resolved_status = _subscription_status_from_plan_name(getattr(plan, "name", None))
-            if resolved_status:
-                user.subscription_status = resolved_status
-                user.save(update_fields=["subscription_status"])
-
-            _cancel_other_trialing_subscriptions(session.get("customer"), new_sub_id)
-            _log_admin_event(
-                email,
-                "trial_converted_to_paid_immediate",
-                f"new_price_id={new_price_id or ''} new_sub_id={new_sub_id or ''}"
-            )
-            return HttpResponse(status=200)
-
-        # Not active → create a brand-new ACTIVE Profile now
-        if user and not active:
-            Profile.objects.filter(user=user).update(is_active=False)  # enforce single active
-            Profile.objects.create(
-                user=user,
-                plan=plan,
-                is_active=True,
-                is_canceled=False,
-                is_trial=False,
-                subscription_start=None,                 # set on first invoice.paid
-                subscription_end=None,
-                next_billing=_ts_to_aware(new_period_end),
-            )
-            _log_admin_event(
-                email,
-                "plan_change_applied_immediate",
-                f"reason=no_active_profile new_price_id={new_price_id or ''}"
-            )
-            return HttpResponse(status=200)
-
-        # Already active → schedule upgrade at end of current term
-        # Prefer lookup by admin_id in Stripe; fallback to email
-        current_sub_id = _active_subscription_id_for_admin_id(admin_id) or _active_subscription_id_for_email(email)
-        if not current_sub_id:
-            # Fallback: immediate switch to new plan (no schedule available)
-            if active:
-                Profile.objects.filter(pk=active.pk).update(is_active=False)
-                Profile.objects.create(
-                    user=active.user,
-                    plan=plan,
-                    is_active=True,
-                    is_canceled=False,
-                    is_trial=False,
-                    next_billing=_ts_to_aware(new_period_end),
-                )
-                _log_admin_event(
-                    email,
-                    "plan_change_applied_immediate",
-                    f"reason=no_current_sub new_price_id={new_price_id or ''}"
-                )
-            return HttpResponse(status=200)
-
-        # Tag the existing sub so later events can detect reactivation path (optional)
-        try:
-            existing = stripe.Subscription.retrieve(current_sub_id)
-            tag_md = (existing.get("metadata") or {})
-            tag_md.update({"reactivation": "1", "reactivation_price": new_price_id or "", "admin_id": admin_id or ""})
-            stripe.Subscription.modify(current_sub_id, metadata=tag_md)
-        except Exception:
-            pass
-
-        # Read existing sub to get current period end and current price
-        try:
-            current_sub = stripe.Subscription.retrieve(current_sub_id, expand=["items.data.price"])
-            curr_end = current_sub.get("current_period_end")
-            curr_items = (current_sub.get("items") or {}).get("data") or []
-            curr_price_id = curr_items[0]["price"]["id"] if curr_items else None
-        except Exception:
-            return HttpResponse(status=200)
-
-        # Create a schedule: keep current price until curr_end, then switch to new price
-        try:
-            phases = []
-            now_ts = int(timezone.now().timestamp())
-            if curr_price_id and curr_end and curr_end > now_ts:
-                phases.append({
-                    "items": [{"price": curr_price_id, "quantity": 1}],
-                    "start_date": "now",
-                    "end_date": curr_end,
-                })
-            phases.append({"items": [{"price": new_price_id, "quantity": 1}]})
-            stripe.SubscriptionSchedule.create(
-                from_subscription=current_sub_id,
-                phases=phases,
-                metadata={"reactivation_schedule": "1", "admin_id": admin_id or ""},
-            )
-            _log_admin_event(
-                email,
-                "plan_change_scheduled",
-                f"from_price_id={curr_price_id or ''} to_price_id={new_price_id or ''} effective_at={curr_end or ''}"
-            )
-        except Exception:
-            return HttpResponse(status=200)
-
-        # Cancel the duplicate (checkout) subscription to avoid double-billing
-        try:
-            if new_sub_id and new_sub_id != current_sub_id:
-                stripe.Subscription.delete(new_sub_id)
-        except Exception:
-            pass
-
-        # Upsert a single pending (inactive) Profile that will start at curr_end
-        pending = Profile.objects.filter(user__email=email, is_active=False).first()
-        if pending:
-            pending.plan = plan
-            pending.subscription_start = _ts_to_aware(curr_end)  # when it will become active
-            pending.is_trial = False
-            pending.is_canceled = False
-            pending.save()
-            _log_admin_event(
-                email,
-                "plan_change_pending_profile_upserted",
-                f"effective_at={curr_end or ''} mode=update"
-            )
-        else:
-            if user:
-                Profile.objects.create(
-                    user=user,
-                    plan=plan,
-                    is_active=False,                     # pending
-                    is_trial=False,
-                    is_canceled=False,
-                    subscription_start=_ts_to_aware(curr_end),
-                    next_billing=None,
-                )
-                _log_admin_event(
-                    email,
-                    "plan_change_pending_profile_upserted",
-                    f"effective_at={curr_end or ''} mode=create"
-                )
-
-        return HttpResponse(status=200)
-
-    # ============================================================
-    # GENERAL: checkout.session.completed (no reactivation flag)
-    # (Your original flow: create PendingSignup + registration link)
->>>>>>> f5fcba9 (Added Codex, working on upgrade, cancel, and reactivation flow)
     # ============================================================
     if etype == 'checkout.session.completed':
         session = obj
         metadata = session.get("metadata", {}) or {}
+        is_reactivation = str(metadata.get("reactivation", "")).strip() == "1"
 
         # email: prefer session.customer_email, fallback to customer object
         email = session.get('customer_email')
@@ -392,6 +76,9 @@ def stripe_webhook(request):
         # normalize if you had an older alias
         plan_name = 'adminMonthly' if raw_plan_name == 'adminTrial' else raw_plan_name
 
+        User = get_user_model()
+        is_existing_user = User.objects.filter(email=email).exists()
+
         # Ensure AdminIdentity exists for this email (per your model rules)
         try:
             admin_identity = AdminIdentity.objects.get(admin_email=email)
@@ -415,6 +102,16 @@ def stripe_webhook(request):
             log_TransactionLog(email=email, stripe_transaction_id=stripe_transaction_id)
 
 
+        # Registration link should only be sent on the initial purchase path.
+        if is_reactivation or is_existing_user:
+            EventTracker.objects.create(
+                admin=admin_identity,
+                event_type='checkout_completed_no_registration_link',
+                details=f"Session: {session_id} | Reactivation: {is_reactivation} | ExistingUser: {is_existing_user}"
+            )
+            return HttpResponse(status=200)
+
+        # Initial registration flow only:
         # Create PendingSignup and "send" registration link (console)
         token = get_random_string(64)
         log_PendingSignup(
@@ -515,43 +212,6 @@ def stripe_webhook(request):
     # ============================================================
     if etype == 'customer.subscription.updated':
         sub = obj
-<<<<<<< HEAD
-=======
-        sub_id = sub.get('id')
-
-        # Reactivation flip: promote pending → active
-        if _subscription_has_reactivation_meta(sub_id):
-            admin_id = (sub.get("metadata") or {}).get("admin_id")
-            user = _user_from_admin_id(admin_id)
-            if not user:
-                try:
-                    cust = stripe.Customer.retrieve(sub.get("customer"))
-                    user = get_user_model().objects.filter(email=cust.get("email")).first()
-                except Exception:
-                    user = None
-            if not user:
-                return HttpResponse(status=200)
-
-            active = Profile.objects.filter(user=user, is_active=True).first()
-            pending = Profile.objects.filter(user=user, is_active=False).first()
-            if pending and active:
-                if pending.subscription_start is None:
-                    pending.subscription_start = timezone.now()
-                pending.is_active = True
-                pending.save()
-                if active.subscription_end is None:
-                    active.subscription_end = timezone.now()
-                active.is_active = False
-                active.save()
-                _log_admin_event(
-                    user.email if user else None,
-                    "plan_change_scheduled_applied",
-                    f"subscription_id={sub_id}"
-                )
-            return HttpResponse(status=200)
-
-        # ---------- General sync ----------
->>>>>>> f5fcba9 (Added Codex, working on upgrade, cancel, and reactivation flow)
         customer_id = sub.get('customer')
         email = None
         try:
@@ -567,15 +227,7 @@ def stripe_webhook(request):
         current_period_end = _ts_to_aware(sub.get('current_period_end'))
         cancel_at_period_end = bool(sub.get('cancel_at_period_end'))
         ended_at = _ts_to_aware(sub.get('ended_at'))
-        new_plan = None
-        try:
-            items = (sub.get("items") or {}).get("data") or []
-            price_id = items[0].get("price", {}).get("id") if items else None
-            new_plan = _plan_from_price_id(price_id)
-        except Exception:
-            new_plan = None
 
-<<<<<<< HEAD
         profile = Profile.objects.filter(user__email=email, is_active=True).first() or \
                 Profile.objects.filter(user__email=email).first()
         if not profile:
@@ -594,61 +246,6 @@ def stripe_webhook(request):
         # Mirror Stripe to DB after enforcement
         profile.auto_renew = not cancel_at_period_end
 
-=======
-        profile = Profile.objects.filter(user__email=email, is_active=True).order_by("-created_at").first() or \
-                  Profile.objects.filter(user__email=email).order_by("-created_at").first()
-        if not profile:
-            return HttpResponse(status=200)
-
-        # Guard: do not let stale trialing/canceled updates from old subscriptions
-        # overwrite an already-active paid profile.
-        if not profile.is_trial:
-            if status_val == "trialing":
-                return HttpResponse(status=200)
-            if status_val == "canceled" and new_plan and profile.plan_id and new_plan.id != profile.plan_id:
-                return HttpResponse(status=200)
-
-        # Scheduled change applied (non-reactivation path): flip active profile to new plan.
-        if status_val in ("active", "trialing") and new_plan and profile.plan_id != new_plan.id:
-            user = profile.user
-            old_profile = Profile.objects.filter(user=user, is_active=True).first()
-            if old_profile:
-                old_profile.is_active = False
-                old_profile.subscription_end = timezone.now()
-                old_profile.save()
-            pending = Profile.objects.filter(user=user, is_active=False, plan=new_plan).order_by("-created_at").first()
-            if pending:
-                pending.is_active = True
-                pending.subscription_start = pending.subscription_start or timezone.now()
-                pending.subscription_end = None
-                pending.next_billing = current_period_end
-                pending.is_canceled = cancel_at_period_end
-                pending.is_trial = (status_val == "trialing")
-                pending.save()
-                profile = pending
-            else:
-                profile = Profile.objects.create(
-                    user=user,
-                    plan=new_plan,
-                    is_active=True,
-                    is_trial=(status_val == "trialing"),
-                    is_canceled=cancel_at_period_end,
-                    subscription_start=timezone.now(),
-                    subscription_end=None,
-                    next_billing=current_period_end,
-                )
-            resolved_status = _subscription_status_from_plan_name(new_plan.name)
-            if resolved_status:
-                user.subscription_status = resolved_status
-                user.save(update_fields=["subscription_status"])
-            _log_admin_event(
-                email,
-                "plan_change_scheduled_applied",
-                f"new_plan={new_plan.name} subscription_id={sub_id}"
-            )
-
-        # Mirror Stripe to DB (fields that exist on Profile)
->>>>>>> f5fcba9 (Added Codex, working on upgrade, cancel, and reactivation flow)
         if status_val == 'canceled':
             profile.is_trial = False
             profile.is_canceled = True

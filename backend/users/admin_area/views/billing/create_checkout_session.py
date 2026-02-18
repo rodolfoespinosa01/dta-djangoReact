@@ -111,7 +111,8 @@ def create_checkout_session(request):
         # ✅ Load plan
         plan = Plan.objects.get(name=plan_name)
 
-        # ✅ Find or create Stripe Customer (prefer search by admin_id, fallback by email)
+        # ✅ Find or create Stripe Customer by admin_id only.
+        # Avoid email fallback so old Stripe test customers (from reset DB runs) can't leak state.
         customer = None
         try:
             # Requires Stripe Search API (enabled by default on most accounts)
@@ -120,13 +121,6 @@ def create_checkout_session(request):
                 customer = res.data[0]
         except Exception:
             pass
-        if not customer:
-            try:
-                res = stripe.Customer.list(email=email, limit=1)
-                if res and res.data:
-                    customer = res.data[0]
-            except Exception:
-                pass
 
         clock_id = None
         if customer:

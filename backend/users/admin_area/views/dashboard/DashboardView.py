@@ -30,12 +30,6 @@ def _stripe_customer_for_email(email: str):
                 return res.data[0]
         except Exception:
             pass
-    try:
-        res = stripe.Customer.list(email=email, limit=1)
-        if res and res.data:
-            return res.data[0]
-    except Exception:
-        pass
     return None
 
 
@@ -154,7 +148,8 @@ class DashboardView(APIView):
             next_plan_price_cents = getattr(pending.plan, "price_cents", None)
             next_plan_effective_on = pending.subscription_start
         else:
-            next_plan_status = subscription_status if not is_trial else None
+            # Active trial should still show the selected post-trial plan and charge.
+            next_plan_status = subscription_status
             base_plan = stripe_sub.get("plan") if stripe_sub else getattr(profile, "plan", None)
             if base_plan:
                 next_plan_price_cents = getattr(base_plan, "price_cents", None)
