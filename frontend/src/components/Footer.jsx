@@ -1,5 +1,5 @@
 import React from 'react';
-import logo from '../assets/DTA_Logo.png';
+import logo from '../assets/dta_brand_content/DTA_Logo.png';
 import './Footer.css';
 
 function Footer() {
