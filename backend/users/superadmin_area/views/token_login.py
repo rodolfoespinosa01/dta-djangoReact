@@ -1,6 +1,8 @@
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from rest_framework import serializers
+from django.contrib.auth import get_user_model
+from rest_framework.exceptions import AuthenticationFailed, NotFound, PermissionDenied
+from users.superadmin_area.views.api_contract import error
 
 
 class SuperAdminTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -12,24 +14,57 @@ class SuperAdminTokenObtainPairSerializer(TokenObtainPairSerializer):
         return token
 
     def validate(self, attrs):
-        data = super().validate(attrs)
+        User = get_user_model()
+        username = attrs.get("username")
+        password = attrs.get("password")
 
-        if not self.user.is_superuser:
-            raise serializers.ValidationError(
-                {
-                    "ok": False,
-                    "error": {
-                        "code": "FORBIDDEN",
-                        "message": "Not authorized as SuperAdmin.",
-                    },
-                }
+        try:
+            user = User.objects.get(**{User.USERNAME_FIELD: username})
+        except User.DoesNotExist:
+            raise NotFound(
+                detail=error(
+                    code="USER_NOT_FOUND",
+                    message="No account found with that username.",
+                    http_status=404,
+                ).data
             )
 
-        data["ok"] = True
-        data["username"] = self.user.username
-        data["email"] = self.user.email
-        data["role"] = "superadmin"
-        return data
+        if not user.is_active:
+            raise AuthenticationFailed(
+                detail=error(
+                    code="INACTIVE",
+                    message="This account is inactive.",
+                    http_status=401,
+                ).data
+            )
+
+        if not user.check_password(password):
+            raise AuthenticationFailed(
+                detail=error(
+                    code="WRONG_PASSWORD",
+                    message="Account found, but the password is incorrect.",
+                    http_status=401,
+                ).data
+            )
+        
+        if not user.is_superuser:
+            raise PermissionDenied(
+                detail=error(
+                    code="FORBIDDEN",
+                    message="Not authorized as SuperAdmin.",
+                    http_status=403,
+                ).data
+            )
+
+        refresh = self.get_token(user)
+        return {
+            "ok": True,
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+            "username": user.username,
+            "email": user.email,
+            "role": "superadmin",
+        }
 
 
 class SuperAdminTokenObtainPairView(TokenObtainPairView):

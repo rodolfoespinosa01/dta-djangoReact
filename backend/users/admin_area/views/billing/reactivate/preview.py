@@ -1,4 +1,5 @@
 import typing as t
+from django.utils.timezone import now
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 
@@ -29,7 +30,9 @@ def _resolve_mode_and_reason(profile: Profile) -> t.Tuple[str, str]:
     - 'new_subscription'  => user needs to pick a plan & go to checkout
     - 'none'              => nothing to do (active and not canceling)
     """
-    subscription_active = bool(getattr(profile, "subscription_active", False))
+    cycle_end = getattr(profile, "subscription_end", None) or getattr(profile, "next_billing", None)
+    # If there is no end date, treat as active until proven otherwise by cancellation state.
+    subscription_active = bool(cycle_end is None or cycle_end > now())
     # Some codebases use is_c, others is_canceled—support both
     is_canceled_flag = bool(
         getattr(profile, "is_canceled", None)
@@ -42,7 +45,9 @@ def _resolve_mode_and_reason(profile: Profile) -> t.Tuple[str, str]:
             return "uncancel", "scheduled_cancel"
         return "none", "active"
 
-    # Not active → needs a new sub (could be fully canceled or trial expired)
+    # Not active -> needs a new sub.
+    if bool(getattr(profile, "is_trial", False)):
+        return "new_subscription", "trial_expired"
     return "new_subscription", "canceled"
 
 

@@ -9,13 +9,20 @@ def ok(data=None, http_status=status.HTTP_200_OK):
     return Response(payload, status=http_status)
 
 
-def error(code, message, http_status=status.HTTP_400_BAD_REQUEST, details=None):
+def error(
+    code,
+    message,
+    http_status=status.HTTP_400_BAD_REQUEST,
+    details=None,
+    legacy_error_code=None,
+):
     payload = {
         "ok": False,
         "error": {
             "code": code,
             "message": message,
         },
+        "error_code": legacy_error_code or code,
     }
     if details is not None:
         payload["error"]["details"] = details
