@@ -1,5 +1,6 @@
 // import react hooks
 import React, { useState } from 'react';
+import { useLanguage } from '../../../context/LanguageContext';
 
 // import page-specific styles
 import './AdminForgotPasswordPage.css';
@@ -8,6 +9,7 @@ function AdminForgotPasswordPage() {
   // form input state
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState(null);
+  const { t } = useLanguage();
 
   // handle form submission
   const handleSubmit = async (e) => {
@@ -32,35 +34,35 @@ function AdminForgotPasswordPage() {
       } else if (data && data.error) {
         setStatus(data.error);
       } else {
-        setStatus('email not found or not registered.');
+        setStatus(t('admin_forgot.email_not_found'));
       }
     } catch (err) {
       console.error('❌ network error:', err);
-      setStatus('a network error occurred.');
+      setStatus(t('admin_forgot.network_error'));
     }
   };
 
   return (
     <div className="forgot-password-wrapper">
       <div className="forgot-password-card">
-        <h2 className="forgot-password-title">🔐 reset admin password</h2>
+        <h2 className="forgot-password-title">🔐 {t('admin_forgot.title')}</h2>
         <form onSubmit={handleSubmit}>
           <input
             type="email"
-            placeholder="enter your admin email"
+            placeholder={t('admin_forgot.email_placeholder')}
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="forgot-password-input"
           />
           <button type="submit" className="forgot-password-button">
-            send reset link
+            {t('admin_forgot.send_btn')}
           </button>
         </form>
 
         {status === 'success' && (
           <p className="forgot-password-success">
-            ✅ check your email (or console) for the reset link.
+            ✅ {t('admin_forgot.success')}
           </p>
         )}
 

@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
+import { useLanguage } from '../../../context/LanguageContext';
 import './AdminReactivatePage.css';
 
 function AdminReactivatePage() {
   const { accessToken, logout } = useAuth();
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   // 'loading' | 'uncancel' | 'new_subscription' | 'none' | 'done' | 'error'
   const [mode, setMode] = useState('loading');
@@ -55,7 +57,7 @@ function AdminReactivatePage() {
 
         if (!res.ok) {
           setMode('error');
-          setError(data?.error || 'Failed to load reactivation status.');
+          setError(data?.error || t('admin_reactivate.unable_load'));
           return;
         }
 
@@ -87,12 +89,12 @@ function AdminReactivatePage() {
       } catch {
         if (!alive) return;
         setMode('error');
-        setError('Network error loading reactivation status.');
+        setError(t('admin_reactivate.network'));
       }
     })();
 
     return () => { alive = false; };
-  }, [API_BASE, accessToken, navigate]);
+  }, [API_BASE, accessToken, navigate, t]);
 
   // Keep trial checkbox in sync with selected plan
   useEffect(() => {
@@ -135,7 +137,7 @@ function AdminReactivatePage() {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        setError(data?.error || 'Something went wrong.');
+        setError(data?.error || t('admin_plan.generic_error'));
         setLoading(false);
         return;
       }
@@ -148,7 +150,7 @@ function AdminReactivatePage() {
       setMode('done');
       setLoading(false);
     } catch {
-      setError('Network error.');
+      setError(t('admin_reactivate.network'));
       setLoading(false);
     }
   };
@@ -159,33 +161,33 @@ function AdminReactivatePage() {
 
   return (
     <div className="admin-reactivate-wrapper">
-      <div className="admin-reactivate-card" role="region" aria-label="Reactivate subscription">
-        <h2 className="admin-reactivate-title">🔄 Reactivate your admin subscription</h2>
+      <div className="admin-reactivate-card" role="region" aria-label={t('admin_reactivate.region_label')}>
+        <h2 className="admin-reactivate-title">🔄 {t('admin_reactivate.title')}</h2>
 
-        {mode === 'loading' && <p>Checking your subscription…</p>}
+        {mode === 'loading' && <p>{t('admin_reactivate.checking')}</p>}
 
         {mode === 'error' && (
-          <p className="admin-reactivate-error">{error || 'Unable to load reactivation info.'}</p>
+          <p className="admin-reactivate-error">{error || t('admin_reactivate.unable_load')}</p>
         )}
 
         {mode === 'done' && (
-          <p className="admin-reactivate-success">✅ You’re all set. Thanks for reactivating!</p>
+          <p className="admin-reactivate-success">✅ {t('admin_reactivate.success')}</p>
         )}
 
         {mode !== 'loading' && mode !== 'error' && mode !== 'done' && (
           <>
             <p className="admin-reactivate-description">
               {mode === 'uncancel'
-                ? 'Your subscription is set to end at the period’s end. Keep it going or upgrade below.'
+                ? t('admin_reactivate.desc_uncancel')
                 : mode === 'new_subscription'
-                ? 'Pick a plan to resume access. If eligible, you can start with a trial.'
-                : 'There’s nothing to change right now.'}
+                ? t('admin_reactivate.desc_new')
+                : t('admin_reactivate.desc_none')}
             </p>
 
             {(mode === 'new_subscription' || mode === 'uncancel') && (
               <>
                 {plans.length === 0 && (
-                  <div className="admin-reactivate-hint">No plans available. Please contact support.</div>
+                  <div className="admin-reactivate-hint">{t('admin_reactivate.no_plans')}</div>
                 )}
 
                 {plans.length > 0 && (
@@ -205,17 +207,18 @@ function AdminReactivatePage() {
                         >
                           <div className="plan-name">
                             {plan.display_name}
-                            {isCurrent && <span className="plan-badge">Current</span>}
+                            {isCurrent && <span className="plan-badge">{t('admin_reactivate.current')}</span>}
                           </div>
                           {plan.price_display && (
                             <div className="plan-price">{plan.price_display}</div>
                           )}
                           {plan.allow_trial ? (
                             <div className="plan-trial">
-                              Trial available{plan.trial_days ? ` • ${plan.trial_days} days` : ''}
+                              {t('admin_reactivate.trial_available')}
+                              {plan.trial_days ? ` • ${plan.trial_days} ${t('admin_reactivate.days')}` : ''}
                             </div>
                           ) : (
-                            <div className="plan-trial-disabled">No trial</div>
+                            <div className="plan-trial-disabled">{t('admin_reactivate.no_trial')}</div>
                           )}
                         </button>
                       );
@@ -232,8 +235,8 @@ function AdminReactivatePage() {
                       onChange={(e) => setTrialOptIn(e.target.checked)}
                     />
                     <span>
-                      Start with trial
-                      {selectedPlan?.trial_days ? ` (${selectedPlan.trial_days} days)` : ''}
+                      {t('admin_reactivate.start_with_trial')}
+                      {selectedPlan?.trial_days ? ` (${selectedPlan.trial_days} ${t('admin_reactivate.days')})` : ''}
                     </span>
                   </label>
                 )}
@@ -248,18 +251,18 @@ function AdminReactivatePage() {
                 className="admin-reactivate-button"
               >
                 {loading
-                  ? 'Redirecting…'
+                  ? t('admin_reactivate.redirecting')
                   : mode === 'uncancel'
-                  ? (selectedPriceId && selectedPriceId !== currentPriceId ? 'Upgrade plan' : 'Keep my current plan')
+                  ? (selectedPriceId && selectedPriceId !== currentPriceId ? t('admin_reactivate.upgrade_plan') : t('admin_reactivate.keep_current'))
                   : allowTrialForSelected && trialOptIn
-                  ? 'Start free trial'
-                  : 'Reactivate plan'}
+                  ? t('admin_reactivate.start_free_trial')
+                  : t('admin_reactivate.reactivate_plan')}
               </button>
             )}
 
             {mode === 'none' && (
               <p className="admin-reactivate-hint">
-                You’re active and not canceling. If you canceled previously, plans will appear here.
+                {t('admin_reactivate.hint_none')}
               </p>
             )}
           </>
@@ -273,10 +276,10 @@ function AdminReactivatePage() {
             onClick={() => navigate('/admin_settings')}
             className="admin-reactivate-settings-btn"
           >
-            Back to settings
+            {t('admin_reactivate.back_settings')}
           </button>
           <button onClick={() => logout()} className="btn btn-danger">
-          🚪 Logout
+          🚪 {t('common.logout')}
         </button>
         </div>
       </div>

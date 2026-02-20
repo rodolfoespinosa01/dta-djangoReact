@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLanguage } from '../../../context/LanguageContext';
 import './AdminResetPasswordPage.css';
 
 function AdminResetPasswordPage() {
@@ -8,6 +9,7 @@ function AdminResetPasswordPage() {
 
   const uid = searchParams.get('uid');
   const token = searchParams.get('token');
+  const { t } = useLanguage();
 
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -16,15 +18,15 @@ function AdminResetPasswordPage() {
 
   useEffect(() => {
     if (!uid || !token) {
-      setStatus('missing or invalid reset link. please try again.');
+      setStatus(t('admin_reset.link_invalid'));
     }
-  }, [uid, token]);
+  }, [uid, token, t]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (newPassword !== confirmPassword) {
-      setStatus('passwords do not match.');
+      setStatus(t('admin_reset.password_mismatch'));
       return;
     }
 
@@ -43,11 +45,11 @@ function AdminResetPasswordPage() {
         setTimeout(() => navigate('/admin_login'), 2000);
       } else {
         const data = await res.json();
-        setStatus(data?.detail || 'reset failed. try a new link.');
+        setStatus(data?.detail || t('admin_reset.failed'));
       }
     } catch (err) {
       console.error('reset error:', err);
-      setStatus('network error. please try again.');
+      setStatus(t('admin_reset.network_error'));
     } finally {
       setSubmitting(false);
     }
@@ -56,11 +58,11 @@ function AdminResetPasswordPage() {
   return (
     <div className="reset-password-wrapper">
       <div className="reset-password-card">
-        <h2 className="reset-password-title">🔐 reset your password</h2>
+        <h2 className="reset-password-title">🔐 {t('admin_reset.title')}</h2>
         <form onSubmit={handleSubmit}>
           <input
             type="password"
-            placeholder="new password"
+            placeholder={t('admin_reset.new_password')}
             required
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
@@ -68,7 +70,7 @@ function AdminResetPasswordPage() {
           />
           <input
             type="password"
-            placeholder="confirm new password"
+            placeholder={t('admin_reset.confirm_password')}
             required
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
@@ -79,13 +81,13 @@ function AdminResetPasswordPage() {
             disabled={submitting}
             className="reset-password-button"
           >
-            {submitting ? 'resetting...' : 'reset password'}
+            {submitting ? t('admin_reset.resetting') : t('admin_reset.reset_btn')}
           </button>
         </form>
 
         {status === 'success' && (
           <p className="reset-password-success">
-            ✅ password updated! redirecting to login...
+            ✅ {t('admin_reset.success')}
           </p>
         )}
         {status && status !== 'success' && (

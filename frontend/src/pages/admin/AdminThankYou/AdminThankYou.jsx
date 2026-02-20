@@ -1,10 +1,12 @@
 import React, { useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useLanguage } from '../../../context/LanguageContext';
 import './AdminThankYou.css';
 
 function AdminThankYou() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   // redirect to home if no stripe session ID is found
   useEffect(() => {
@@ -17,9 +19,9 @@ function AdminThankYou() {
 
   return (
     <div className="admin-thankyou-wrapper">
-      <h1 className="admin-thankyou-title">🎉 thank you for signing up!</h1>
-      <p className="admin-thankyou-text">your registration is almost complete.</p>
-      <p className="admin-thankyou-text">please check your email for the link to finish setting up your admin account.</p>
+      <h1 className="admin-thankyou-title">🎉 {t('admin_thank_you.title')}</h1>
+      <p className="admin-thankyou-text">{t('admin_thank_you.text1')}</p>
+      <p className="admin-thankyou-text">{t('admin_thank_you.text2')}</p>
     </div>
   );
 }

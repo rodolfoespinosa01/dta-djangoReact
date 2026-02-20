@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
+import { useLanguage } from '../../../context/LanguageContext';
 import './AdminLoginPage.css';
 
 function AdminLoginPage() {
@@ -9,14 +10,15 @@ function AdminLoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
   const { login } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   const extractError = (data, status) => {
     const payload = data?.detail && typeof data.detail === 'object' ? data.detail : data;
     const code = payload?.error_code;
-    if (status === 404 || code === 'USER_NOT_FOUND') return 'No account found with that email.';
-    if (status === 401 || code === 'WRONG_PASSWORD') return 'Account found, but the password is incorrect.';
-    return payload?.error || 'Unable to log in. Please try again.';
+    if (status === 404 || code === 'USER_NOT_FOUND') return t('admin_login.err_no_account');
+    if (status === 401 || code === 'WRONG_PASSWORD') return t('admin_login.err_wrong_password');
+    return payload?.error || t('admin_login.err_try_again');
   };
 
   const handleSubmit = async (e) => {
@@ -42,18 +44,18 @@ function AdminLoginPage() {
       }
     } catch (err) {
       console.error('login error:', err);
-      setError('Something went wrong. Please try again.');
+      setError(t('admin_login.err_generic'));
     }
   };
 
   return (
     <div className="admin-login-wrapper">
       <div className="admin-login-card">
-        <h2 className="admin-login-title">🔐 admin login</h2>
+        <h2 className="admin-login-title">🔐 {t('admin_login.title')}</h2>
         <form onSubmit={handleSubmit}>
           <input
             type="email"
-            placeholder="email"
+            placeholder={t('admin_login.email_placeholder')}
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -62,19 +64,19 @@ function AdminLoginPage() {
           />
           <input
             type="password"
-            placeholder="password"
+            placeholder={t('admin_login.password_placeholder')}
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="admin-login-input"
             autoComplete="current-password"
           />
-          <button type="submit" className="admin-login-button">log in</button>
+          <button type="submit" className="admin-login-button">{t('admin_login.login_btn')}</button>
 
           {error && <div className="admin-login-error" role="alert">{error}</div>}
 
           <p className="admin-login-link-wrapper">
-            <a href="/admin_forgot_password" className="admin-login-link">forgot your password?</a>
+            <a href="/admin_forgot_password" className="admin-login-link">{t('admin_login.forgot')}</a>
           </p>
         </form>
       </div>

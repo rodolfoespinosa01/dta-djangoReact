@@ -1,20 +1,62 @@
 .user-home-page {
-  padding: 2rem 1rem;
-  text-align: center;
-  max-width: 720px;
+  padding: 2rem 1rem 2.6rem;
+  max-width: 1100px;
   margin: 0 auto;
+  color: #10203a;
 }
 
-.user-home-page p {
-  color: var(--muted);
+.user-story-header {
+  border: 1px solid rgba(18, 32, 58, 0.14);
+  border-radius: 20px;
+  padding: 1.2rem;
+  background:
+    radial-gradient(460px 240px at 0% 0%, rgba(169, 215, 255, 0.3), transparent 68%),
+    radial-gradient(440px 220px at 100% 100%, rgba(255, 221, 233, 0.28), transparent 72%),
+    linear-gradient(140deg, rgba(245, 251, 255, 0.98), rgba(231, 241, 255, 0.95));
+  box-shadow: 0 12px 30px rgba(10, 20, 36, 0.1);
+}
+
+.user-brand-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+}
+
+.user-brand-logo {
+  width: clamp(120px, 20vw, 190px);
+  height: auto;
+}
+
+.user-brand-tape {
+  width: clamp(70px, 11vw, 100px);
+  height: auto;
+  filter: drop-shadow(0 8px 14px rgba(13, 29, 54, 0.18));
+}
+
+.user-story-copy {
+  margin-top: 0.8rem;
+  text-align: center;
+}
+
+.user-story-copy h1 {
+  margin: 0;
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  color: #132a4a;
+}
+
+.user-story-copy p {
+  margin: 0.55rem 0 0;
+  color: #324a70;
+  font-size: clamp(0.98rem, 2vw, 1.08rem);
 }
 
 .user-login-form {
-  margin: 1.4rem auto 0;
+  margin: 1.2rem auto 0;
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-  max-width: 360px;
+  max-width: 380px;
   text-align: left;
 }
 
@@ -53,85 +95,216 @@
 }
 
 .user-home-button:disabled {
-  opacity: 0.6;
+  opacity: 0.62;
   cursor: not-allowed;
   filter: grayscale(0.2);
 }
 
-.user-food-showcase {
+.user-macro-showcase {
   margin-top: 1.6rem;
-  border-radius: 18px;
-  border: 1px solid rgba(18, 26, 44, 0.14);
-  background:
-    radial-gradient(460px 200px at 15% 0%, rgba(171, 212, 255, 0.3), transparent 70%),
-    radial-gradient(420px 180px at 90% 100%, rgba(255, 218, 228, 0.28), transparent 70%),
-    linear-gradient(140deg, rgba(241, 248, 255, 0.96), rgba(229, 239, 255, 0.9));
-  padding: 1.2rem 1rem 1.4rem;
-  box-shadow: 0 14px 32px rgba(16, 24, 40, 0.12);
 }
 
-.user-food-title {
+.user-macro-showcase h2,
+.user-how-it-works h2 {
   margin: 0;
   text-align: center;
-  color: #14233f;
-  font-size: clamp(1.05rem, 2.2vw, 1.35rem);
-  letter-spacing: 0.01em;
+  color: #122647;
+  font-size: clamp(1.1rem, 2.2vw, 1.5rem);
 }
 
-.user-food-slide {
+.user-section-subtitle {
+  margin: 0.45rem auto 0;
+  max-width: 720px;
+  text-align: center;
+  color: #3b5278;
+}
+
+.user-macro-grid {
   margin-top: 1rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.user-macro-card {
+  border: 1px solid rgba(18, 32, 58, 0.14);
+  border-radius: 16px;
+  padding: 0.95rem;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(12, 20, 36, 0.08);
+}
+
+.user-macro-card h3 {
+  margin: 0;
+  color: #112649;
+}
+
+.user-macro-card p {
+  margin: 0.35rem 0 0;
+  color: #334a70;
+  font-size: 0.92rem;
+}
+
+.user-macro-featured {
+  margin-top: 0.65rem;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.35rem;
+  font-weight: 700;
+  color: #10203a;
+  animation: user-food-fade 2300ms ease-in-out;
 }
 
 .user-food-image {
-  width: min(210px, 58vw);
-  height: min(210px, 58vw);
+  width: min(130px, 35vw);
+  height: min(130px, 35vw);
   object-fit: contain;
-  filter: drop-shadow(0 10px 16px rgba(17, 31, 54, 0.22));
-  animation: user-food-fade 2600ms ease-in-out;
+  filter: drop-shadow(0 9px 16px rgba(17, 31, 54, 0.2));
 }
 
-.user-food-name {
-  margin: 0;
+.user-macro-counter {
+  margin-top: 0.7rem;
   text-align: center;
+  font-size: 0.8rem;
   font-weight: 700;
-  color: #1c2b49;
-  animation: user-food-fade 2600ms ease-in-out;
+  color: #35507a;
+}
+
+.user-how-it-works {
+  margin-top: 1.6rem;
+}
+
+.user-process-grid {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.95rem;
+}
+
+.user-process-card {
+  border: 1px solid rgba(18, 32, 58, 0.14);
+  border-radius: 16px;
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.98), rgba(241, 247, 255, 0.95));
+  padding: 0.85rem;
+  box-shadow: 0 8px 24px rgba(12, 20, 36, 0.08);
+}
+
+.user-process-image {
+  width: 100%;
+  height: 170px;
+  object-fit: contain;
+  border-radius: 12px;
+  background: rgba(239, 247, 255, 0.75);
+}
+
+.user-process-card h3 {
+  margin: 0.65rem 0 0;
+  color: #112649;
+}
+
+.user-process-card p {
+  margin: 0.35rem 0 0;
+  color: #334a70;
+  font-size: 0.92rem;
+}
+
+.user-noai-section {
+  margin-top: 1.6rem;
+  border: 1px solid rgba(18, 32, 58, 0.14);
+  border-radius: 18px;
+  padding: 1rem;
+  display: grid;
+  grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: center;
+  background: linear-gradient(140deg, rgba(255, 250, 249, 0.98), rgba(244, 248, 255, 0.94));
+  box-shadow: 0 10px 24px rgba(12, 20, 36, 0.08);
+}
+
+.user-noai-image-wrap {
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.88);
+  padding: 0.6rem;
+}
+
+.user-noai-image {
+  width: 100%;
+  height: 190px;
+  object-fit: contain;
+  display: block;
+}
+
+.user-noai-copy h2 {
+  margin: 0;
+  color: #122647;
+  font-size: clamp(1.05rem, 2.1vw, 1.4rem);
+}
+
+.user-noai-copy p {
+  margin: 0.6rem 0 0;
+  color: #334a70;
 }
 
 @keyframes user-food-fade {
   0% {
     opacity: 0;
-    transform: translateY(6px) scale(0.985);
+    transform: translateY(4px) scale(0.99);
   }
   18% {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
-  78% {
+  80% {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
   100% {
     opacity: 0;
-    transform: translateY(-6px) scale(0.985);
+    transform: translateY(-4px) scale(0.99);
+  }
+}
+
+@media (max-width: 920px) {
+  .user-macro-grid,
+  .user-process-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .user-noai-section {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .user-noai-image {
+    height: 220px;
   }
 }
 
 @media (max-width: 640px) {
   .user-home-page {
-    padding: 1.6rem 0.9rem;
+    padding: 1.4rem 0.8rem 2rem;
+  }
+
+  .user-story-header {
+    padding: 1rem 0.85rem;
+    border-radius: 16px;
   }
 
   .user-login-form {
     max-width: 100%;
   }
 
-  .user-food-showcase {
+  .user-macro-grid,
+  .user-process-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .user-noai-section {
     border-radius: 16px;
-    padding: 1rem 0.85rem 1.2rem;
+    padding: 0.85rem;
+  }
+
+  .user-noai-image {
+    height: 180px;
   }
 }
