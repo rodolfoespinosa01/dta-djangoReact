@@ -1,10 +1,12 @@
 import React, { useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useLanguage } from '../../../context/LanguageContext';
 import './AdminConfirmTrialPage.css';
 
 function AdminConfirmTrialPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   useEffect(() => {
     const subscriptionId = searchParams.get('subscription_id');
@@ -23,8 +25,8 @@ function AdminConfirmTrialPage() {
 
   return (
     <div className="admin-confirm-wrapper">
-      <h2>✅ Free Trial Activated</h2>
-      <p>You're being redirected to complete registration...</p>
+      <h2>✅ {t('admin_confirm.title')}</h2>
+      <p>{t('admin_confirm.subtitle')}</p>
     </div>
   );
 }

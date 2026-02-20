@@ -1,34 +1,35 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '../../../context/LanguageContext';
 import './AdminPlanSelectionPage.css';
 
-const adminPlans = [
-  {
-    id: 'adminMonthly',
-    name: 'Monthly Admin Plan',
-    price: '$29 / month',
-    description: 'Unlimited users. Billed monthly.',
-  },
-  {
-    id: 'adminQuarterly',
-    name: 'Quarterly Admin Plan',
-    price: '$79 / 3 months',
-    description: 'Save 10% with quarterly billing.',
-  },
-  {
-    id: 'adminAnnual',
-    name: 'Annual Admin Plan',
-    price: '$299 / year',
-    description: 'Best value. Save 14% annually.',
-  },
-];
-
 function AdminPlanSelectionPage() {
+  const { t } = useLanguage();
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [loadingAction, setLoadingAction] = useState(null);
   const navigate = useNavigate();
   const getActionKey = (planId, isTrial) => `${planId}:${isTrial ? 'trial' : 'paid'}`;
+  const adminPlans = [
+    {
+      id: 'adminMonthly',
+      name: t('admin_plan.monthly_name'),
+      price: '$29 / month',
+      description: t('admin_plan.monthly_desc'),
+    },
+    {
+      id: 'adminQuarterly',
+      name: t('admin_plan.quarterly_name'),
+      price: '$79 / 3 months',
+      description: t('admin_plan.quarterly_desc'),
+    },
+    {
+      id: 'adminAnnual',
+      name: t('admin_plan.annual_name'),
+      price: '$299 / year',
+      description: t('admin_plan.annual_desc'),
+    },
+  ];
 
   const handleHomeCTA = () => {
     navigate('/');
@@ -37,7 +38,7 @@ function AdminPlanSelectionPage() {
   const handleSelectAdminPlan = async (planId, isTrial) => {
     if (loadingAction) return;
     if (!email) {
-      setError('Please enter your email before continuing to checkout.');
+      setError(t('admin_plan.email_required'));
       return;
     }
 
@@ -55,18 +56,18 @@ function AdminPlanSelectionPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data?.error || 'Something went wrong.');
+        setError(data?.error || t('admin_plan.generic_error'));
         return;
       }
 
       if (data.url) {
         window.location.href = data.url;
       } else {
-        setError('Could not initiate checkout session.');
+        setError(t('admin_plan.checkout_failed'));
       }
     } catch (err) {
       console.error('Error starting checkout:', err);
-      setError('Something went wrong. Please try again.');
+      setError(t('admin_login.err_generic'));
     } finally {
       setLoadingAction(null);
     }
@@ -74,12 +75,12 @@ function AdminPlanSelectionPage() {
 
   return (
     <div className="admin-plan-wrapper">
-      <h2 className="admin-plan-title">🧾 Choose Your Admin Plan</h2>
+      <h2 className="admin-plan-title">🧾 {t('admin_plan.title')}</h2>
 
       <div className="admin-plan-email">
         <input
           type="email"
-          placeholder="Enter your email"
+          placeholder={t('admin_plan.email_placeholder')}
           required
           value={email}
           onChange={(e) => {
@@ -108,7 +109,7 @@ function AdminPlanSelectionPage() {
               disabled={!!loadingAction}
               className="admin-plan-button"
             >
-              {loadingAction === getActionKey(plan.id, true) ? 'Processing...' : 'Start Free Trial'}
+              {loadingAction === getActionKey(plan.id, true) ? t('admin_plan.processing') : t('admin_plan.start_trial')}
             </button>
 
             <button
@@ -116,7 +117,7 @@ function AdminPlanSelectionPage() {
               disabled={!!loadingAction}
               className="admin-plan-button"
             >
-              {loadingAction === getActionKey(plan.id, false) ? 'Processing...' : 'Buy Now'}
+              {loadingAction === getActionKey(plan.id, false) ? t('admin_plan.processing') : t('admin_plan.buy_now')}
             </button>
           </div>
         ))}
@@ -124,7 +125,7 @@ function AdminPlanSelectionPage() {
 
       <div className="admin-plan-footer">
         <button onClick={handleHomeCTA} className="admin-plan-back-button">
-          Back to Main Page
+          {t('common.back_to_main_page')}
         </button>
       </div>
     </div>
