@@ -2,6 +2,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework import serializers
 
+
 class SuperAdminTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
@@ -14,12 +15,22 @@ class SuperAdminTokenObtainPairSerializer(TokenObtainPairSerializer):
         data = super().validate(attrs)
 
         if not self.user.is_superuser:
-            raise serializers.ValidationError("Not authorized as SuperAdmin")
+            raise serializers.ValidationError(
+                {
+                    "ok": False,
+                    "error": {
+                        "code": "FORBIDDEN",
+                        "message": "Not authorized as SuperAdmin.",
+                    },
+                }
+            )
 
-        data['username'] = self.user.username
-        data['email'] = self.user.email
-        data['role'] = 'superadmin'
+        data["ok"] = True
+        data["username"] = self.user.username
+        data["email"] = self.user.email
+        data["role"] = "superadmin"
         return data
+
 
 class SuperAdminTokenObtainPairView(TokenObtainPairView):
     serializer_class = SuperAdminTokenObtainPairSerializer

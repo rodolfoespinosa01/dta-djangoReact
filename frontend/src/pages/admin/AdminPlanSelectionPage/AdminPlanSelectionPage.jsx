@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../../../context/LanguageContext';
+import { buildApiUrl } from '../../../config/api';
 import './AdminPlanSelectionPage.css';
 
 function AdminPlanSelectionPage() {
@@ -47,7 +48,7 @@ function AdminPlanSelectionPage() {
     setLoadingAction(actionKey);
 
     try {
-      const response = await fetch('http://localhost:8000/api/users/admin/create_checkout_session/', {
+      const response = await fetch(buildApiUrl('/api/v1/users/admin/create_checkout_session/'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plan_name: planId, email, is_trial: isTrial }),
@@ -56,7 +57,7 @@ function AdminPlanSelectionPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data?.error || t('admin_plan.generic_error'));
+        setError(data?.error?.message || data?.error || t('admin_plan.generic_error'));
         return;
       }
 

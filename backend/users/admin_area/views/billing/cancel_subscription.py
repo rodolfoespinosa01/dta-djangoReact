@@ -6,7 +6,8 @@ from django.utils import timezone
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
+from users.admin_area.views.api_contract import error, ok, require_admin
+from users.admin_area.views.idempotency import begin_idempotent_request
 
 from users.admin_area.models import Profile, AdminIdentity, EventTracker, Plan
 
@@ -113,15 +114,27 @@ def _snapshot(p: Profile):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def cancel_subscription(request):
+    auth_error = require_admin(request)
+    if auth_error:
+        return auth_error
+
     user = request.user
+    replay_response, finalize = begin_idempotent_request(
+        request,
+        namespace="cancel_subscription",
+        actor=getattr(user, "email", "") or f"user-{getattr(user, 'id', 'unknown')}",
+    )
+    if replay_response:
+        return replay_response
+
     active_profiles = user.profiles.filter(is_active=True).order_by("-created_at")
     profile = active_profiles.filter(is_trial=False).first() or active_profiles.first()
     if not profile:
-        return Response({"error": "No active profile found."}, status=404)
+        return finalize(error(code="PROFILE_NOT_FOUND", message="No active profile found.", http_status=404))
 
     # Idempotent
     if profile.is_canceled:
-        return Response({"message": "already canceled", "snapshot": _snapshot(profile)}, status=200)
+        return finalize(ok({"message": "already canceled", "snapshot": _snapshot(profile)}, http_status=200))
 
     picked_sub = _active_subscription_for_admin_email(user.email)
     sub_id = picked_sub.get("id") if picked_sub else None
@@ -173,9 +186,11 @@ def cancel_subscription(request):
         user.profiles.filter(is_active=False, subscription_start__isnull=False).update(is_canceled=True)
         _log_cancel_event(user.email, cycle_end, profile.is_trial)
 
-    return Response(
-        {"message": "auto-renew canceled", "snapshot": _snapshot(profile)},
-        status=200,
+    return finalize(
+        ok(
+            {"message": "auto-renew canceled", "snapshot": _snapshot(profile)},
+            http_status=200,
+        )
     )
 
 

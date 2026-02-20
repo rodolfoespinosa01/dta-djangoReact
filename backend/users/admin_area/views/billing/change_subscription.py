@@ -5,11 +5,12 @@ from django.utils import timezone
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 from rest_framework import status
 
 from users.admin_area.models import Profile, Plan, AdminIdentity
 from users.admin_area.utils.log_EventTracker import log_EventTracker
+from users.admin_area.views.api_contract import error, ok, require_admin
+from users.admin_area.views.idempotency import begin_idempotent_request
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -46,39 +47,72 @@ def _active_subscription_for_admin_id(admin_id: str):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def change_subscription(request):
+    auth_error = require_admin(request)
+    if auth_error:
+        return auth_error
     user = request.user
-    if getattr(user, "role", None) != "admin":
-        return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+    replay_response, finalize = begin_idempotent_request(
+        request,
+        namespace="change_subscription",
+        actor=getattr(user, "email", "") or f"user-{getattr(user, 'id', 'unknown')}",
+    )
+    if replay_response:
+        return replay_response
 
     target_plan = (request.data or {}).get("target_plan")
     if target_plan not in TARGET_MAP:
-        return Response({"error": "Invalid target plan."}, status=status.HTTP_400_BAD_REQUEST)
+        return finalize(
+            error(code="INVALID_TARGET_PLAN", message="Invalid target plan.", http_status=status.HTTP_400_BAD_REQUEST)
+        )
 
     try:
         active_profile = user.profiles.get(is_active=True)
     except Profile.DoesNotExist:
-        return Response({"error": "Admin profile not found."}, status=status.HTTP_404_NOT_FOUND)
+        return finalize(
+            error(code="PROFILE_NOT_FOUND", message="Admin profile not found.", http_status=status.HTTP_404_NOT_FOUND)
+        )
 
     if active_profile.is_trial:
-        return Response(
-            {"error": "Trial upgrades use checkout. This endpoint is for paid plan changes only."},
-            status=status.HTTP_400_BAD_REQUEST,
+        return finalize(
+            error(
+                code="TRIAL_CHECKOUT_REQUIRED",
+                message="Trial upgrades use checkout. This endpoint is for paid plan changes only.",
+                http_status=status.HTTP_400_BAD_REQUEST,
+            )
         )
 
     current_status = getattr(user, "subscription_status", "")
     allowed = CAN_TRANSITION_TO.get(current_status, set())
     if target_plan not in allowed:
-        return Response({"error": "This plan transition is not allowed."}, status=status.HTTP_400_BAD_REQUEST)
+        return finalize(
+            error(
+                code="TRANSITION_NOT_ALLOWED",
+                message="This plan transition is not allowed.",
+                http_status=status.HTTP_400_BAD_REQUEST,
+            )
+        )
 
     target_model_name = TARGET_MAP[target_plan]
     target_plan_obj = Plan.objects.filter(name=target_model_name).first()
     if not target_plan_obj:
-        return Response({"error": "Target plan is not configured."}, status=status.HTTP_400_BAD_REQUEST)
+        return finalize(
+            error(
+                code="TARGET_PLAN_NOT_CONFIGURED",
+                message="Target plan is not configured.",
+                http_status=status.HTTP_400_BAD_REQUEST,
+            )
+        )
 
     admin_id = _admin_id_for_user(user)
     sub = _active_subscription_for_admin_id(admin_id) if admin_id else None
     if not sub:
-        return Response({"error": "No active Stripe subscription found."}, status=status.HTTP_400_BAD_REQUEST)
+        return finalize(
+            error(
+                code="NO_ACTIVE_SUBSCRIPTION",
+                message="No active Stripe subscription found.",
+                http_status=status.HTTP_400_BAD_REQUEST,
+            )
+        )
 
     sub_id = sub.get("id")
     curr_end = sub.get("current_period_end")
@@ -95,10 +129,22 @@ def change_subscription(request):
             except Exception:
                 pass
     except Exception:
-        return Response({"error": "Could not load current subscription details."}, status=status.HTTP_400_BAD_REQUEST)
+        return finalize(
+            error(
+                code="SUBSCRIPTION_DETAILS_UNAVAILABLE",
+                message="Could not load current subscription details.",
+                http_status=status.HTTP_400_BAD_REQUEST,
+            )
+        )
 
     if not current_price_id or not curr_end:
-        return Response({"error": "Could not determine billing cycle boundary."}, status=status.HTTP_400_BAD_REQUEST)
+        return finalize(
+            error(
+                code="BILLING_BOUNDARY_UNAVAILABLE",
+                message="Could not determine billing cycle boundary.",
+                http_status=status.HTTP_400_BAD_REQUEST,
+            )
+        )
 
     try:
         stripe.SubscriptionSchedule.create(
@@ -120,7 +166,13 @@ def change_subscription(request):
             },
         )
     except Exception:
-        return Response({"error": "Failed to schedule plan change."}, status=status.HTTP_400_BAD_REQUEST)
+        return finalize(
+            error(
+                code="PLAN_CHANGE_SCHEDULE_FAILED",
+                message="Failed to schedule plan change.",
+                http_status=status.HTTP_400_BAD_REQUEST,
+            )
+        )
 
     pending = user.profiles.filter(is_active=False).order_by("-created_at").first()
     effective_at = datetime.fromtimestamp(curr_end, tz=dt_timezone.utc)
@@ -146,11 +198,13 @@ def change_subscription(request):
         details=f"from_status={current_status} to_status={target_plan} effective_at={curr_end}",
     )
 
-    return Response(
-        {
-            "message": "Plan change scheduled. Current plan remains active until this cycle ends.",
-            "scheduled_for": effective_at,
-            "target_plan": target_plan,
-        },
-        status=200,
+    return finalize(
+        ok(
+            {
+                "message": "Plan change scheduled. Current plan remains active until this cycle ends.",
+                "scheduled_for": effective_at,
+                "target_plan": target_plan,
+            },
+            http_status=200,
+        )
     )

@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { useLanguage } from '../../../context/LanguageContext';
+import { buildApiUrl } from '../../../config/api';
 import './AdminLoginPage.css';
 
 function AdminLoginPage() {
@@ -18,7 +19,7 @@ function AdminLoginPage() {
     const code = payload?.error_code;
     if (status === 404 || code === 'USER_NOT_FOUND') return t('admin_login.err_no_account');
     if (status === 401 || code === 'WRONG_PASSWORD') return t('admin_login.err_wrong_password');
-    return payload?.error || t('admin_login.err_try_again');
+    return payload?.error?.message || payload?.error || t('admin_login.err_try_again');
   };
 
   const handleSubmit = async (e) => {
@@ -26,7 +27,7 @@ function AdminLoginPage() {
     setError(null);
 
     try {
-      const response = await fetch('http://localhost:8000/api/users/admin/login/', {
+      const response = await fetch(buildApiUrl('/api/v1/users/admin/login/'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

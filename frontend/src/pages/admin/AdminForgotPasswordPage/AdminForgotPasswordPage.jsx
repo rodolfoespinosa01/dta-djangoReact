@@ -1,6 +1,7 @@
 // import react hooks
 import React, { useState } from 'react';
 import { useLanguage } from '../../../context/LanguageContext';
+import { buildApiUrl } from '../../../config/api';
 
 // import page-specific styles
 import './AdminForgotPasswordPage.css';
@@ -16,7 +17,7 @@ function AdminForgotPasswordPage() {
     e.preventDefault();
 
     try {
-      const res = await fetch('http://localhost:8000/api/users/admin/forgot_password/', {
+      const res = await fetch(buildApiUrl('/api/v1/users/admin/forgot_password/'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -32,7 +33,7 @@ function AdminForgotPasswordPage() {
       if (res.ok) {
         setStatus('success');
       } else if (data && data.error) {
-        setStatus(data.error);
+        setStatus(data?.error?.message || data.error);
       } else {
         setStatus(t('admin_forgot.email_not_found'));
       }
@@ -78,5 +79,5 @@ export default AdminForgotPasswordPage;
 
 // admin forgot password page
 // this component allows an admin to submit their email address to receive a password reset link.
-// when the form is submitted, it sends a POST request to /api/users/admin/forgot_password/ with the email in the json body.
+// when the form is submitted, it sends a POST request to /api/v1/users/admin/forgot_password/ with the email in the json body.
 // the backend checks if the email belongs to an active admin, then returns a success or error message which is shown to the user.

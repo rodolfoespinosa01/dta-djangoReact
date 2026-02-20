@@ -80,6 +80,12 @@
   color: #111827;
 }
 
+.superadmin-window-label {
+  margin: 0.7rem 0 0;
+  color: #4b5563;
+  font-size: 0.9rem;
+}
+
 .superadmin-chart-card {
   margin-top: 1.2rem;
   border: 1px solid #d1d5db;
