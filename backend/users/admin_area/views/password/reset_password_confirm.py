@@ -2,6 +2,7 @@ from rest_framework.views import APIView  # 👉 base class for building API vie
 from rest_framework.response import Response  # 👉 used to return JSON responses
 from rest_framework import status  # 👉 standard HTTP status codes
 from users.admin_area.serializers import ResetPasswordSerializer  # 👉 handles validation and logic for setting new password
+from users.admin_area.views.api_contract import ok, error
 
 
 class ResetPasswordConfirmView(APIView):
@@ -12,9 +13,15 @@ class ResetPasswordConfirmView(APIView):
 
         if serializer.is_valid():
             serializer.save()  # 🔐 updates user password and deletes used reset token
-            return Response({"detail": "Password has been reset successfully."})  # ✅ confirmation response
+            return ok({"detail": "Password has been reset successfully."})  # ✅ confirmation response
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)  # ❌ error if token is invalid or expired
+        message = serializer.errors.get("non_field_errors", ["Invalid request."])
+        return error(
+            code="VALIDATION_ERROR",
+            message=str(message[0]) if isinstance(message, list) else str(message),
+            http_status=status.HTTP_400_BAD_REQUEST,
+            details=serializer.errors,
+        )  # ❌ error if token is invalid or expired
 
 
 # 👉 summary:

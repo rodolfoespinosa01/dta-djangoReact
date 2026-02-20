@@ -79,6 +79,34 @@
   font-weight: 600;
 }
 
+.superadmin-pagination {
+  margin-top: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.7rem;
+}
+
+.superadmin-page-button {
+  padding: 0.45rem 0.75rem;
+  border: 1px solid #9ca3af;
+  border-radius: 6px;
+  background: #f3f4f6;
+  color: #111827;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.superadmin-page-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.superadmin-page-meta {
+  color: #4b5563;
+  font-size: 0.9rem;
+}
+
 @media (max-width: 720px) {
   .superadmin-dashboard-page {
     padding: 1.6rem 0.9rem 2rem;

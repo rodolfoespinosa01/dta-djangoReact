@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { apiRequest } from '../../api/client';
 import './SuperAdminAnalyticsPage.css';
 
 const PERIODS = ['day', 'week', 'month'];
@@ -21,24 +22,14 @@ function SuperAdminAnalyticsPage() {
   }, [loading, isAuthenticated, user, navigate]);
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    if (!token) {
-      navigate('/superadmin_login');
-      return;
-    }
-
     setError('');
     setAnalytics(null);
     setIsFetching(true);
+    const query = new URLSearchParams({ period }).toString();
 
-    fetch(`http://localhost:8000/api/users/superadmin/analytics/?period=${period}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-      .then(async (res) => {
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Failed to load analytics');
+    apiRequest(`/api/v1/users/superadmin/analytics/?${query}`, { auth: true })
+      .then(({ ok, data }) => {
+        if (!ok || data?.ok === false) throw new Error(data?.error?.message || 'Failed to load analytics');
         return data;
       })
       .then((data) => setAnalytics(data))
@@ -52,6 +43,21 @@ function SuperAdminAnalyticsPage() {
     if (!analytics?.points?.length) return 1;
     return Math.max(...analytics.points.map((point) => point.amount_cents), 1);
   }, [analytics]);
+
+  const currencyFormatter = useMemo(() => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: analytics?.currency || 'USD',
+      minimumFractionDigits: 2,
+    });
+  }, [analytics?.currency]);
+
+  const windowLabel = useMemo(() => {
+    if (!analytics?.window?.started_at || !analytics?.window?.ended_at) return '';
+    const started = new Date(analytics.window.started_at);
+    const ended = new Date(analytics.window.ended_at);
+    return `${started.toLocaleString()} - ${ended.toLocaleString()}`;
+  }, [analytics?.window?.started_at, analytics?.window?.ended_at]);
 
   if (loading || isFetching) {
     return <p className="superadmin-loading">Loading analytics...</p>;
@@ -89,13 +95,14 @@ function SuperAdminAnalyticsPage() {
       <section className="superadmin-metrics-grid">
         <article className="superadmin-metric-card">
           <p>Total Revenue</p>
-          <h3>${Number(analytics?.total_revenue || 0).toFixed(2)}</h3>
+          <h3>{currencyFormatter.format(Number(analytics?.total_revenue || 0))}</h3>
         </article>
         <article className="superadmin-metric-card">
           <p>Transactions</p>
           <h3>{analytics?.transactions || 0}</h3>
         </article>
       </section>
+      {windowLabel && <p className="superadmin-window-label">Window: {windowLabel}</p>}
 
       <section className="superadmin-chart-card" aria-label="Revenue chart">
         <div className="superadmin-chart">

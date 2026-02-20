@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { useLanguage } from '../../../context/LanguageContext';
+import { apiRequest } from '../../../api/client';
 import './AdminDashboard.css';
 
 function AdminDashboard() {
-  const { isAuthenticated, accessToken, logout } = useAuth();
+  const { isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
   const { t } = useLanguage();
 
@@ -20,17 +21,12 @@ function AdminDashboard() {
 
     const fetchDashboard = async () => {
       try {
-        const res = await fetch('http://localhost:8000/api/users/admin/dashboard/', {
-          headers: { Authorization: `Bearer ${accessToken}` }
-        });
+        const { status: resStatus, ok: resOk, data } = await apiRequest('/api/v1/users/admin/dashboard/', { auth: true });
 
-        if (res.status === 401) { navigate('/admin_login'); return; }
-        if (res.status === 403 || res.status === 404) { setStatus('blocked'); return; }
+        if (resStatus === 401) { navigate('/admin_login'); return; }
+        if (resStatus === 403 || resStatus === 404) { setStatus('blocked'); return; }
 
-        let data = null;
-        try { data = await res.json(); } catch { /* ignore */ }
-
-        if (res.ok && data) {
+        if (resOk && data) {
           setDashboardData(data);
           setStatus('ok');
         } else {
@@ -43,7 +39,7 @@ function AdminDashboard() {
     };
 
     fetchDashboard();
-  }, [isAuthenticated, accessToken, navigate]);
+  }, [isAuthenticated, navigate]);
 
   return (
     <div className="admin-dashboard-wrapper">

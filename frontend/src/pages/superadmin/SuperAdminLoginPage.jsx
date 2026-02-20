@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { buildApiUrl } from '../../config/api';
 import './SuperAdminLoginPage.css';
 
 function SuperAdminLoginPage() {
@@ -14,7 +15,7 @@ function SuperAdminLoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const response = await fetch('http://localhost:8000/api/users/superadmin/login/', {
+    const response = await fetch(buildApiUrl('/api/v1/users/superadmin/login/'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
@@ -27,7 +28,7 @@ function SuperAdminLoginPage() {
       localStorage.setItem('refresh_token', data.refresh);
       navigate('/superadmin_dashboard');
     } else {
-      alert(data.error || t('superadmin_login.failed'));
+      alert(data?.error?.message || data?.error || t('superadmin_login.failed'));
     }
   };
 

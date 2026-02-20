@@ -1,10 +1,9 @@
 import typing as t
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework import status
 
 from users.admin_area.models import Profile, Plan
+from users.admin_area.views.api_contract import error, ok, require_admin
 
 
 def _plan_to_dict(p: Plan) -> dict:
@@ -61,15 +60,14 @@ def preview(request):
     }
     """
     user = request.user
-
-    # Require admin role (adapt if you store roles differently)
-    if getattr(user, "role", None) != "admin":
-        return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+    auth_error = require_admin(request)
+    if auth_error:
+        return auth_error
 
     try:
         profile = user.profiles.get(is_active=True)
     except Profile.DoesNotExist:
-        return Response({"error": "Admin profile not found."}, status=status.HTTP_404_NOT_FOUND)
+        return error(code="PROFILE_NOT_FOUND", message="Admin profile not found.", http_status=404)
 
     mode, reason = _resolve_mode_and_reason(profile)
 
@@ -85,7 +83,7 @@ def preview(request):
     if not current_price_id and hasattr(profile, "plan") and getattr(profile.plan, "stripe_price_id", None):
         current_price_id = profile.plan.stripe_price_id
 
-    return Response({
+    return ok({
         "reactivation_mode": mode,
         "reason": reason,
         "current_price_id": current_price_id,

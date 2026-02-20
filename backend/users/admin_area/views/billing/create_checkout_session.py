@@ -3,7 +3,6 @@ import stripe
 from django.conf import settings
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
-from rest_framework.response import Response
 from rest_framework import status
 
 from core.models import CustomUser
@@ -17,6 +16,8 @@ from users.admin_area.models import (
 )
 from users.admin_area.utils import log_PreCheckout
 from users.admin_area.utils.log_EventTracker import log_EventTracker
+from users.admin_area.views.api_contract import error, ok
+from users.admin_area.views.idempotency import begin_idempotent_request
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -58,12 +59,21 @@ def create_checkout_session(request):
       "trial_seconds": 120
     }
     """
+    finalize = lambda response: response
     try:
         data = request.data
         raw_plan_name = (data.get('plan_name') or '').strip()
         plan_name = PLAN_NAME_ALIASES.get(raw_plan_name, raw_plan_name)  # normalize
         email = (data.get('email') or '').strip().lower()
         is_trial = bool(data.get('is_trial', False))
+        actor = email or "anonymous"
+        replay_response, finalize = begin_idempotent_request(
+            request,
+            namespace="create_checkout_session",
+            actor=actor,
+        )
+        if replay_response:
+            return replay_response
 
         # DEV helpers
         use_test_clock = bool(data.get('use_test_clock', False))
@@ -72,15 +82,29 @@ def create_checkout_session(request):
 
         # ✅ Basic validation
         if not plan_name or not email:
-            return Response({'error': 'Missing plan or email'}, status=status.HTTP_400_BAD_REQUEST)
+            return finalize(
+                error(code='MISSING_FIELDS', message='Missing plan or email', http_status=status.HTTP_400_BAD_REQUEST)
+            )
 
         # ✅ Prevent duplicate user accounts
         if CustomUser.objects.filter(email=email).exists():
-            return Response({'error': 'This email is already associated with an account. Please log in.'}, status=status.HTTP_403_FORBIDDEN)
+            return finalize(
+                error(
+                    code='EMAIL_ALREADY_REGISTERED',
+                    message='This email is already associated with an account. Please log in.',
+                    http_status=status.HTTP_403_FORBIDDEN,
+                )
+            )
 
         # ✅ Prevent multiple pending signups
         if PendingSignup.objects.filter(email=email).exists():
-            return Response({'error': 'A registration link has already been generated for this email.'}, status=status.HTTP_403_FORBIDDEN)
+            return finalize(
+                error(
+                    code='PENDING_SIGNUP_EXISTS',
+                    message='A registration link has already been generated for this email.',
+                    http_status=status.HTTP_403_FORBIDDEN,
+                )
+            )
 
         # ✅ Trial logic — one-time only, and voided once any plan flow has started.
         if is_trial and _has_any_prior_plan_activity(email):
@@ -89,10 +113,15 @@ def create_checkout_session(request):
                 event_type="trial_blocked_ineligible",
                 details="reason=prior_plan_activity_detected"
             )
-            return Response({
-                'error': 'Free trial is no longer available for this email. Please choose a paid plan.',
-                'redirect': '/admin_reactivate'
-            }, status=403)
+            return finalize(
+                error(
+                    code='TRIAL_NOT_ALLOWED',
+                    message='Free trial is no longer available for this email. Please choose a paid plan.',
+                    http_status=403,
+                    details={'redirect': '/admin_reactivate'},
+                    extra={'redirect': '/admin_reactivate'},
+                )
+            )
 
         # ✅ Log pre-checkout intent
         log_PreCheckout(email=email, plan_name=plan_name, is_trial=is_trial)
@@ -195,10 +224,10 @@ def create_checkout_session(request):
         if clock_id:
             resp['test_clock_id'] = clock_id
 
-        return Response(resp, status=200)
+        return finalize(ok(resp, http_status=200))
 
     except Plan.DoesNotExist:
-        return Response({'error': 'Plan not found'}, status=404)
+        return finalize(error(code='PLAN_NOT_FOUND', message='Plan not found', http_status=404))
     except Exception as e:
         print("❌ Error creating checkout session:", str(e))
-        return Response({'error': str(e)}, status=500)
+        return finalize(error(code='CHECKOUT_SESSION_ERROR', message=str(e), http_status=500))

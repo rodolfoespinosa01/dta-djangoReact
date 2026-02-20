@@ -1,0 +1,31 @@
+from rest_framework import serializers
+
+
+class AdminDashboardPayloadSerializer(serializers.Serializer):
+    subscription_status = serializers.CharField()
+    subscription_active = serializers.BooleanField()
+    is_active = serializers.BooleanField()
+    is_canceled = serializers.BooleanField()
+    cancel_at_period_end = serializers.BooleanField()
+    subscription_end = serializers.DateTimeField(allow_null=True, required=False)
+    next_billing = serializers.DateTimeField(allow_null=True, required=False)
+    is_trial = serializers.BooleanField()
+    days_remaining = serializers.IntegerField(allow_null=True, required=False)
+    trial_start = serializers.DateTimeField(allow_null=True, required=False)
+    trial_ends_on = serializers.DateTimeField(allow_null=True, required=False)
+    trial_converts_to = serializers.CharField(allow_null=True, required=False)
+    monthly_start = serializers.DateTimeField(allow_null=True, required=False)
+    quarterly_start = serializers.DateTimeField(allow_null=True, required=False)
+    annual_start = serializers.DateTimeField(allow_null=True, required=False)
+    auto_renew = serializers.BooleanField()
+    current_cycle_ends_on = serializers.DateTimeField(allow_null=True, required=False)
+    days_left_in_cycle = serializers.IntegerField(allow_null=True, required=False)
+    next_plan_status = serializers.CharField(allow_null=True, required=False)
+    next_plan_price_cents = serializers.IntegerField(allow_null=True, required=False)
+    next_plan_effective_on = serializers.DateTimeField(allow_null=True, required=False)
+
+    # debug fields (optional)
+    debug_data_source = serializers.CharField(required=False)
+    debug_stripe_status = serializers.CharField(allow_null=True, required=False)
+    debug_stripe_plan = serializers.CharField(allow_null=True, required=False)
+    debug_profile_id = serializers.CharField(allow_null=True, required=False)

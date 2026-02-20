@@ -2,11 +2,12 @@ import stripe
 from django.conf import settings
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 from rest_framework import status
 
 from users.admin_area.models import Profile, AdminIdentity, Plan  # Plan optional if you want to validate price -> plan
 from users.admin_area.utils.log_EventTracker import log_EventTracker
+from users.admin_area.views.api_contract import error, ok, require_admin
+from users.admin_area.views.idempotency import begin_idempotent_request
 
 stripe.api_key = getattr(settings, "STRIPE_SECRET_KEY", None)
 
@@ -67,14 +68,24 @@ def start(request):
        -> { "action": "checkout", "url": "https://checkout.stripe.com/..." }
     """
     user = request.user
-    if getattr(user, "role", None) != "admin":
-        return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+    auth_error = require_admin(request)
+    if auth_error:
+        return auth_error
+    replay_response, finalize = begin_idempotent_request(
+        request,
+        namespace="reactivate_start",
+        actor=getattr(user, "email", "") or f"user-{getattr(user, 'id', 'unknown')}",
+    )
+    if replay_response:
+        return replay_response
 
     # Your invariant expects exactly one active Profile; if none, bail (UI should guide)
     try:
         profile = user.profiles.get(is_active=True)
     except Profile.DoesNotExist:
-        return Response({"error": "Admin profile not found."}, status=status.HTTP_404_NOT_FOUND)
+        return finalize(
+            error(code="PROFILE_NOT_FOUND", message="Admin profile not found.", http_status=status.HTTP_404_NOT_FOUND)
+        )
 
     payload = request.data or {}
     target_price_id = payload.get("target_price_id")
@@ -91,9 +102,12 @@ def start(request):
             event_type="trial_blocked_existing_admin",
             details="source=reactivation_start"
         )
-        return Response(
-            {"error": "Free trial is only available one time for first-time signups."},
-            status=status.HTTP_403_FORBIDDEN,
+        return finalize(
+            error(
+                code="TRIAL_NOT_ALLOWED",
+                message="Free trial is only available one time for first-time signups.",
+                http_status=status.HTTP_403_FORBIDDEN,
+            )
         )
 
     frontend_url = getattr(settings, "FRONTEND_URL", None) or "http://localhost:3000"
@@ -105,12 +119,23 @@ def start(request):
         # Find the current Stripe subscription (by admin_id) and flip cancel_at_period_end off
         current_sub_id = _active_subscription_id_for_admin_id(admin_id)
         if not current_sub_id:
-            return Response({"error": "No active Stripe subscription found to uncancel."},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return finalize(
+                error(
+                    code="NO_ACTIVE_SUBSCRIPTION",
+                    message="No active Stripe subscription found to uncancel.",
+                    http_status=status.HTTP_400_BAD_REQUEST,
+                )
+            )
         try:
             stripe.Subscription.modify(current_sub_id, cancel_at_period_end=False)
         except Exception:
-            return Response({"error": "Could not uncancel on Stripe."}, status=status.HTTP_400_BAD_REQUEST)
+            return finalize(
+                error(
+                    code="STRIPE_UNCANCEL_FAILED",
+                    message="Could not uncancel on Stripe.",
+                    http_status=status.HTTP_400_BAD_REQUEST,
+                )
+            )
 
         # Mirror locally
         profile.is_canceled = False
@@ -120,13 +145,19 @@ def start(request):
             event_type="subscription_uncancelled",
             details=f"admin_id={admin_id}"
         )
-        return Response({"action": "uncancelled"})
+        return finalize(ok({"action": "uncancelled"}))
 
     # ---------------- CHECKOUT (reactivate/upgrade) ----------------
     # Validate the price belongs to a known Plan so we can persist target plan metadata.
     target_plan_obj = Plan.objects.filter(stripe_price_id=target_price_id).first()
     if not target_plan_obj:
-        return Response({"error": "Target plan is not configured."}, status=status.HTTP_400_BAD_REQUEST)
+        return finalize(
+            error(
+                code="TARGET_PLAN_NOT_CONFIGURED",
+                message="Target plan is not configured.",
+                http_status=status.HTTP_400_BAD_REQUEST,
+            )
+        )
 
     # Reuse existing Customer if possible; otherwise let Checkout create (via email)
     customer_id = _find_existing_customer_id(admin_id, email)
@@ -170,11 +201,17 @@ def start(request):
     try:
         session = stripe.checkout.Session.create(**session_kwargs)
     except Exception:
-        return Response({"error": "Could not create checkout session."}, status=status.HTTP_400_BAD_REQUEST)
+        return finalize(
+            error(
+                code="CHECKOUT_SESSION_FAILED",
+                message="Could not create checkout session.",
+                http_status=status.HTTP_400_BAD_REQUEST,
+            )
+        )
 
     log_EventTracker(
         admin_email=email,
         event_type="plan_change_checkout_started",
         details=f"target_price_id={target_price_id}"
     )
-    return Response({"action": "checkout", "url": session.url})
+    return finalize(ok({"action": "checkout", "url": session.url}))

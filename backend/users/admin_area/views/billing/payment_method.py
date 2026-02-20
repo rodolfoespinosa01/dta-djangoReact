@@ -2,11 +2,11 @@ import stripe
 from django.conf import settings
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework import status
 
 from users.admin_area.models import AdminIdentity
 from users.admin_area.utils.log_EventTracker import log_EventTracker
+from users.admin_area.views.api_contract import error, ok, require_admin
+from users.admin_area.views.idempotency import begin_idempotent_request
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -57,25 +57,26 @@ def _card_payload_from_source(source_obj, customer_id):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def get_payment_method(request):
+    auth_error = require_admin(request)
+    if auth_error:
+        return auth_error
     user = request.user
-    if getattr(user, "role", None) != "admin":
-        return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
 
     customer = _customer_for_user_email(user.email)
     if not customer:
-        return Response({"has_payment_method": False}, status=200)
+        return ok({"has_payment_method": False}, http_status=200)
 
     customer_id = customer.get("id")
     try:
         customer_obj = stripe.Customer.retrieve(customer_id, expand=["invoice_settings.default_payment_method"])
     except Exception:
-        return Response({"has_payment_method": False}, status=200)
+        return ok({"has_payment_method": False}, http_status=200)
 
     # 1) Preferred: customer invoice default payment method
     pm = (customer_obj.get("invoice_settings") or {}).get("default_payment_method")
     payload = _card_payload_from_payment_method(pm, customer_id)
     if payload:
-        return Response(payload, status=200)
+        return ok(payload, http_status=200)
 
     # 2) Legacy sources: customer default_source
     default_source = customer_obj.get("default_source")
@@ -84,7 +85,7 @@ def get_payment_method(request):
             source_obj = stripe.Customer.retrieve_source(customer_id, default_source)
             payload = _card_payload_from_source(source_obj, customer_id)
             if payload:
-                return Response(payload, status=200)
+                return ok(payload, http_status=200)
         except Exception:
             pass
 
@@ -101,7 +102,7 @@ def get_payment_method(request):
                     pm_obj = stripe.PaymentMethod.retrieve(sub_default_pm)
                     payload = _card_payload_from_payment_method(pm_obj, customer_id)
                     if payload:
-                        return Response(payload, status=200)
+                        return ok(payload, http_status=200)
                 except Exception:
                     pass
 
@@ -111,7 +112,7 @@ def get_payment_method(request):
                     source_obj = stripe.Customer.retrieve_source(customer_id, sub_default_source)
                     payload = _card_payload_from_source(source_obj, customer_id)
                     if payload:
-                        return Response(payload, status=200)
+                        return ok(payload, http_status=200)
                 except Exception:
                     pass
     except Exception:
@@ -123,23 +124,37 @@ def get_payment_method(request):
         if pms and pms.data:
             payload = _card_payload_from_payment_method(pms.data[0], customer_id)
             if payload:
-                return Response(payload, status=200)
+                return ok(payload, http_status=200)
     except Exception:
         pass
 
-    return Response({"has_payment_method": False, "customer_id": customer_id}, status=200)
+    return ok({"has_payment_method": False, "customer_id": customer_id}, http_status=200)
 
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def create_payment_method_update_session(request):
+    auth_error = require_admin(request)
+    if auth_error:
+        return auth_error
     user = request.user
-    if getattr(user, "role", None) != "admin":
-        return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
+    replay_response, finalize = begin_idempotent_request(
+        request,
+        namespace="payment_method_update_session",
+        actor=getattr(user, "email", "") or f"user-{getattr(user, 'id', 'unknown')}",
+    )
+    if replay_response:
+        return replay_response
 
     customer = _customer_for_user_email(user.email)
     if not customer:
-        return Response({"error": "No Stripe customer found."}, status=status.HTTP_400_BAD_REQUEST)
+        return finalize(
+            error(
+                code="CUSTOMER_NOT_FOUND",
+                message="No Stripe customer found.",
+                http_status=400,
+            )
+        )
 
     frontend_url = getattr(settings, "FRONTEND_URL", None) or "http://localhost:3000"
     try:
@@ -148,11 +163,17 @@ def create_payment_method_update_session(request):
             return_url=f"{frontend_url}/admin_settings",
         )
     except Exception:
-        return Response({"error": "Could not open billing portal."}, status=status.HTTP_400_BAD_REQUEST)
+        return finalize(
+            error(
+                code="BILLING_PORTAL_UNAVAILABLE",
+                message="Could not open billing portal.",
+                http_status=400,
+            )
+        )
 
     log_EventTracker(
         admin_email=user.email,
         event_type="payment_method_update_started",
         details=f"customer_id={customer.get('id')}",
     )
-    return Response({"url": session.url}, status=200)
+    return finalize(ok({"url": session.url}, http_status=200))

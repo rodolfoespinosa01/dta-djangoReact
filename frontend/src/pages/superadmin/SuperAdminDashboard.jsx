@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { apiRequest } from '../../api/client';
 import './SuperAdminDashboard.css';
 
 function SuperAdminDashboard() {
@@ -9,6 +10,8 @@ function SuperAdminDashboard() {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const [stats, setStats] = useState(null);
+  const [page, setPage] = useState(1);
+  const pageSize = 25;
 
   useEffect(() => {
     if (loading) return;
@@ -18,24 +21,19 @@ function SuperAdminDashboard() {
       return;
     }
 
-    const token = localStorage.getItem('access_token');
-    if (!token) {
-      navigate('/superadmin_login');
-      return;
-    }
-
-    fetch('http://localhost:8000/api/users/superadmin/dashboard/', {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-      .then(res => res.json())
+    apiRequest(`/api/v1/users/superadmin/dashboard/?page=${page}&page_size=${pageSize}`, { auth: true })
+      .then(({ ok, data }) => {
+        if (!ok || data?.ok === false) {
+          throw new Error(data?.error?.message || 'Failed to fetch dashboard data');
+        }
+        return data;
+      })
       .then(data => setStats(data))
       .catch(err => {
         console.error('Failed to fetch dashboard data:', err);
         navigate('/superadmin_login');
       });
-  }, [loading, isAuthenticated, user, navigate]);
+  }, [loading, isAuthenticated, user, navigate, page]);
 
   if (loading || !stats) {
     return <p className="superadmin-loading">{t('superadmin_dashboard.loading')}</p>;
@@ -93,6 +91,27 @@ function SuperAdminDashboard() {
         </tbody>
 
       </table>
+      <div className="superadmin-pagination">
+        <button
+          type="button"
+          className="superadmin-page-button"
+          disabled={!stats?.pagination?.has_previous}
+          onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+        >
+          Previous
+        </button>
+        <span className="superadmin-page-meta">
+          Page {stats?.pagination?.page || 1} of {stats?.pagination?.total_pages || 1}
+        </span>
+        <button
+          type="button"
+          className="superadmin-page-button"
+          disabled={!stats?.pagination?.has_next}
+          onClick={() => setPage((prev) => prev + 1)}
+        >
+          Next
+        </button>
+      </div>
 
       <button
         onClick={() => {

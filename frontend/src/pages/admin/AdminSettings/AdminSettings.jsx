@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { useLanguage } from '../../../context/LanguageContext';
+import { apiRequest } from '../../../api/client';
 import './AdminSettings.css';
 
 function AdminSettings() {
-  const { user, isAuthenticated, accessToken } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
 
@@ -24,23 +25,13 @@ function AdminSettings() {
   const [acknowledgePlanChange, setAcknowledgePlanChange] = useState(false);
 
   // ---------- helpers ----------
-  const authHeaders = () => ({
-    Authorization: `Bearer ${accessToken}`,
-    'Content-Type': 'application/json',
-  });
-
-  const extractError = async (res) => {
-    try {
-      const data = await res.json();
-      const payload = data?.detail && typeof data.detail === 'object' ? data.detail : data;
-      return payload?.error || payload?.message || t('admin_settings.request_failed');
-    } catch {
-      return t('admin_settings.request_failed');
-    }
+  const extractError = (data) => {
+    const payload = data?.detail && typeof data.detail === 'object' ? data.detail : data;
+    return payload?.error?.message || payload?.error || payload?.message || t('admin_settings.request_failed');
   };
 
   const isAuthedGuard = (res) => {
-    if (res.status === 401 || res.status === 403) {
+    if (res.status === 401) {
       navigate('/admin_login');
       return false;
     }
@@ -91,12 +82,9 @@ function AdminSettings() {
 
     const fetchDashboard = async () => {
       try {
-        const res = await fetch('http://localhost:8000/api/users/admin/dashboard/', {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
-        if (!isAuthedGuard(res)) return;
-        const data = await res.json();
-        if (!ignore && res.ok) setDashboardData(data);
+        const { ok, status, data } = await apiRequest('/api/v1/users/admin/dashboard/', { auth: true });
+        if (!isAuthedGuard({ status })) return;
+        if (!ignore && ok) setDashboardData(data);
       } catch (err) {
         console.error('error fetching dashboard:', err);
       }
@@ -104,12 +92,9 @@ function AdminSettings() {
 
     const fetchPlanMap = async () => {
       try {
-        const res = await fetch('http://localhost:8000/api/users/admin/reactivation/preview/', {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
-        if (!isAuthedGuard(res)) return;
-        const data = await res.json();
-        if (!ignore && res.ok && Array.isArray(data.plans)) {
+        const { ok, status, data } = await apiRequest('/api/v1/users/admin/reactivation/preview/', { auth: true });
+        if (!isAuthedGuard({ status })) return;
+        if (!ignore && ok && Array.isArray(data.plans)) {
           const map = {};
           data.plans.forEach((p) => {
             const key = toPlanKeyFromDisplay(p.display_name);
@@ -124,12 +109,9 @@ function AdminSettings() {
 
     const fetchPaymentMethod = async () => {
       try {
-        const res = await fetch('http://localhost:8000/api/users/admin/payment_method/', {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
-        if (!isAuthedGuard(res)) return;
-        const data = await res.json();
-        if (!ignore && res.ok) setPaymentMethod(data);
+        const { ok, status, data } = await apiRequest('/api/v1/users/admin/payment_method/', { auth: true });
+        if (!isAuthedGuard({ status })) return;
+        if (!ignore && ok) setPaymentMethod(data);
       } catch (err) {
         console.error('error fetching payment method:', err);
       }
@@ -139,7 +121,7 @@ function AdminSettings() {
     fetchPlanMap();
     fetchPaymentMethod();
     return () => { ignore = true; };
-  }, [accessToken, isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate]);
 
   const openPlanModal = (title, options, requireAcknowledge = false) => {
     setModalTitle(title);
@@ -162,17 +144,16 @@ function AdminSettings() {
     try {
       setLoadingAction('cancel');
       setMessage('');
-      const res = await fetch('http://localhost:8000/api/users/admin/cancel_subscription/', {
+      const { ok, status, data } = await apiRequest('/api/v1/users/admin/cancel_subscription/', {
         method: 'POST',
-        headers: authHeaders(),
+        auth: true,
       });
-      if (!isAuthedGuard(res)) return;
+      if (!isAuthedGuard({ status })) return;
 
-      if (res.ok) {
-        const payload = await res.json();
-        updateFromSnapshot(payload, t('admin_settings.auto_renew_canceled'));
+      if (ok) {
+        updateFromSnapshot(data, t('admin_settings.auto_renew_canceled'));
       } else {
-        setMessage(await extractError(res));
+        setMessage(extractError(data));
       }
     } catch (err) {
       console.error('cancel error:', err);
@@ -193,15 +174,16 @@ function AdminSettings() {
         return;
       }
 
-      const res = await fetch('http://localhost:8000/api/users/admin/reactivation/start/', {
+      const { ok, status, data } = await apiRequest('/api/v1/users/admin/reactivation/start/', {
         method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify({ target_price_id: targetPriceId, with_trial: false }),
+        auth: true,
+        body: { target_price_id: targetPriceId, with_trial: false },
       });
-      if (!isAuthedGuard(res)) return;
+      if (!isAuthedGuard({ status })) return;
 
-      if (res.ok) {
-        const { action, url, error: errMsg } = await res.json();
+      if (ok) {
+        const { action, url } = data || {};
+        const errMsg = data?.error?.message || data?.error;
         if (action === 'checkout' && url) {
           setMessage(t('admin_settings.redirect_checkout'));
           window.location.assign(url);
@@ -210,7 +192,7 @@ function AdminSettings() {
         setMessage(errMsg || t('admin_settings.could_not_checkout'));
         // Redirect to Stripe
       } else {
-        setMessage(await extractError(res));
+        setMessage(extractError(data));
       }
     } catch (err) {
       console.error('checkout error:', err);
@@ -226,25 +208,21 @@ function AdminSettings() {
     try {
       setLoadingAction('downgrade');
       setMessage('');
-      const res = await fetch('http://localhost:8000/api/users/admin/change_subscription/', {
+      const { ok, status, data } = await apiRequest('/api/v1/users/admin/change_subscription/', {
         method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify({ target_plan }),
+        auth: true,
+        body: { target_plan },
       });
-      if (!isAuthedGuard(res)) return;
+      if (!isAuthedGuard({ status })) return;
 
-      const payload = await res.json().catch(() => ({}));
-      if (res.ok) {
-        setMessage(payload.message || t('admin_settings.change_scheduled'));
-        const refreshed = await fetch('http://localhost:8000/api/users/admin/dashboard/', {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
+      if (ok) {
+        setMessage(data?.message || t('admin_settings.change_scheduled'));
+        const refreshed = await apiRequest('/api/v1/users/admin/dashboard/', { auth: true });
         if (refreshed.ok) {
-          const data = await refreshed.json();
-          setDashboardData(data);
+          setDashboardData(refreshed.data);
         }
       } else {
-        setMessage(payload.error || t('admin_settings.could_not_schedule'));
+        setMessage(data?.error?.message || data?.error || t('admin_settings.could_not_schedule'));
       }
     } catch (err) {
       console.error('change plan error:', err);
@@ -331,17 +309,16 @@ function AdminSettings() {
   const onUpdateCard = async () => {
     try {
       setMessage('');
-      const res = await fetch('http://localhost:8000/api/users/admin/payment_method/update_session/', {
+      const { ok, status, data } = await apiRequest('/api/v1/users/admin/payment_method/update_session/', {
         method: 'POST',
-        headers: authHeaders(),
+        auth: true,
       });
-      if (!isAuthedGuard(res)) return;
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.url) {
+      if (!isAuthedGuard({ status })) return;
+      if (ok && data?.url) {
         window.location.assign(data.url);
         return;
       }
-      setMessage(data.error || t('admin_settings.could_not_billing'));
+      setMessage(data?.error?.message || data?.error || t('admin_settings.could_not_billing'));
     } catch (err) {
       console.error('update card error:', err);
       setMessage(t('admin_settings.network_error'));

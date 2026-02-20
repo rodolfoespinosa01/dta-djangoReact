@@ -3,10 +3,11 @@ from datetime import datetime, timezone as dt_timezone
 from django.conf import settings
 from django.utils.timezone import now
 from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework import permissions, status
 
 from users.admin_area.models import Profile, AdminIdentity, Plan
+from users.admin_area.serializers.contracts import AdminDashboardPayloadSerializer
+from users.admin_area.views.api_contract import error, ok, require_admin
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -77,9 +78,10 @@ class DashboardView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
+        auth_error = require_admin(request)
+        if auth_error:
+            return auth_error
         user = request.user
-        if getattr(user, "role", None) != "admin":
-            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
 
         now_ts = now()
         stripe_sub = _stripe_current_subscription(user.email)
@@ -88,7 +90,11 @@ class DashboardView(APIView):
         active_profiles = user.profiles.filter(is_active=True).order_by("-created_at")
         profile = active_profiles.filter(is_trial=False).first() or active_profiles.first()
         if not profile:
-            return Response({"error": "Admin profile not found."}, status=status.HTTP_404_NOT_FOUND)
+            return error(
+                code="PROFILE_NOT_FOUND",
+                message="Admin profile not found.",
+                http_status=status.HTTP_404_NOT_FOUND,
+            )
 
         data_source = "db_fallback"
         # Source of truth: Stripe first.
@@ -188,6 +194,21 @@ class DashboardView(APIView):
             payload["debug_stripe_plan"] = getattr(stripe_sub.get("plan"), "name", None) if stripe_sub else None
             payload["debug_profile_id"] = str(profile.profile_id) if hasattr(profile, "profile_id") else None
 
+        payload_serializer = AdminDashboardPayloadSerializer(data=payload)
+        if not payload_serializer.is_valid():
+            return error(
+                code="DASHBOARD_PAYLOAD_INVALID",
+                message="Dashboard payload validation failed.",
+                http_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                details=payload_serializer.errors,
+            )
+
+        safe_payload = payload_serializer.validated_data
         if not is_active:
-            return Response(payload, status=status.HTTP_403_FORBIDDEN)
-        return Response(payload, status=status.HTTP_200_OK)
+            return error(
+                code="SUBSCRIPTION_INACTIVE",
+                message="Subscription is inactive.",
+                http_status=status.HTTP_403_FORBIDDEN,
+                extra=safe_payload,
+            )
+        return ok(safe_payload, http_status=status.HTTP_200_OK)

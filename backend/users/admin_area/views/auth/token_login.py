@@ -4,6 +4,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer as Ba
 from users.admin_area.models import Profile
 from django.contrib.auth import get_user_model
 from rest_framework.exceptions import AuthenticationFailed, NotFound
+from users.admin_area.views.api_contract import error
 
 class TokenObtainPairSerializer(BaseTokenObtainPairSerializer):
     @classmethod
@@ -29,18 +30,40 @@ class TokenObtainPairSerializer(BaseTokenObtainPairSerializer):
             user = User.objects.get(**{User.USERNAME_FIELD: username})
         except User.DoesNotExist:
             # 404 → "no account found"
-            raise NotFound(detail={"error": "No account found with that email.", "error_code": "USER_NOT_FOUND"})
+            raise NotFound(
+                detail=error(
+                    code="USER_NOT_FOUND",
+                    message="No account found with that email.",
+                    http_status=404,
+                    legacy_error_code="USER_NOT_FOUND",
+                ).data
+            )
 
         if not user.is_active:
-            raise AuthenticationFailed(detail={"error": "This account is inactive.", "error_code": "INACTIVE"})
+            raise AuthenticationFailed(
+                detail=error(
+                    code="INACTIVE",
+                    message="This account is inactive.",
+                    http_status=401,
+                    legacy_error_code="INACTIVE",
+                ).data
+            )
 
         if not user.check_password(password):
             # 401 → "wrong password"
-            raise AuthenticationFailed(detail={"error": "Account found, but the password is incorrect.", "error_code": "WRONG_PASSWORD"})
+            raise AuthenticationFailed(
+                detail=error(
+                    code="WRONG_PASSWORD",
+                    message="Account found, but the password is incorrect.",
+                    http_status=401,
+                    legacy_error_code="WRONG_PASSWORD",
+                ).data
+            )
 
         # OK → mint tokens (skip parent validate so we keep our flow)
         refresh = self.get_token(user)
         return {
+            "ok": True,
             "refresh": str(refresh),
             "access": str(refresh.access_token),
             "email": user.email,

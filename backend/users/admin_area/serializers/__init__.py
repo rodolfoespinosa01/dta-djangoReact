@@ -2,3 +2,4 @@
 from .forgot_password_serializer import ForgotPasswordSerializer
 from .reset_password_serializer import ResetPasswordSerializer
 from .pending_signup import PendingSignupSerializer
+from .contracts import AdminDashboardPayloadSerializer

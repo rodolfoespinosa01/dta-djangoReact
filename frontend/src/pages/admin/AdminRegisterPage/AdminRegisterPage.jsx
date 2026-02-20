@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { useLanguage } from '../../../context/LanguageContext';
+import { buildApiUrl } from '../../../config/api';
 import './AdminRegisterPage.css';
 
 function AdminRegisterPage() {
@@ -27,7 +28,7 @@ function AdminRegisterPage() {
 
     const fetchPendingEmail = async () => {
       try {
-        const res = await fetch(`http://localhost:8000/api/users/admin/pending_signup/${tokenFromURL}`);
+        const res = await fetch(buildApiUrl(`/api/v1/users/admin/pending_signup/${tokenFromURL}`));
 
         if (!res.ok) {
           const text = await res.text();
@@ -55,7 +56,7 @@ function AdminRegisterPage() {
     e.preventDefault();
 
     try {
-      const res = await fetch('http://localhost:8000/api/users/admin/register/', {
+      const res = await fetch(buildApiUrl('/api/v1/users/admin/register/'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -73,13 +74,13 @@ function AdminRegisterPage() {
       }
 
       if (!res.ok) {
-        alert(data.error || t('admin_register.registration_failed'));
+        alert(data?.error?.message || data?.error || t('admin_register.registration_failed'));
         return;
       }
 
       alert(`✅ ${t('admin_register.created')}`);
 
-      const loginRes = await fetch('http://localhost:8000/api/users/admin/login/', {
+      const loginRes = await fetch(buildApiUrl('/api/v1/users/admin/login/'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -89,7 +90,7 @@ function AdminRegisterPage() {
       const loginData = await loginRes.json();
 
       if (!loginRes.ok) {
-        alert(loginData.error || t('admin_register.auto_login_failed'));
+        alert(loginData?.error?.message || loginData?.error || t('admin_register.auto_login_failed'));
         navigate('/admin_login');
         return;
       }

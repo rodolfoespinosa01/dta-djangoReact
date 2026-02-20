@@ -13,6 +13,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from users.admin_area.models import Plan, PendingSignup, AdminIdentity, EventTracker
 from users.admin_area.utils.log_Profile import log_Profile
+from users.admin_area.views.api_contract import ok, error
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 User = get_user_model()
@@ -37,12 +38,12 @@ def register(request):
     token = data.get('token')
 
     if not all([email, password, token]):
-        return Response({'error': 'Missing fields'}, status=status.HTTP_400_BAD_REQUEST)
+        return error(code='MISSING_FIELDS', message='Missing fields', http_status=status.HTTP_400_BAD_REQUEST)
 
     try:
         pending = PendingSignup.objects.get(token=token)
     except PendingSignup.DoesNotExist:
-        return Response({'error': 'Invalid or expired token'}, status=status.HTTP_404_NOT_FOUND)
+        return error(code='INVALID_TOKEN', message='Invalid or expired token', http_status=status.HTTP_404_NOT_FOUND)
 
     session_id = pending.session_id
 
@@ -52,7 +53,7 @@ def register(request):
             expand=['customer']  # session has a 'subscription' id we can fetch next
         )
     except stripe.error.StripeError as e:
-        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return error(code='STRIPE_ERROR', message=str(e), http_status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     # Stripe / metadata
     metadata = checkout_session.get('metadata', {}) or {}
@@ -70,12 +71,12 @@ def register(request):
     # Normalize plan
     actual_plan_name = 'adminMonthly' if raw_plan_name == 'adminTrial' else raw_plan_name
     if not actual_plan_name:
-        return Response({'error': 'Plan not found in session metadata'}, status=status.HTTP_400_BAD_REQUEST)
+        return error(code='PLAN_NOT_FOUND', message='Plan not found in session metadata', http_status=status.HTTP_400_BAD_REQUEST)
 
     try:
         plan = Plan.objects.get(name=actual_plan_name)
     except Plan.DoesNotExist:
-        return Response({'error': 'Plan not found'}, status=status.HTTP_404_NOT_FOUND)
+        return error(code='PLAN_NOT_FOUND', message='Plan not found', http_status=status.HTTP_404_NOT_FOUND)
 
     # Map to internal label
     plan_map = {
@@ -86,7 +87,7 @@ def register(request):
     subscription_status = plan_map.get(actual_plan_name, 'admin_monthly')
 
     if User.objects.filter(username=email).exists():
-        return Response({'error': 'User already exists'}, status=status.HTTP_400_BAD_REQUEST)
+        return error(code='USER_EXISTS', message='User already exists', http_status=status.HTTP_400_BAD_REQUEST)
 
     # Create user
     user = User.objects.create_user(username=email, email=email, password=password)
@@ -191,7 +192,7 @@ def register(request):
     refresh['role'] = user.role
     refresh['subscription_status'] = user.subscription_status
 
-    return Response({
+    return ok({
         'success': True,
         'message': f'Admin account created with {subscription_status} plan',
         'refresh': str(refresh),
@@ -207,4 +208,4 @@ def register(request):
             'subscription_end': subscription_end,
             'next_billing': next_billing,
         }
-    }, status=status.HTTP_201_CREATED)
+    }, http_status=status.HTTP_201_CREATED)
