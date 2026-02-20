@@ -1,54 +1,82 @@
 .superadmin-loading {
   padding: 2rem;
+  color: #374151;
 }
 
 .superadmin-dashboard-page {
   padding: 2rem 1rem;
   max-width: 980px;
   margin: 0 auto;
+  color: #111827;
+}
+
+.superadmin-dashboard-page h2 {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 600;
 }
 
 .superadmin-section-title {
   margin-top: 2rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.superadmin-toolbar {
+  margin-top: 0.8rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.superadmin-analytics-button {
+  padding: 0.6rem 1rem;
+  border: 1px solid #9ca3af;
+  border-radius: 6px;
+  background: #f3f4f6;
+  color: #111827;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .superadmin-admins-table {
   width: 100%;
   margin-top: 1rem;
   border-collapse: collapse;
-  border: 1px solid rgba(236, 106, 255, 0.2);
-  background: rgba(6, 8, 16, 0.45);
+  border: 1px solid #d1d5db;
+  background: #ffffff;
 }
 
 .superadmin-admins-table th,
 .superadmin-admins-table td {
-  padding: 0.55rem;
-  border-bottom: 1px solid rgba(236, 106, 255, 0.18);
+  padding: 0.6rem;
+  border-bottom: 1px solid #e5e7eb;
+  color: #1f2937;
 }
 
 .superadmin-admins-table th {
   text-align: left;
-  color: #f7c5ff;
+  color: #111827;
+  background: #f9fafb;
 }
 
 .superadmin-admins-table .row-inactive {
-  color: #ff8d96;
+  color: #6b7280;
 }
 
 .superadmin-cancelled-tag {
-  color: #ff8d96;
+  color: #6b7280;
   margin-left: 0.5rem;
 }
 
 .superadmin-logout-button {
   margin-top: 2rem;
   padding: 0.75rem 1.5rem;
-  background: linear-gradient(145deg, #ff5f7f, #be3148);
-  color: white;
-  border: none;
-  border-radius: 10px;
+  background: #f3f4f6;
+  color: #111827;
+  border: 1px solid #9ca3af;
+  border-radius: 6px;
   cursor: pointer;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 @media (max-width: 720px) {

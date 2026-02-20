@@ -23,6 +23,32 @@
   background: rgba(247, 249, 255, 0.92);
 }
 
+.main-welcome-lang-switch {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  display: inline-flex;
+  gap: 0.45rem;
+  z-index: 2;
+}
+
+.main-welcome-lang-btn {
+  border: 1px solid rgba(18, 26, 44, 0.22);
+  border-radius: 999px;
+  padding: 0.35rem 0.72rem;
+  background: rgba(255, 255, 255, 0.92);
+  color: #172949;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.main-welcome-lang-btn.active {
+  background: #172949;
+  color: #ffffff;
+  border-color: #172949;
+}
+
 .main-welcome-image-wrap {
   max-height: 70vh;
   overflow: hidden;
@@ -110,6 +136,11 @@
 
   .main-welcome-hero {
     border-radius: 16px;
+  }
+
+  .main-welcome-lang-switch {
+    top: 0.55rem;
+    right: 0.55rem;
   }
 
   .main-welcome-image-wrap {
