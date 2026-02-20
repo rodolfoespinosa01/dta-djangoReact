@@ -1,11 +1,13 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { LanguageProvider } from './context/LanguageContext';
 import './App.css';
 
 // component
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import LanguageToggle from './components/language/LanguageToggle';
 
 // public pages
 import MainWelcomeScreen from './pages/MainWelcomeScreen/MainWelcomeScreen';
@@ -41,6 +43,7 @@ function AppLayout() {
 
   return (
     <div className="app-shell">
+      <LanguageToggle />
       {showNavbar && <Navbar />}
       <main className="app-content">
         <Routes>
@@ -112,9 +115,11 @@ function AppLayout() {
 function App() {
   return (
     <Router>
-      <AuthProvider>
-        <AppLayout />
-      </AuthProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <AppLayout />
+        </AuthProvider>
+      </LanguageProvider>
     </Router>
   );
 }

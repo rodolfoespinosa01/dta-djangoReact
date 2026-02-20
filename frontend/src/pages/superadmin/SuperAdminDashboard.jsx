@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import './SuperAdminDashboard.css';
 
 function SuperAdminDashboard() {
   const { user, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [stats, setStats] = useState(null);
 
   useEffect(() => {
@@ -36,21 +38,21 @@ function SuperAdminDashboard() {
   }, [loading, isAuthenticated, user, navigate]);
 
   if (loading || !stats) {
-    return <p className="superadmin-loading">Loading SuperAdmin dashboard...</p>;
+    return <p className="superadmin-loading">{t('superadmin_dashboard.loading')}</p>;
   }
 
   return (
     <div className="superadmin-dashboard-page">
-      <h2>SuperAdmin Dashboard</h2>
+      <h2>{t('superadmin_dashboard.title')}</h2>
 
-      <h3 className="superadmin-section-title">All Admins</h3>
+      <h3 className="superadmin-section-title">{t('superadmin_dashboard.all_admins')}</h3>
       <table className="superadmin-admins-table">
         <thead>
           <tr>
-            <th>Email</th>
-            <th>Plan</th>
-            <th>Price</th>
-            <th>Next Billing Date</th>
+            <th>{t('superadmin_dashboard.email')}</th>
+            <th>{t('superadmin_dashboard.plan')}</th>
+            <th>{t('superadmin_dashboard.price')}</th>
+            <th>{t('superadmin_dashboard.next_billing')}</th>
           </tr>
         </thead>
         <tbody>
@@ -64,7 +66,7 @@ function SuperAdminDashboard() {
                   {admin.plan}
                   {admin.plan === 'admin_trial' && admin.cancelled && (
                     <span className="superadmin-cancelled-tag">
-                      (Cancelled)
+                      {t('superadmin_dashboard.cancelled')}
                     </span>
                   )}
                 </td>
@@ -85,7 +87,7 @@ function SuperAdminDashboard() {
         }}
         className="superadmin-logout-button"
       >
-        Logout
+        {t('superadmin_dashboard.logout')}
       </button>
     </div>
   );

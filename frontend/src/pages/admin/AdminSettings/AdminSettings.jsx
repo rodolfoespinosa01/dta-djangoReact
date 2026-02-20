@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
+import { useLanguage } from '../../../context/LanguageContext';
 import './AdminSettings.css';
 
 function AdminSettings() {
   const { user, isAuthenticated, accessToken } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   const [dashboardData, setDashboardData] = useState(null);
@@ -31,9 +33,9 @@ function AdminSettings() {
     try {
       const data = await res.json();
       const payload = data?.detail && typeof data.detail === 'object' ? data.detail : data;
-      return payload?.error || payload?.message || 'request failed.';
+      return payload?.error || payload?.message || t('admin_settings.request_failed');
     } catch {
-      return 'request failed.';
+      return t('admin_settings.request_failed');
     }
   };
 
@@ -45,7 +47,7 @@ function AdminSettings() {
     return true;
   };
 
-  const updateFromSnapshot = (payload, fallbackMsg = 'ok') => {
+  const updateFromSnapshot = (payload, fallbackMsg = t('admin_settings.ok')) => {
     if (!payload) return;
     const { snapshot, message } = payload;
     if (snapshot) setDashboardData(snapshot);
@@ -64,10 +66,10 @@ function AdminSettings() {
   };
 
   const subscriptionLabels = {
-    admin_trial: 'Free Trial',
-    admin_monthly: 'Monthly Plan',
-    admin_quarterly: 'Quarterly Plan',
-    admin_annual: 'Annual Plan',
+    admin_trial: t('admin_settings.plan_free_trial'),
+    admin_monthly: t('admin_settings.plan_monthly'),
+    admin_quarterly: t('admin_settings.plan_quarterly'),
+    admin_annual: t('admin_settings.plan_annual'),
   };
 
   const toPlanKeyFromDisplay = (displayName = '') => {
@@ -153,7 +155,7 @@ function AdminSettings() {
     if (!dashboardData) return;
     const canCancel = dashboardData.subscription_active && !dashboardData.is_canceled;
     if (!canCancel) {
-      setMessage('Nothing to cancel.');
+      setMessage(t('admin_settings.nothing_cancel'));
       return;
     }
 
@@ -168,13 +170,13 @@ function AdminSettings() {
 
       if (res.ok) {
         const payload = await res.json();
-        updateFromSnapshot(payload, 'auto-renew canceled');
+        updateFromSnapshot(payload, t('admin_settings.auto_renew_canceled'));
       } else {
         setMessage(await extractError(res));
       }
     } catch (err) {
       console.error('cancel error:', err);
-      setMessage('network error.');
+      setMessage(t('admin_settings.network_error'));
     } finally {
       setLoadingAction(null);
     }
@@ -187,7 +189,7 @@ function AdminSettings() {
       setMessage('');
       const targetPriceId = planPriceMap[target_plan];
       if (!targetPriceId) {
-        setMessage('Could not resolve plan pricing. Refresh and try again.');
+        setMessage(t('admin_settings.cannot_resolve_plan'));
         return;
       }
 
@@ -201,18 +203,18 @@ function AdminSettings() {
       if (res.ok) {
         const { action, url, error: errMsg } = await res.json();
         if (action === 'checkout' && url) {
-          setMessage('redirecting to checkout…');
+          setMessage(t('admin_settings.redirect_checkout'));
           window.location.assign(url);
           return;
         }
-        setMessage(errMsg || 'Could not start checkout.');
+        setMessage(errMsg || t('admin_settings.could_not_checkout'));
         // Redirect to Stripe
       } else {
         setMessage(await extractError(res));
       }
     } catch (err) {
       console.error('checkout error:', err);
-      setMessage('network error.');
+      setMessage(t('admin_settings.network_error'));
     } finally {
       setLoadingAction(null);
       setModalOpen(false);
@@ -233,7 +235,7 @@ function AdminSettings() {
 
       const payload = await res.json().catch(() => ({}));
       if (res.ok) {
-        setMessage(payload.message || 'Plan change scheduled for next billing cycle.');
+        setMessage(payload.message || t('admin_settings.change_scheduled'));
         const refreshed = await fetch('http://localhost:8000/api/users/admin/dashboard/', {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
@@ -242,11 +244,11 @@ function AdminSettings() {
           setDashboardData(data);
         }
       } else {
-        setMessage(payload.error || 'Could not schedule plan change.');
+        setMessage(payload.error || t('admin_settings.could_not_schedule'));
       }
     } catch (err) {
       console.error('change plan error:', err);
-      setMessage('network error.');
+      setMessage(t('admin_settings.network_error'));
     } finally {
       setLoadingAction(null);
       setModalOpen(false);
@@ -261,25 +263,25 @@ function AdminSettings() {
     const { subscription_status } = dashboardData;
 
     if (subscription_status === 'admin_trial') {
-      openPlanModal('Choose your upgrade plan', [
-        { label: 'Monthly', value: 'admin_monthly', action: 'upgrade' },
-        { label: 'Quarterly', value: 'admin_quarterly', action: 'upgrade' },
-        { label: 'Annual', value: 'admin_annual', action: 'upgrade' },
+      openPlanModal(t('admin_settings.modal_upgrade_choose'), [
+        { label: t('admin_settings.monthly'), value: 'admin_monthly', action: 'upgrade' },
+        { label: t('admin_settings.quarterly'), value: 'admin_quarterly', action: 'upgrade' },
+        { label: t('admin_settings.annual'), value: 'admin_annual', action: 'upgrade' },
       ], false);
       return;
     }
 
     if (subscription_status === 'admin_monthly') {
-      openPlanModal('Schedule your upgrade', [
-        { label: 'Quarterly', value: 'admin_quarterly', action: 'schedule' },
-        { label: 'Annual', value: 'admin_annual', action: 'schedule' },
+      openPlanModal(t('admin_settings.modal_upgrade_schedule'), [
+        { label: t('admin_settings.quarterly'), value: 'admin_quarterly', action: 'schedule' },
+        { label: t('admin_settings.annual'), value: 'admin_annual', action: 'schedule' },
       ], true);
       return;
     }
 
     if (subscription_status === 'admin_quarterly') {
-      openPlanModal('Schedule your upgrade', [
-        { label: 'Annual', value: 'admin_annual', action: 'schedule' },
+      openPlanModal(t('admin_settings.modal_upgrade_schedule'), [
+        { label: t('admin_settings.annual'), value: 'admin_annual', action: 'schedule' },
       ], true);
       return;
     }
@@ -292,16 +294,16 @@ function AdminSettings() {
     const { subscription_status } = dashboardData;
 
     if (subscription_status === 'admin_quarterly') {
-      openPlanModal('Schedule your downgrade', [
-        { label: 'Monthly', value: 'admin_monthly', action: 'schedule' },
+      openPlanModal(t('admin_settings.modal_downgrade_schedule'), [
+        { label: t('admin_settings.monthly'), value: 'admin_monthly', action: 'schedule' },
       ], true);
       return;
     }
 
     if (subscription_status === 'admin_annual') {
-      openPlanModal('Schedule your downgrade', [
-        { label: 'Quarterly', value: 'admin_quarterly', action: 'schedule' },
-        { label: 'Monthly', value: 'admin_monthly', action: 'schedule' },
+      openPlanModal(t('admin_settings.modal_downgrade_schedule'), [
+        { label: t('admin_settings.quarterly'), value: 'admin_quarterly', action: 'schedule' },
+        { label: t('admin_settings.monthly'), value: 'admin_monthly', action: 'schedule' },
       ], true);
       return;
     }
@@ -339,10 +341,10 @@ function AdminSettings() {
         window.location.assign(data.url);
         return;
       }
-      setMessage(data.error || 'Could not open billing portal.');
+      setMessage(data.error || t('admin_settings.could_not_billing'));
     } catch (err) {
       console.error('update card error:', err);
-      setMessage('network error.');
+      setMessage(t('admin_settings.network_error'));
     }
   };
 
@@ -380,121 +382,121 @@ const canReactivate =
 
 return (
   <div className="admin-settings-wrapper">
-    <h2>⚙️ admin settings</h2>
+    <h2>⚙️ {t('admin_settings.title')}</h2>
 
     {user?.email && (
       <p className="admin-settings-email">
-        logged in as: <strong>{user.email}</strong>
+        {t('admin_settings.logged_in_as')} <strong>{user.email}</strong>
       </p>
     )}
 
     {dashboardData ? (
       <div className="admin-settings-card">
-        <h3>📄 subscription info</h3>
+        <h3>📄 {t('admin_settings.subscription_info')}</h3>
 
         <p>
-          <strong>plan:</strong>{" "}
+          <strong>{t('admin_settings.plan')}</strong>{" "}
           {subscriptionLabels[dashboardData.subscription_status] || "—"}
         </p>
 
         {dashboardData.trial_start && (
           <p>
-            <strong>trial start date:</strong> {formatDate(dashboardData.trial_start)}
+            <strong>{t('admin_settings.trial_start')}</strong> {formatDate(dashboardData.trial_start)}
           </p>
         )}
         {dashboardData.trial_ends_on && (
           <p>
-            <strong>trial end date:</strong> {formatDate(dashboardData.trial_ends_on)}
+            <strong>{t('admin_settings.trial_end')}</strong> {formatDate(dashboardData.trial_ends_on)}
           </p>
         )}
         {dashboardData.trial_converts_to && (
           <p>
-            <strong>after trial:</strong> {subscriptionLabels[dashboardData.trial_converts_to] || "—"}
+            <strong>{t('admin_settings.after_trial')}</strong> {subscriptionLabels[dashboardData.trial_converts_to] || "—"}
           </p>
         )}
         {dashboardData.is_trial && !dashboardData.trial_converts_to && dashboardData.is_canceled && (
           <p>
-            <strong>after trial:</strong> No Plan
+            <strong>{t('admin_settings.after_trial')}</strong> {t('admin_settings.no_plan')}
           </p>
         )}
         {dashboardData.current_cycle_ends_on && (
           <p>
-            <strong>current cycle ends:</strong> {formatDate(dashboardData.current_cycle_ends_on)} ({dashboardData.days_left_in_cycle ?? 0} day(s) left)
+            <strong>{t('admin_settings.current_cycle_ends')}</strong> {formatDate(dashboardData.current_cycle_ends_on)} ({dashboardData.days_left_in_cycle ?? 0} {t('admin_settings.days_left')})
           </p>
         )}
         {typeof dashboardData.days_left_in_cycle === "number" && (
           <p>
-            <strong>days left on current plan:</strong> {dashboardData.days_left_in_cycle}
+            <strong>{t('admin_settings.days_left_current')}</strong> {dashboardData.days_left_in_cycle}
           </p>
         )}
         <p>
-          <strong>next plan:</strong>{" "}
+          <strong>{t('admin_settings.next_plan')}</strong>{" "}
           {dashboardData.next_plan_status
             ? (subscriptionLabels[dashboardData.next_plan_status] || "—")
-            : "No Plan"}
+            : t('admin_settings.no_plan')}
         </p>
         <p>
-          <strong>next charge:</strong>{" "}
-          {dashboardData.next_plan_status ? formatAmount(dashboardData.next_plan_price_cents) : "No Charge"}
+          <strong>{t('admin_settings.next_charge')}</strong>{" "}
+          {dashboardData.next_plan_status ? formatAmount(dashboardData.next_plan_price_cents) : t('admin_settings.no_charge')}
         </p>
         {dashboardData.next_plan_effective_on && (
           <p>
-            <strong>next plan starts:</strong> {formatDate(dashboardData.next_plan_effective_on)}
+            <strong>{t('admin_settings.next_plan_starts')}</strong> {formatDate(dashboardData.next_plan_effective_on)}
           </p>
         )}
         {dashboardData.monthly_start && (
           <p>
-            <strong>monthly start date:</strong> {formatDate(dashboardData.monthly_start)}
+            <strong>{t('admin_settings.monthly_start')}</strong> {formatDate(dashboardData.monthly_start)}
           </p>
         )}
         {dashboardData.quarterly_start && (
           <p>
-            <strong>quarterly start date:</strong> {formatDate(dashboardData.quarterly_start)}
+            <strong>{t('admin_settings.quarterly_start')}</strong> {formatDate(dashboardData.quarterly_start)}
           </p>
         )}
         {dashboardData.annual_start && (
           <p>
-            <strong>annual start date:</strong> {formatDate(dashboardData.annual_start)}
+            <strong>{t('admin_settings.annual_start')}</strong> {formatDate(dashboardData.annual_start)}
           </p>
         )}
 
         {dashboardData.is_trial && dashboardData.days_remaining !== null && (
           <p className="trial-days-left">
-            ⏳ trial days left: <strong>{dashboardData.days_remaining}</strong>
+            ⏳ {t('admin_settings.trial_days_left')} <strong>{dashboardData.days_remaining}</strong>
           </p>
         )}
 
         {dashboardData.next_billing && dashboardData.subscription_active && (
           <p>
-            <strong>next billing date:</strong> {formatDate(dashboardData.next_billing)}
+            <strong>{t('admin_settings.next_billing')}</strong> {formatDate(dashboardData.next_billing)}
           </p>
         )}
 
         {dashboardData.subscription_active && !dashboardData.is_canceled && (
           <p className="subscription-active">
-            ✅ your subscription is active and set to auto-renew.
+            ✅ {t('admin_settings.active_auto_renew')}
           </p>
         )}
 
         {dashboardData.is_canceled && dashboardData.subscription_end && (
           <p className="subscription-canceled">
-            🔒 your plan is canceled. access ends on{" "}
+            🔒 {t('admin_settings.canceled_ends')}{" "}
             <strong>{formatDate(dashboardData.subscription_end)}</strong>
-            {" "}({daysUntil(dashboardData.subscription_end)} day(s) left)
+            {" "}({daysUntil(dashboardData.subscription_end)} {t('admin_settings.days_left')})
           </p>
         )}
 
         <hr />
-        <h3>💳 payment method</h3>
+        <h3>💳 {t('admin_settings.payment_method')}</h3>
         {paymentMethod?.has_payment_method ? (
           <p>
-            <strong>card on file:</strong> {String(paymentMethod.brand || '').toUpperCase()} ****{paymentMethod.last4} (exp {paymentMethod.exp_month}/{paymentMethod.exp_year})
+            <strong>{t('admin_settings.card_on_file')}</strong> {String(paymentMethod.brand || '').toUpperCase()} ****{paymentMethod.last4} (exp {paymentMethod.exp_month}/{paymentMethod.exp_year})
           </p>
         ) : (
-          <p><strong>card on file:</strong> No card available</p>
+          <p><strong>{t('admin_settings.card_on_file')}</strong> {t('admin_settings.no_card')}</p>
         )}
         <button type="button" onClick={onUpdateCard} className="btn-upgrade">
-          update card
+          {t('admin_settings.update_card')}
         </button>
 
         {/* Actions */}
@@ -505,7 +507,7 @@ return (
               disabled={!!loadingAction || modalOpen}
               className="btn-upgrade"
             >
-              {loadingAction === "upgrade" ? "processing…" : "upgrade"}
+              {loadingAction === "upgrade" ? t('admin_settings.processing') : t('admin_settings.upgrade')}
             </button>
           )}
 
@@ -515,7 +517,7 @@ return (
               disabled={!!loadingAction || modalOpen}
               className="btn-downgrade"
             >
-              {loadingAction === "downgrade" ? "processing…" : "downgrade"}
+              {loadingAction === "downgrade" ? t('admin_settings.processing') : t('admin_settings.downgrade')}
             </button>
           )}
 
@@ -525,7 +527,7 @@ return (
               disabled={!!loadingAction || modalOpen}
               className="btn-cancel"
             >
-              {loadingAction === "cancel" ? "processing…" : "cancel subscription"}
+              {loadingAction === "cancel" ? t('admin_settings.processing') : t('admin_settings.cancel_subscription')}
             </button>
           )}
 
@@ -535,7 +537,7 @@ return (
               onClick={() => { console.log('[Settings] -> /admin_reactivate'); navigate('/admin_reactivate'); }}
               className="btn-reactivate"
             >
-              Reactivate plan
+              {t('admin_settings.reactivate_plan')}
             </button>
           )}
 
@@ -563,8 +565,7 @@ return (
               {modalRequireAcknowledge && (
                 <>
                   <p>
-                    Your current plan stays active until this billing cycle ends.
-                    Then your selected plan begins and is charged on the next renewal date.
+                    {t('admin_settings.modal_schedule_msg')}
                   </p>
                   <label>
                     <input
@@ -572,14 +573,14 @@ return (
                       checked={acknowledgePlanChange}
                       onChange={(e) => setAcknowledgePlanChange(e.target.checked)}
                     />
-                    {' '}I understand and confirm this scheduled plan change.
+                    {' '}{t('admin_settings.modal_ack')}
                   </label>
                   <button
                     onClick={onConfirmScheduledChange}
                     className="modal-option-btn"
                     disabled={!selectedModalOption || !acknowledgePlanChange || !!loadingAction}
                   >
-                    {loadingAction ? 'processing…' : 'confirm scheduled change'}
+                    {loadingAction ? t('admin_settings.processing') : t('admin_settings.modal_confirm_change')}
                   </button>
                 </>
               )}
@@ -592,18 +593,18 @@ return (
                 className="modal-cancel-btn"
                 disabled={!!loadingAction}
               >
-                close
+                {t('common.close')}
               </button>
             </div>
           </div>
         )}
       </div>
     ) : (
-      <p className="load-error">unable to load your subscription details.</p>
+      <p className="load-error">{t('admin_settings.load_error')}</p>
     )}
 
     <button onClick={() => navigate("/admin_dashboard")} className="btn-back">
-      ← back to dashboard
+      ← {t('admin_settings.back_dashboard')}
     </button>
     </div>
 ); // <- end of return
