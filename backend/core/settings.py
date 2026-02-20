@@ -114,7 +114,7 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1), # 👉 refresh tokens expire after 1 day (user must log in again after that)
     'AUTH_HEADER_TYPES': ('Bearer',), # 👉 expects "authorization: bearer <token>" in request headers
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',), # 👉 uses standard jwt access tokens
-    'TOKEN_OBTAIN_SERIALIZER': 'users.serializers.CustomTokenObtainPairSerializer', # 👉 custom login serializer (e.g. adds email or roles to token)
+    'TOKEN_OBTAIN_SERIALIZER': 'core.serializers.token_serializer.CustomTokenObtainPairSerializer', # 👉 custom login serializer (e.g. adds email or roles to token)
 }
 
 AUTH_PASSWORD_VALIDATORS = [

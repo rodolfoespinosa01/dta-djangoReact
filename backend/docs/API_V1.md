@@ -190,7 +190,7 @@ Base path: `/api/v1`
   - `POST /api/v1/users/admin/change_subscription/`
   - `POST /api/v1/users/admin/cancel_subscription/`
   - `POST /api/v1/users/admin/payment_method/update_session/`
-  - `POST /api/v1/users/admin/reactivate/start/`
+  - `POST /api/v1/users/admin/reactivation/start/`
 - Send `Idempotency-Key` header for client retries (especially mobile networks/timeouts).
 - Same key + same request payload returns the same cached response.
 - Same key + different payload returns:
