@@ -31,6 +31,7 @@ import UserPlanSelectionPage from './pages/user/UserPlanSelectionPage';
 import AdminDashboard from './pages/admin/AdminDashboard/AdminDashboard';
 import AdminSettings from './pages/admin/AdminSettings/AdminSettings';
 import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
+import SuperAdminAnalyticsPage from './pages/superadmin/SuperAdminAnalyticsPage';
 
 
 // Route Guards
@@ -102,6 +103,14 @@ function AppLayout() {
             element={
               <SuperAdminProtectedRoute>
                 <SuperAdminDashboard />
+              </SuperAdminProtectedRoute>
+            }
+          />
+          <Route
+            path="/superadmin_analytics"
+            element={
+              <SuperAdminProtectedRoute>
+                <SuperAdminAnalyticsPage />
               </SuperAdminProtectedRoute>
             }
           />
