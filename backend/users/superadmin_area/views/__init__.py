@@ -1,3 +1,3 @@
 from .dashboard import dashboard
-from .token_login import TokenObtainPairView
-
+from .analytics import analytics
+from .token_login import SuperAdminTokenObtainPairView

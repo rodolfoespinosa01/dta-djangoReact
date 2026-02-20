@@ -1,0 +1,12 @@
+{
+  "language": {
+    "english": "Ingles",
+    "spanish": "Espanol"
+  },
+  "welcome": {
+    "imageAlt": "Bienvenida de DTA",
+    "prompt": "Elige tu punto de entrada para continuar.",
+    "adminFlow": "Ir al flujo de administrador",
+    "endUserFlow": "Ir al flujo de usuario final"
+  }
+}

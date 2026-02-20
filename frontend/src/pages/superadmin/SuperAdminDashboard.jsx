@@ -46,12 +46,22 @@ function SuperAdminDashboard() {
       <h2>{t('superadmin_dashboard.title')}</h2>
 
       <h3 className="superadmin-section-title">{t('superadmin_dashboard.all_admins')}</h3>
+      <div className="superadmin-toolbar">
+        <button
+          type="button"
+          className="superadmin-analytics-button"
+          onClick={() => navigate('/superadmin_analytics')}
+        >
+          Analytics
+        </button>
+      </div>
       <table className="superadmin-admins-table">
         <thead>
           <tr>
             <th>{t('superadmin_dashboard.email')}</th>
             <th>{t('superadmin_dashboard.plan')}</th>
             <th>{t('superadmin_dashboard.price')}</th>
+            <th>Amount Spent</th>
             <th>{t('superadmin_dashboard.next_billing')}</th>
           </tr>
         </thead>
@@ -71,6 +81,11 @@ function SuperAdminDashboard() {
                   )}
                 </td>
                 <td>{admin.price || ''}</td>
+                <td>
+                  {typeof admin.amount_spent === 'number'
+                    ? `$${admin.amount_spent.toFixed(2)}`
+                    : '$0.00'}
+                </td>
                 <td>{admin.next_billing || ''}</td>
               </tr>
             );

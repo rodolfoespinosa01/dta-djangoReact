@@ -180,9 +180,6 @@ function UserHomePage() {
                   <span>{category.foods[categoryIndices[category.id]].title}</span>
                 </div>
               )}
-              <div className="user-macro-counter">
-                {category.foods.length > 0 ? `${categoryIndices[category.id] + 1}/${category.foods.length}` : '0/0'}
-              </div>
             </article>
           ))}
         </div>

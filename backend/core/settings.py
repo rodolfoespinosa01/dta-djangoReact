@@ -62,6 +62,7 @@ MIDDLEWARE = [
 
     'django.middleware.security.SecurityMiddleware', # 👉 adds security headers (ssl redirect, hsts, etc.)
     'django.contrib.sessions.middleware.SessionMiddleware', # 👉 manages sessions across requests using cookies
+    'django.middleware.locale.LocaleMiddleware', # 👉 activates language selection per request (accept-language/cookies/etc.)
     'django.middleware.common.CommonMiddleware', # 👉 performs basic request/response operations (e.g. url normalization)
     'django.middleware.csrf.CsrfViewMiddleware', # 👉 protects against cross-site request forgery attacks
     'django.contrib.auth.middleware.AuthenticationMiddleware', # 👉 associates users with requests using sessions
@@ -140,7 +141,16 @@ AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend', # 👉 default django backend (username + password)
 ]
 
-LANGUAGE_CODE = 'en-us' # 👉 sets the default language for the project (used in built-in text and formatting)
+LANGUAGE_CODE = 'en' # 👉 sets english as the default language for the project
+
+LANGUAGES = [
+    ('en', 'English'),
+    ('es', 'Spanish'),
+]
+
+LOCALE_PATHS = [
+    BASE_DIR / 'locale',
+]
 
 TIME_ZONE = 'America/New_York' # 👉 sets the server timezone (currently set to utc)
 
