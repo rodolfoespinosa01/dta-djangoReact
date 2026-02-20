@@ -2,10 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { useLanguage } from '../../../context/LanguageContext';
+import { apiRequest } from '../../../api/client';
 import './AdminReactivatePage.css';
 
 function AdminReactivatePage() {
-  const { accessToken, logout } = useAuth();
+  const { logout } = useAuth();
   const navigate = useNavigate();
   const { t } = useLanguage();
 
@@ -20,8 +21,6 @@ function AdminReactivatePage() {
 
   const [allowTrialForSelected, setAllowTrialForSelected] = useState(false);
   const [trialOptIn, setTrialOptIn] = useState(false);
-
-  const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:8000';
 
   const selectedPlan = useMemo(
     () => plans.find(p => p.price_id === selectedPriceId) || null,
@@ -43,21 +42,19 @@ function AdminReactivatePage() {
 
     (async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/users/admin/reactivation/preview/`, {
-          headers: { Authorization: `Bearer ${accessToken}` },
+        const { ok: resOk, status: resStatus, data } = await apiRequest('/api/v1/users/admin/reactivation/preview/', {
+          auth: true,
         });
 
-        if (res.status === 401 || res.status === 403) {
+        if (resStatus === 401 || resStatus === 403) {
           navigate('/admin_login');
           return;
         }
-
-        const data = await res.json();
         if (!alive) return;
 
-        if (!res.ok) {
+        if (!resOk) {
           setMode('error');
-          setError(data?.error || t('admin_reactivate.unable_load'));
+          setError(data?.error?.message || data?.error || t('admin_reactivate.unable_load'));
           return;
         }
 
@@ -94,7 +91,7 @@ function AdminReactivatePage() {
     })();
 
     return () => { alive = false; };
-  }, [API_BASE, accessToken, navigate, t]);
+  }, [navigate, t]);
 
   // Keep trial checkbox in sync with selected plan
   useEffect(() => {
@@ -120,24 +117,19 @@ function AdminReactivatePage() {
         ? JSON.stringify({ target_price_id: selectedPriceId, with_trial: !!trialOptIn })
         : null;
 
-      const res = await fetch(`${API_BASE}/api/users/admin/reactivation/start/`, {
+      const { ok: resOk, status: resStatus, data } = await apiRequest('/api/v1/users/admin/reactivation/start/', {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          ...(body ? { 'Content-Type': 'application/json' } : {}),
-        },
-        body,
+        auth: true,
+        body: body ? JSON.parse(body) : undefined,
       });
 
-      if (res.status === 401 || res.status === 403) {
+      if (resStatus === 401 || resStatus === 403) {
         navigate('/admin_login');
         return;
       }
 
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        setError(data?.error || t('admin_plan.generic_error'));
+      if (!resOk) {
+        setError(data?.error?.message || data?.error || t('admin_plan.generic_error'));
         setLoading(false);
         return;
       }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useLanguage } from '../../../context/LanguageContext';
+import { buildApiUrl } from '../../../config/api';
 import './AdminResetPasswordPage.css';
 
 function AdminResetPasswordPage() {
@@ -34,7 +35,7 @@ function AdminResetPasswordPage() {
     setStatus(null);
 
     try {
-      const res = await fetch('http://localhost:8000/api/users/admin/reset_password/confirm/', {
+      const res = await fetch(buildApiUrl('/api/v1/users/admin/reset_password/confirm/'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ uid, token, new_password: newPassword }),
@@ -45,7 +46,7 @@ function AdminResetPasswordPage() {
         setTimeout(() => navigate('/admin_login'), 2000);
       } else {
         const data = await res.json();
-        setStatus(data?.detail || t('admin_reset.failed'));
+        setStatus(data?.error?.message || data?.detail || t('admin_reset.failed'));
       }
     } catch (err) {
       console.error('reset error:', err);
