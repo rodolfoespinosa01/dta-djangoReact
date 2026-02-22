@@ -8,8 +8,18 @@
           "low_day": { "carb_percent": 20, "fat_percent": 80 },
           "high_day": { "carb_percent": 80, "fat_percent": 20 }
         },
-        "maintain": {},
-        "gain": {}
+        "maintain": {
+          "protein_factor_unit": "g_per_lb",
+          "protein_factor_value": 1.0,
+          "low_day": { "carb_percent": 20, "fat_percent": 80 },
+          "high_day": { "carb_percent": 80, "fat_percent": 20 }
+        },
+        "gain": {
+          "protein_factor_unit": "g_per_lb",
+          "protein_factor_value": 1.0,
+          "low_day": { "carb_percent": 20, "fat_percent": 80 },
+          "high_day": { "carb_percent": 80, "fat_percent": 20 }
+        }
       },
       "meal_macro_distribution": {
         "notes": [
