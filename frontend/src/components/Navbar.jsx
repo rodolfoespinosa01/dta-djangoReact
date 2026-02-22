@@ -27,6 +27,7 @@ const Navbar = () => {
             <>
               <Link to="/admin_dashboard" className="site-nav-link">{t('navbar.dashboard')}</Link>
               <Link to="/admin_settings" className="site-nav-link">{t('navbar.settings')}</Link>
+              <Link to="/admin_parameter_settings" className="site-nav-link">Parameters</Link>
             </>
           )}
 

@@ -1,0 +1,605 @@
+{
+  "meal_plans": {
+    "standard": {
+      "macro_rules_by_goal": {
+        "lose": {
+          "protein_factor_unit": "g_per_lb",
+          "protein_factor_value": 1.0,
+          "carb_percent": 60,
+          "fat_percent": 40
+        },
+        "maintain": {
+          "protein_factor_unit": "g_per_lb",
+          "protein_factor_value": 1.0,
+          "carb_percent": 60,
+          "fat_percent": 40
+        },
+        "gain": {
+          "protein_factor_unit": "g_per_lb",
+          "protein_factor_value": 1.0,
+          "carb_percent": 60,
+          "fat_percent": 40
+        }
+      },
+      "meal_macro_distribution": {
+        "notes": [
+          "Percentages distribute DAILY protein/carbs/fats grams across meals.",
+          "Training is selected BEFORE a meal. Training cannot be after the last meal. Training can be before meal 1.",
+          "Validation: for each scenario and each macro column, sum of meal % must equal 100 (allow small tolerance)."
+        ],
+        "meals_3": {
+          "train_before_meal_1": {
+            "meal_1": {
+              "protein": 33.333,
+              "carbs": 50.0,
+              "fats": 33.333
+            },
+            "meal_2": {
+              "protein": 33.333,
+              "carbs": 25.0,
+              "fats": 33.333
+            },
+            "meal_3": {
+              "protein": 33.333,
+              "carbs": 25.0,
+              "fats": 33.333
+            }
+          },
+          "train_before_meal_2": {
+            "meal_1": {
+              "protein": 33.333,
+              "carbs": 30.0,
+              "fats": 50.0
+            },
+            "meal_2": {
+              "protein": 33.333,
+              "carbs": 40.0,
+              "fats": 0.0
+            },
+            "meal_3": {
+              "protein": 33.333,
+              "carbs": 30.0,
+              "fats": 50.0
+            }
+          },
+          "train_before_meal_3": {
+            "meal_1": {
+              "protein": 33.333,
+              "carbs": 30.0,
+              "fats": 50.0
+            },
+            "meal_2": {
+              "protein": 33.333,
+              "carbs": 30.0,
+              "fats": 50.0
+            },
+            "meal_3": {
+              "protein": 33.333,
+              "carbs": 40.0,
+              "fats": 0.0
+            }
+          },
+          "no_training": {
+            "meal_1": {
+              "protein": 33.333,
+              "carbs": 33.333,
+              "fats": 33.333
+            },
+            "meal_2": {
+              "protein": 33.333,
+              "carbs": 33.333,
+              "fats": 33.333
+            },
+            "meal_3": {
+              "protein": 33.333,
+              "carbs": 33.333,
+              "fats": 33.333
+            }
+          }
+        },
+        "meals_4": {
+          "train_before_meal_1": {
+            "meal_1": {
+              "protein": 25.0,
+              "carbs": 40.0,
+              "fats": 0.0
+            },
+            "meal_2": {
+              "protein": 25.0,
+              "carbs": 20.0,
+              "fats": 33.333
+            },
+            "meal_3": {
+              "protein": 25.0,
+              "carbs": 20.0,
+              "fats": 33.333
+            },
+            "meal_4": {
+              "protein": 25.0,
+              "carbs": 20.0,
+              "fats": 33.333
+            }
+          },
+          "train_before_meal_2": {
+            "meal_1": {
+              "protein": 25.0,
+              "carbs": 25.0,
+              "fats": 33.333
+            },
+            "meal_2": {
+              "protein": 25.0,
+              "carbs": 40.0,
+              "fats": 0.0
+            },
+            "meal_3": {
+              "protein": 25.0,
+              "carbs": 15.0,
+              "fats": 33.333
+            },
+            "meal_4": {
+              "protein": 25.0,
+              "carbs": 20.0,
+              "fats": 33.333
+            }
+          },
+          "train_before_meal_3": {
+            "meal_1": {
+              "protein": 25.0,
+              "carbs": 15.0,
+              "fats": 33.333
+            },
+            "meal_2": {
+              "protein": 25.0,
+              "carbs": 30.0,
+              "fats": 33.333
+            },
+            "meal_3": {
+              "protein": 25.0,
+              "carbs": 40.0,
+              "fats": 0.0
+            },
+            "meal_4": {
+              "protein": 25.0,
+              "carbs": 15.0,
+              "fats": 33.333
+            }
+          },
+          "train_before_meal_4": {
+            "meal_1": {
+              "protein": 25.0,
+              "carbs": 15.0,
+              "fats": 33.333
+            },
+            "meal_2": {
+              "protein": 25.0,
+              "carbs": 15.0,
+              "fats": 33.333
+            },
+            "meal_3": {
+              "protein": 25.0,
+              "carbs": 30.0,
+              "fats": 33.333
+            },
+            "meal_4": {
+              "protein": 25.0,
+              "carbs": 40.0,
+              "fats": 0.0
+            }
+          },
+          "no_training": {
+            "meal_1": {
+              "protein": 25.0,
+              "carbs": 25.0,
+              "fats": 25.0
+            },
+            "meal_2": {
+              "protein": 25.0,
+              "carbs": 25.0,
+              "fats": 25.0
+            },
+            "meal_3": {
+              "protein": 25.0,
+              "carbs": 25.0,
+              "fats": 25.0
+            },
+            "meal_4": {
+              "protein": 25.0,
+              "carbs": 25.0,
+              "fats": 25.0
+            }
+          }
+        },
+        "meals_5": {
+          "train_before_meal_1": {
+            "meal_1": {
+              "protein": 20.0,
+              "carbs": 40.0,
+              "fats": 0.0
+            },
+            "meal_2": {
+              "protein": 20.0,
+              "carbs": 0.0,
+              "fats": 25.0
+            },
+            "meal_3": {
+              "protein": 20.0,
+              "carbs": 20.0,
+              "fats": 25.0
+            },
+            "meal_4": {
+              "protein": 20.0,
+              "carbs": 20.0,
+              "fats": 25.0
+            },
+            "meal_5": {
+              "protein": 20.0,
+              "carbs": 20.0,
+              "fats": 25.0
+            }
+          },
+          "train_before_meal_2": {
+            "meal_1": {
+              "protein": 20.0,
+              "carbs": 20.0,
+              "fats": 33.0
+            },
+            "meal_2": {
+              "protein": 20.0,
+              "carbs": 30.0,
+              "fats": 0.0
+            },
+            "meal_3": {
+              "protein": 20.0,
+              "carbs": 0.0,
+              "fats": 33.0
+            },
+            "meal_4": {
+              "protein": 20.0,
+              "carbs": 10.0,
+              "fats": 0.0
+            },
+            "meal_5": {
+              "protein": 20.0,
+              "carbs": 40.0,
+              "fats": 33.0
+            }
+          },
+          "train_before_meal_3": {
+            "meal_1": {
+              "protein": 20.0,
+              "carbs": 20.0,
+              "fats": 25.0
+            },
+            "meal_2": {
+              "protein": 20.0,
+              "carbs": 30.0,
+              "fats": 25.0
+            },
+            "meal_3": {
+              "protein": 20.0,
+              "carbs": 40.0,
+              "fats": 0.0
+            },
+            "meal_4": {
+              "protein": 20.0,
+              "carbs": 0.0,
+              "fats": 25.0
+            },
+            "meal_5": {
+              "protein": 20.0,
+              "carbs": 10.0,
+              "fats": 25.0
+            }
+          },
+          "train_before_meal_4": {
+            "meal_1": {
+              "protein": 20.0,
+              "carbs": 20.0,
+              "fats": 20.0
+            },
+            "meal_2": {
+              "protein": 20.0,
+              "carbs": 0.0,
+              "fats": 20.0
+            },
+            "meal_3": {
+              "protein": 20.0,
+              "carbs": 30.0,
+              "fats": 20.0
+            },
+            "meal_4": {
+              "protein": 20.0,
+              "carbs": 40.0,
+              "fats": 20.0
+            },
+            "meal_5": {
+              "protein": 20.0,
+              "carbs": 10.0,
+              "fats": 20.0
+            }
+          },
+          "train_before_meal_5": {
+            "meal_1": {
+              "protein": 20.0,
+              "carbs": 20.0,
+              "fats": 25.0
+            },
+            "meal_2": {
+              "protein": 20.0,
+              "carbs": 0.0,
+              "fats": 25.0
+            },
+            "meal_3": {
+              "protein": 20.0,
+              "carbs": 10.0,
+              "fats": 25.0
+            },
+            "meal_4": {
+              "protein": 20.0,
+              "carbs": 30.0,
+              "fats": 25.0
+            },
+            "meal_5": {
+              "protein": 20.0,
+              "carbs": 40.0,
+              "fats": 0.0
+            }
+          },
+          "no_training": {
+            "meal_1": {
+              "protein": 20.0,
+              "carbs": 20.0,
+              "fats": 20.0
+            },
+            "meal_2": {
+              "protein": 20.0,
+              "carbs": 20.0,
+              "fats": 20.0
+            },
+            "meal_3": {
+              "protein": 20.0,
+              "carbs": 20.0,
+              "fats": 20.0
+            },
+            "meal_4": {
+              "protein": 20.0,
+              "carbs": 20.0,
+              "fats": 20.0
+            },
+            "meal_5": {
+              "protein": 20.0,
+              "carbs": 20.0,
+              "fats": 20.0
+            }
+          }
+        },
+        "meals_6": {
+          "train_before_meal_1": {
+            "meal_1": {
+              "protein": 16.666,
+              "carbs": 40.0,
+              "fats": 0.0
+            },
+            "meal_2": {
+              "protein": 16.666,
+              "carbs": 0.0,
+              "fats": 20.0
+            },
+            "meal_3": {
+              "protein": 16.666,
+              "carbs": 20.0,
+              "fats": 20.0
+            },
+            "meal_4": {
+              "protein": 16.666,
+              "carbs": 20.0,
+              "fats": 20.0
+            },
+            "meal_5": {
+              "protein": 16.666,
+              "carbs": 0.0,
+              "fats": 20.0
+            },
+            "meal_6": {
+              "protein": 16.666,
+              "carbs": 20.0,
+              "fats": 20.0
+            }
+          },
+          "train_before_meal_2": {
+            "meal_1": {
+              "protein": 16.666,
+              "carbs": 30.0,
+              "fats": 20.0
+            },
+            "meal_2": {
+              "protein": 16.666,
+              "carbs": 40.0,
+              "fats": 0.0
+            },
+            "meal_3": {
+              "protein": 16.666,
+              "carbs": 0.0,
+              "fats": 20.0
+            },
+            "meal_4": {
+              "protein": 16.666,
+              "carbs": 0.0,
+              "fats": 20.0
+            },
+            "meal_5": {
+              "protein": 16.666,
+              "carbs": 15.0,
+              "fats": 20.0
+            },
+            "meal_6": {
+              "protein": 16.666,
+              "carbs": 15.0,
+              "fats": 20.0
+            }
+          },
+          "train_before_meal_3": {
+            "meal_1": {
+              "protein": 16.666,
+              "carbs": 15.0,
+              "fats": 20.0
+            },
+            "meal_2": {
+              "protein": 16.666,
+              "carbs": 30.0,
+              "fats": 20.0
+            },
+            "meal_3": {
+              "protein": 16.666,
+              "carbs": 40.0,
+              "fats": 0.0
+            },
+            "meal_4": {
+              "protein": 16.666,
+              "carbs": 0.0,
+              "fats": 20.0
+            },
+            "meal_5": {
+              "protein": 16.666,
+              "carbs": 0.0,
+              "fats": 20.0
+            },
+            "meal_6": {
+              "protein": 16.666,
+              "carbs": 15.0,
+              "fats": 20.0
+            }
+          },
+          "train_before_meal_4": {
+            "meal_1": {
+              "protein": 16.666,
+              "carbs": 15.0,
+              "fats": 20.0
+            },
+            "meal_2": {
+              "protein": 16.666,
+              "carbs": 0.0,
+              "fats": 20.0
+            },
+            "meal_3": {
+              "protein": 16.666,
+              "carbs": 30.0,
+              "fats": 20.0
+            },
+            "meal_4": {
+              "protein": 16.666,
+              "carbs": 40.0,
+              "fats": 0.0
+            },
+            "meal_5": {
+              "protein": 16.666,
+              "carbs": 0.0,
+              "fats": 20.0
+            },
+            "meal_6": {
+              "protein": 16.666,
+              "carbs": 15.0,
+              "fats": 20.0
+            }
+          },
+          "train_before_meal_5": {
+            "meal_1": {
+              "protein": 16.666,
+              "carbs": 15.0,
+              "fats": 20.0
+            },
+            "meal_2": {
+              "protein": 16.666,
+              "carbs": 0.0,
+              "fats": 20.0
+            },
+            "meal_3": {
+              "protein": 16.666,
+              "carbs": 15.0,
+              "fats": 20.0
+            },
+            "meal_4": {
+              "protein": 16.666,
+              "carbs": 30.0,
+              "fats": 20.0
+            },
+            "meal_5": {
+              "protein": 16.666,
+              "carbs": 40.0,
+              "fats": 0.0
+            },
+            "meal_6": {
+              "protein": 16.666,
+              "carbs": 0.0,
+              "fats": 20.0
+            }
+          },
+          "train_before_meal_6": {
+            "meal_1": {
+              "protein": 16.666,
+              "carbs": 15.0,
+              "fats": 20.0
+            },
+            "meal_2": {
+              "protein": 16.666,
+              "carbs": 0.0,
+              "fats": 20.0
+            },
+            "meal_3": {
+              "protein": 16.666,
+              "carbs": 15.0,
+              "fats": 20.0
+            },
+            "meal_4": {
+              "protein": 16.666,
+              "carbs": 0.0,
+              "fats": 20.0
+            },
+            "meal_5": {
+              "protein": 16.666,
+              "carbs": 30.0,
+              "fats": 20.0
+            },
+            "meal_6": {
+              "protein": 16.666,
+              "carbs": 40.0,
+              "fats": 0.0
+            }
+          },
+          "no_training": {
+            "meal_1": {
+              "protein": 16.666,
+              "carbs": 16.666,
+              "fats": 16.666
+            },
+            "meal_2": {
+              "protein": 16.666,
+              "carbs": 16.666,
+              "fats": 16.666
+            },
+            "meal_3": {
+              "protein": 16.666,
+              "carbs": 16.666,
+              "fats": 16.666
+            },
+            "meal_4": {
+              "protein": 16.666,
+              "carbs": 16.666,
+              "fats": 16.666
+            },
+            "meal_5": {
+              "protein": 16.666,
+              "carbs": 16.666,
+              "fats": 16.666
+            },
+            "meal_6": {
+              "protein": 16.666,
+              "carbs": 16.666,
+              "fats": 16.666
+            }
+          }
+        }
+      }
+    }
+  }
+}

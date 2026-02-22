@@ -1,4 +1,9 @@
+import json
+
 from django.contrib import admin
+from django.template.response import TemplateResponse
+from django.urls import path
+from django.utils.html import format_html
 from users.admin_area.models import (
     Plan,
     Profile,
@@ -9,7 +14,9 @@ from users.admin_area.models import (
     AdminIdentity,
     EventTracker,
     AdminAccountHistory,
+    AdminParameterSettings,
 )
+from users.admin_area.configs.admin_parameter_defaults import get_admin_parameter_defaults_v1
 
 # ✅ Core admin models
 admin.site.register(Plan)
@@ -84,3 +91,95 @@ class AdminAccountHistoryAdmin(admin.ModelAdmin):
         return obj.admin.admin_email
 
     admin_email.short_description = "Admin Email"
+
+
+@admin.register(AdminParameterSettings)
+class AdminParameterSettingsAdmin(admin.ModelAdmin):
+    list_display = (
+        "admin_email",
+        "initialized",
+        "defaults_version_applied",
+        "updated_at",
+        "created_at",
+    )
+    list_filter = ("initialized", "defaults_version_applied", "updated_at", "created_at")
+    search_fields = ("admin__admin_email", "admin__adminID")
+    readonly_fields = ("created_at", "updated_at", "parameters_json_pretty")
+    autocomplete_fields = ("admin",)
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": (
+                    "admin",
+                    "initialized",
+                    "defaults_version_applied",
+                    "created_at",
+                    "updated_at",
+                )
+            },
+        ),
+        ("Parameters (JSON)", {"fields": ("parameters_json",)}),
+        ("Pretty View (Read-only)", {"fields": ("parameters_json_pretty",)}),
+    )
+
+    def admin_email(self, obj):
+        return obj.admin.admin_email
+
+    admin_email.short_description = "Admin Email"
+    admin_email.admin_order_field = "admin__admin_email"
+
+    def parameters_json_pretty(self, obj):
+        pretty = json.dumps(obj.parameters_json, indent=2)
+        return format_html(
+            '<pre style="max-height:520px; overflow:auto; background:#111827; color:#e5e7eb; padding:12px; border-radius:8px;">{}</pre>',
+            pretty,
+        )
+
+    parameters_json_pretty.short_description = "Formatted JSON"
+
+
+def admin_parameter_defaults_view(request):
+    defaults = get_admin_parameter_defaults_v1()
+    meal_plans = defaults.get("meal_plans", {})
+    context = {
+        **admin.site.each_context(request),
+        "title": "Admin Parameter Defaults (DTA v1)",
+        "defaults_version": defaults.get("version", "unknown"),
+        "global_defaults_json": json.dumps(
+            {
+                "version": defaults.get("version"),
+                "goal_calorie_adjustments": defaults.get("goal_calorie_adjustments", {}),
+                "tdee": defaults.get("tdee", {}),
+            },
+            indent=2,
+        ),
+        "standard_defaults_json": json.dumps(meal_plans.get("standard", {}), indent=2),
+        "keto_defaults_json": json.dumps(meal_plans.get("keto", {}), indent=2),
+        "carb_cycling_defaults_json": json.dumps(meal_plans.get("carb_cycling", {}), indent=2),
+        "full_defaults_json": json.dumps(defaults, indent=2),
+    }
+    return TemplateResponse(
+        request,
+        "admin/users_admin_area/admin_parameter_defaults.html",
+        context,
+    )
+
+
+def _custom_admin_urls():
+    return [
+        path(
+            "users/admin-parameter-defaults/",
+            admin.site.admin_view(admin_parameter_defaults_view),
+            name="users_admin_parameter_defaults",
+        ),
+    ]
+
+
+if not hasattr(admin.site, "_dta_original_get_urls"):
+    admin.site._dta_original_get_urls = admin.site.get_urls
+
+    def _get_urls():
+        return _custom_admin_urls() + admin.site._dta_original_get_urls()
+
+    admin.site.get_urls = _get_urls

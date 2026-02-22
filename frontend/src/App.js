@@ -30,6 +30,7 @@ import UserPlanSelectionPage from './pages/user/UserPlanSelectionPage';
 // protected pages
 import AdminDashboard from './pages/admin/AdminDashboard/AdminDashboard';
 import AdminSettings from './pages/admin/AdminSettings/AdminSettings';
+import AdminParameterSettingsPage from './pages/admin/AdminParameterSettings/AdminParameterSettingsPage';
 import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
 import SuperAdminAnalyticsPage from './pages/superadmin/SuperAdminAnalyticsPage';
 
@@ -77,6 +78,14 @@ function AppLayout() {
             element={
               <AdminProtectedRoute>
                 <AdminSettings />
+              </AdminProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin_parameter_settings"
+            element={
+              <AdminProtectedRoute>
+                <AdminParameterSettingsPage />
               </AdminProtectedRoute>
             }
           />

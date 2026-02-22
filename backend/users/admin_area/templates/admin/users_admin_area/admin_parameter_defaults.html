@@ -1,0 +1,101 @@
+{% extends "admin/base_site.html" %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+  .dta-admin-params-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  .dta-admin-params-card {
+    border: 1px solid var(--hairline-color, #ddd);
+    border-radius: 8px;
+    background: var(--body-bg, #fff);
+    overflow: hidden;
+  }
+
+  .dta-admin-params-card details > summary {
+    cursor: pointer;
+    padding: 10px 12px;
+    font-weight: 600;
+    background: var(--darkened-bg, #f6f6f6);
+  }
+
+  .dta-admin-params-card pre {
+    margin: 0;
+    padding: 12px;
+    max-height: 480px;
+    overflow: auto;
+    background: #111827;
+    color: #e5e7eb;
+    font-size: 12px;
+    line-height: 1.35;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .dta-admin-params-meta {
+    margin: 8px 0 0;
+    color: var(--body-quiet-color, #666);
+    font-size: 13px;
+  }
+
+  .dta-admin-params-url {
+    margin-top: 8px;
+    font-family: monospace;
+    word-break: break-all;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+  <h1>Admin Parameter Defaults (DTA {{ defaults_version }})</h1>
+  <p class="dta-admin-params-meta">
+    Read-only viewer for the canonical default values used to initialize admin parameter settings.
+  </p>
+  <p class="dta-admin-params-url">
+    Admin URL: <code>/admin/users/admin-parameter-defaults/</code>
+  </p>
+
+  <div class="dta-admin-params-grid">
+    <div class="dta-admin-params-card">
+      <details open>
+        <summary>Global Defaults (Version + Goal Adjustments + TDEE)</summary>
+        <pre>{{ global_defaults_json }}</pre>
+      </details>
+    </div>
+
+    <div class="dta-admin-params-card">
+      <details>
+        <summary>Meal Plan: Standard</summary>
+        <pre>{{ standard_defaults_json }}</pre>
+      </details>
+    </div>
+
+    <div class="dta-admin-params-card">
+      <details>
+        <summary>Meal Plan: Keto</summary>
+        <pre>{{ keto_defaults_json }}</pre>
+      </details>
+    </div>
+
+    <div class="dta-admin-params-card">
+      <details>
+        <summary>Meal Plan: Carb Cycling</summary>
+        <pre>{{ carb_cycling_defaults_json }}</pre>
+      </details>
+    </div>
+
+    <div class="dta-admin-params-card">
+      <details>
+        <summary>Raw Full JSON (Merged v1)</summary>
+        <pre>{{ full_defaults_json }}</pre>
+      </details>
+    </div>
+  </div>
+</div>
+{% endblock %}
