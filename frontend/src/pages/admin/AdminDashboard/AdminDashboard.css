@@ -59,6 +59,35 @@
   color: #ffd0d3;
 }
 
+.banner-setup {
+  background: rgba(16, 45, 91, 0.36);
+  border: 1px solid rgba(73, 131, 255, 0.28);
+  color: #d9e8ff;
+}
+
+.banner-setup-title {
+  margin: 0 0 0.35rem;
+  font-weight: 800;
+  color: #f0f6ff;
+}
+
+.banner-setup-actions {
+  margin-top: 0.8rem;
+  display: flex;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.banner-setup-message {
+  margin: 0.75rem 0 0;
+  color: #c7dcff;
+  font-weight: 600;
+}
+
+.success-inline {
+  color: #9ff3d7;
+}
+
 .loading {
   margin-top: 2rem;
   text-align: center;
@@ -111,6 +140,13 @@
   box-shadow: 0 6px 18px rgba(255, 77, 90, 0.3);
 }
 
+.btn-outline {
+  color: #d9e8ff;
+  background: rgba(17, 31, 53, 0.6);
+  border: 1px solid rgba(117, 161, 255, 0.25);
+  box-shadow: 0 6px 18px rgba(17, 31, 53, 0.2);
+}
+
 .btn-reactivate {
   margin-top: 0.7rem;
   color: #03151a;
@@ -140,5 +176,9 @@
 
   .btn {
     width: 100%;
+  }
+
+  .banner-setup-actions {
+    flex-direction: column;
   }
 }

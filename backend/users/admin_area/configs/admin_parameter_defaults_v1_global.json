@@ -1,0 +1,321 @@
+{
+  "AdminParametersDefaults": {
+    "version": "v1",
+    "goal_calorie_adjustments": {
+      "lose_weight_percent": -15,
+      "maintain_weight_percent": 0,
+      "gain_weight_percent": 20
+    },
+    "tdee": {
+      "category_multipliers": {
+        "1": 1.2,
+        "2": 1.31666666,
+        "3": 1.43333333,
+        "4": 1.55,
+        "5": 1.66666666,
+        "6": 1.78333333,
+        "7": 1.9
+      },
+      "category_mapping_by_lifestyle_and_training_days": {
+        "low_active": {
+          "1": 1,
+          "2": 1,
+          "3": 2,
+          "4": 3,
+          "5": 4,
+          "6": 5,
+          "7": 5
+        },
+        "middle_active": {
+          "1": 1,
+          "2": 2,
+          "3": 3,
+          "4": 4,
+          "5": 5,
+          "6": 6,
+          "7": 7
+        },
+        "high_active": {
+          "1": 3,
+          "2": 3,
+          "3": 4,
+          "4": 5,
+          "5": 6,
+          "6": 7,
+          "7": 7
+        }
+      },
+      "weekly_day_multiplier_splits": {
+        "notes": [
+          "Daily multipliers are used so that the average of Day1..Day7 equals the selected category multiplier.",
+          "Admins can override these tables later.",
+          "Day order is Day1..Day7; which weekday those map to is determined by the end-user's selected training days."
+        ],
+        "low_active": {
+          "tables_by_training_days_per_week": {
+            "1": {
+              "category": 1,
+              "day_multipliers": [
+                1.4,
+                1.166667,
+                1.166667,
+                1.166667,
+                1.166667,
+                1.166667,
+                1.166667
+              ]
+            },
+            "2": {
+              "category": 1,
+              "day_multipliers": [
+                1.4,
+                1.4,
+                1.12,
+                1.12,
+                1.12,
+                1.12,
+                1.12
+              ]
+            },
+            "3": {
+              "category": 2,
+              "day_multipliers": [
+                1.47,
+                1.47,
+                1.47,
+                1.2016,
+                1.2016,
+                1.2016,
+                1.2016
+              ]
+            },
+            "4": {
+              "category": 3,
+              "day_multipliers": [
+                1.55,
+                1.55,
+                1.55,
+                1.55,
+                1.277777,
+                1.277777,
+                1.277777
+              ]
+            },
+            "5": {
+              "category": 4,
+              "day_multipliers": [
+                1.65,
+                1.65,
+                1.65,
+                1.65,
+                1.65,
+                1.3,
+                1.3
+              ]
+            },
+            "6": {
+              "category": 5,
+              "day_multipliers": [
+                1.7,
+                1.7,
+                1.7,
+                1.7,
+                1.7,
+                1.7,
+                1.466666
+              ]
+            },
+            "7": {
+              "category": 5,
+              "day_multipliers": [
+                1.6666666,
+                1.666667,
+                1.666667,
+                1.666667,
+                1.666667,
+                1.666667,
+                1.666667
+              ]
+            }
+          }
+        },
+        "middle_active": {
+          "tables_by_training_days_per_week": {
+            "1": {
+              "category": 1,
+              "day_multipliers": [
+                1.48,
+                1.153333,
+                1.153333,
+                1.153333,
+                1.153333,
+                1.153333,
+                1.153333
+              ]
+            },
+            "2": {
+              "category": 2,
+              "day_multipliers": [
+                1.53,
+                1.53,
+                1.231333,
+                1.231333,
+                1.231333,
+                1.231333,
+                1.231333
+              ]
+            },
+            "3": {
+              "category": 3,
+              "day_multipliers": [
+                1.59,
+                1.59,
+                1.59,
+                1.315833,
+                1.315833,
+                1.315833,
+                1.315833
+              ]
+            },
+            "4": {
+              "category": 4,
+              "day_multipliers": [
+                1.71,
+                1.71,
+                1.71,
+                1.71,
+                1.336667,
+                1.336667,
+                1.336667
+              ]
+            },
+            "5": {
+              "category": 5,
+              "day_multipliers": [
+                1.76,
+                1.76,
+                1.76,
+                1.76,
+                1.76,
+                1.433333,
+                1.433333
+              ]
+            },
+            "6": {
+              "category": 6,
+              "day_multipliers": [
+                1.82,
+                1.82,
+                1.82,
+                1.82,
+                1.82,
+                1.82,
+                1.563333
+              ]
+            },
+            "7": {
+              "category": 7,
+              "day_multipliers": [
+                1.9,
+                1.9,
+                1.9,
+                1.9,
+                1.9,
+                1.9,
+                1.9
+              ]
+            }
+          }
+        },
+        "high_active": {
+          "tables_by_training_days_per_week": {
+            "1": {
+              "category": 3,
+              "day_multipliers": [
+                1.57,
+                1.410556,
+                1.410556,
+                1.410556,
+                1.410556,
+                1.410556,
+                1.410556
+              ]
+            },
+            "2": {
+              "category": 3,
+              "day_multipliers": [
+                1.53,
+                1.53,
+                1.394667,
+                1.394667,
+                1.394667,
+                1.394667,
+                1.394667
+              ]
+            },
+            "3": {
+              "category": 4,
+              "day_multipliers": [
+                1.59,
+                1.59,
+                1.59,
+                1.52,
+                1.52,
+                1.52,
+                1.52
+              ]
+            },
+            "4": {
+              "category": 5,
+              "day_multipliers": [
+                1.71,
+                1.71,
+                1.71,
+                1.71,
+                1.608889,
+                1.608889,
+                1.608889
+              ]
+            },
+            "5": {
+              "category": 6,
+              "day_multipliers": [
+                1.8,
+                1.8,
+                1.8,
+                1.8,
+                1.8,
+                1.741667,
+                1.741667
+              ]
+            },
+            "6": {
+              "category": 7,
+              "day_multipliers": [
+                1.96,
+                1.96,
+                1.96,
+                1.96,
+                1.96,
+                1.96,
+                1.54
+              ]
+            },
+            "7": {
+              "category": 7,
+              "day_multipliers": [
+                1.9,
+                1.9,
+                1.9,
+                1.9,
+                1.9,
+                1.9,
+                1.9
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}
