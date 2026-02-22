@@ -22,6 +22,11 @@ from users.admin_area.views.billing.payment_method import (
     create_payment_method_update_session,
 )
 from users.admin_area.views.billing.reactivate import preview, start
+from users.admin_area.views.parameters.admin_parameter_settings import (
+    parameter_settings_detail,
+    parameter_settings_status,
+    parameter_settings_use_defaults,
+)
 
 
 urlpatterns = [
@@ -36,6 +41,9 @@ urlpatterns = [
 
     # 📊 Dashboard
     path('dashboard/', DashboardView.as_view(), name='dashboard'),
+    path('parameter_settings/status/', parameter_settings_status, name='parameter_settings_status'),
+    path('parameter_settings/use_defaults/', parameter_settings_use_defaults, name='parameter_settings_use_defaults'),
+    path('parameter_settings/', parameter_settings_detail, name='parameter_settings_detail'),
 
     # 💳 Billing
     path('create_checkout_session/', create_checkout_session, name='create_checkout_session'),
