@@ -1,6 +1,6 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "DTA",
+  "name": "DTA",
   "icons": [
     {
       "src": "favicon.ico",
@@ -8,14 +8,14 @@
       "type": "image/x-icon"
     },
     {
-      "src": "logo192.png",
+      "src": "dta-logo.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "4096x1774"
     },
     {
-      "src": "logo512.png",
+      "src": "dta-logo.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "4096x1774"
     }
   ],
   "start_url": ".",
