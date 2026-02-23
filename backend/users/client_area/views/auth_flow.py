@@ -10,6 +10,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from users.admin_area.models import AdminIdentity
 from users.client_area.models import (
+    ClientFoodPreferenceChangeLog,
     ClientMealComboSelection,
     ClientMacroAccessLink,
     ClientPendingSignup,
@@ -19,6 +20,7 @@ from users.client_area.models import (
 from users.client_area.views.api_contract import error, ok, require_client
 from core.services.google_oauth import verify_google_id_token
 from core.models import MealComboTemplate
+from users.client_area.services.results_engine import BuildResultsContext, build_questionnaire_results
 
 
 OFFER_CATALOG = {
@@ -56,11 +58,11 @@ QUESTIONNAIRE_STEPS = [
     "workout_days",
     "meal_schedule",
     "training_schedule",
-    "food_preferences",
 ]
 WEEK_DAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
 
 PAID_OFFER_CODES = {"food_plan_weekly", "food_plan_monthly"}
+PLAN_ACTIONABLE_OFFER_CODES = {"macro_calculator_free", "food_plan_weekly", "food_plan_monthly"}
 
 
 def _is_gmail_email(value):
@@ -104,6 +106,99 @@ def _trial_days_for_offer(email, offer_code):
         trial_days__gt=0,
     ).exists()
     return 0 if has_used_trial else offer["trial_days"]
+
+
+def _build_client_settings_payload(profile: ClientProfile | None):
+    if not profile:
+        return None
+    trial_eligible = profile.offer_code == "macro_calculator_free"
+    return {
+        "offer_code": profile.offer_code,
+        "billing_cycle": profile.billing_cycle,
+        "trial_days": profile.trial_days,
+        "amount_cents": profile.amount_cents,
+        "includes_food_plan": profile.includes_food_plan,
+        "includes_coaching": profile.includes_coaching,
+        "is_active": profile.is_active,
+        "sale_channel": profile.sale_channel,
+        "associated_admin_slug": profile.associated_admin.subdomain_slug if profile.associated_admin else None,
+        "can_start_trial": trial_eligible,
+        "available_actions": {
+            "start_free_trial": profile.offer_code == "macro_calculator_free",
+            "switch_weekly": profile.offer_code != "food_plan_weekly",
+            "switch_monthly": profile.offer_code != "food_plan_monthly",
+            "cancel": profile.offer_code in PAID_OFFER_CODES and profile.is_active,
+            "reactivate": profile.offer_code in PAID_OFFER_CODES and not profile.is_active,
+        },
+    }
+
+
+def _apply_offer_to_profile(profile: ClientProfile, offer_code: str, *, use_trial_if_eligible=False):
+    if offer_code not in OFFER_CATALOG:
+        raise ValueError("INVALID_OFFER")
+    offer = OFFER_CATALOG[offer_code]
+    if offer_code not in PLAN_ACTIONABLE_OFFER_CODES:
+        raise ValueError("INVALID_OFFER")
+
+    trial_days = profile.trial_days
+    if use_trial_if_eligible and profile.offer_code == "macro_calculator_free" and offer_code in PAID_OFFER_CODES:
+        trial_days = offer["trial_days"]
+    elif offer_code in PAID_OFFER_CODES:
+        trial_days = 0
+    else:
+        trial_days = 0
+
+    profile.offer_code = offer_code
+    profile.billing_cycle = offer["billing_cycle"]
+    profile.amount_cents = offer["amount_cents"]
+    profile.includes_food_plan = offer["includes_food_plan"]
+    profile.includes_coaching = offer["includes_coaching"]
+    profile.trial_days = trial_days
+    if offer_code in PAID_OFFER_CODES:
+        profile.is_active = True
+    profile.save(
+        update_fields=[
+            "offer_code",
+            "billing_cycle",
+            "amount_cents",
+            "includes_food_plan",
+            "includes_coaching",
+            "trial_days",
+            "is_active",
+            "updated_at",
+        ]
+    )
+    return profile
+
+
+def _serialize_food_preference_builder(progress: ClientQuestionnaireProgress):
+    answers = dict(progress.answers_json or {})
+    food_pref = answers.get("food_preferences") if isinstance(answers.get("food_preferences"), dict) else {}
+    return food_pref or {}
+
+
+def _serialize_saved_weekly_combo_rows(user):
+    rows = (
+        ClientMealComboSelection.objects.filter(user=user)
+        .select_related("combo_template")
+        .order_by("day_of_week", "meal_number")
+    )
+    weekly = {day: [] for day in WEEK_DAYS}
+    for row in rows:
+        combo = row.combo_template
+        weekly[row.day_of_week].append(
+            {
+                "protein_1": combo.protein_slot_1,
+                "protein_2": combo.protein_slot_2,
+                "carbs_1": combo.carb_slot_1,
+                "carbs_2": combo.carb_slot_2,
+                "fats_1": combo.fat_slot_1,
+                "fats_2": combo.fat_slot_2,
+                "combo_id": combo.combo_id,
+                "combo_match": "matched",
+            }
+        )
+    return weekly
 
 
 def _extract_weekly_combo_selection_rows(answers):
@@ -370,6 +465,12 @@ def macro_access_preview(request, token):
                 "sale_channel": link.sale_channel,
                 "admin_slug": link.admin.subdomain_slug if link.admin else None,
                 "questionnaire": _macro_link_questionnaire_payload(link),
+                "results": build_questionnaire_results(
+                    BuildResultsContext(
+                        answers=link.questionnaire_answers_json or {},
+                        admin_identity=link.admin,
+                    )
+                ) if link.questionnaire_status == "completed" else None,
             }
         }
     )
@@ -417,15 +518,6 @@ def macro_access_questionnaire_submit(request, token):
             http_status=400,
             details={"missing_steps": missing},
         )
-    combo_rows, combo_missing, combo_invalid = _extract_weekly_combo_selection_rows(answers)
-    if combo_missing or combo_invalid:
-        return error(
-            "INVALID_MEAL_COMBO_SELECTIONS",
-            "Meal selections are incomplete or invalid.",
-            http_status=400,
-            details={"missing": combo_missing, "invalid": combo_invalid},
-        )
-
     link.questionnaire_status = "completed"
     link.questionnaire_current_step = QUESTIONNAIRE_STEPS[-1]
     link.questionnaire_completed_at = timezone.now()
@@ -434,7 +526,12 @@ def macro_access_questionnaire_submit(request, token):
         {
             "message": "Questionnaire submitted.",
             "questionnaire": _macro_link_questionnaire_payload(link),
-            "meal_combo_rows_ready": len(combo_rows),
+            "results": build_questionnaire_results(
+                BuildResultsContext(
+                    answers=link.questionnaire_answers_json or {},
+                    admin_identity=link.admin,
+                )
+            ),
         }
     )
 
@@ -464,6 +561,148 @@ def client_dashboard(request):
                 "associated_admin_slug": profile.associated_admin.subdomain_slug if profile and profile.associated_admin else None,
             },
             "questionnaire": _questionnaire_payload(progress),
+            "results": build_questionnaire_results(
+                BuildResultsContext(
+                    answers=progress.answers_json or {},
+                    admin_identity=profile.associated_admin if profile else None,
+                )
+            ) if progress.status == "completed" else None,
+            "settings": _build_client_settings_payload(profile),
+        }
+    )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def client_settings_view(request):
+    auth_error = require_client(request)
+    if auth_error:
+        return auth_error
+    profile = ClientProfile.objects.filter(user=request.user).select_related("associated_admin").first()
+    if not profile:
+        return error("CLIENT_PROFILE_NOT_FOUND", "Client profile not found.", http_status=404)
+    return ok({"settings": _build_client_settings_payload(profile)})
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def client_plan_action(request):
+    auth_error = require_client(request)
+    if auth_error:
+        return auth_error
+    profile = ClientProfile.objects.filter(user=request.user).select_related("associated_admin").first()
+    if not profile:
+        return error("CLIENT_PROFILE_NOT_FOUND", "Client profile not found.", http_status=404)
+
+    action = (request.data or {}).get("action") or ""
+    action = str(action).strip()
+
+    if action == "start_free_trial":
+        if profile.offer_code != "macro_calculator_free":
+            return error("INVALID_ACTION", "Free trial can only start from the free macro plan.", http_status=400)
+        profile = _apply_offer_to_profile(profile, "food_plan_weekly", use_trial_if_eligible=True)
+        return ok({"message": "Free trial started.", "settings": _build_client_settings_payload(profile)})
+
+    if action == "switch_weekly":
+        profile = _apply_offer_to_profile(profile, "food_plan_weekly", use_trial_if_eligible=False)
+        return ok({"message": "Switched to weekly plan.", "settings": _build_client_settings_payload(profile)})
+
+    if action == "switch_monthly":
+        profile = _apply_offer_to_profile(profile, "food_plan_monthly", use_trial_if_eligible=False)
+        return ok({"message": "Switched to monthly plan.", "settings": _build_client_settings_payload(profile)})
+
+    if action == "cancel_subscription":
+        if profile.offer_code not in PAID_OFFER_CODES:
+            return error("INVALID_ACTION", "No paid subscription to cancel.", http_status=400)
+        profile.is_active = False
+        profile.save(update_fields=["is_active", "updated_at"])
+        return ok({"message": "Subscription canceled.", "settings": _build_client_settings_payload(profile)})
+
+    if action == "reactivate_subscription":
+        if profile.offer_code not in PAID_OFFER_CODES:
+            return error("INVALID_ACTION", "No paid subscription to reactivate.", http_status=400)
+        profile.is_active = True
+        profile.save(update_fields=["is_active", "updated_at"])
+        return ok({"message": "Subscription reactivated.", "settings": _build_client_settings_payload(profile)})
+
+    return error("INVALID_ACTION", "Unsupported plan action.", http_status=400)
+
+
+@api_view(["GET", "PUT"])
+@permission_classes([IsAuthenticated])
+def client_food_preferences(request):
+    auth_error = require_client(request)
+    if auth_error:
+        return auth_error
+
+    profile = ClientProfile.objects.filter(user=request.user).select_related("associated_admin").first()
+    if not profile:
+        return error("CLIENT_PROFILE_NOT_FOUND", "Client profile not found.", http_status=404)
+    progress, _ = ClientQuestionnaireProgress.objects.get_or_create(
+        user=request.user,
+        defaults={"status": "not_started", "current_step": QUESTIONNAIRE_STEPS[0], "answers_json": {}},
+    )
+    if progress.status != "completed":
+        return error("QUESTIONNAIRE_REQUIRED", "Complete the onboarding questionnaire first.", http_status=400)
+
+    if request.method == "GET":
+        builder_value = _serialize_food_preference_builder(progress)
+        if not builder_value:
+            builder_value = {
+                "weekly_days": _serialize_saved_weekly_combo_rows(request.user),
+            }
+        return ok(
+            {
+                "food_preferences": {
+                    "builder_value": builder_value,
+                    "meal_schedule_days": (progress.answers_json or {}).get("meal_schedule", {}).get("days", {}),
+                    "results": build_questionnaire_results(
+                        BuildResultsContext(
+                            answers=progress.answers_json or {},
+                            admin_identity=profile.associated_admin if profile else None,
+                        )
+                    ),
+                }
+            }
+        )
+
+    if not profile.includes_food_plan:
+        return error("PLAN_UPGRADE_REQUIRED", "Upgrade to a food plan to customize meals.", http_status=403)
+
+    payload = request.data or {}
+    builder_value = payload.get("builder_value")
+    if not isinstance(builder_value, dict):
+        return error("INVALID_PAYLOAD", "builder_value must be an object.", http_status=400)
+
+    answers = dict(progress.answers_json or {})
+    previous_food_preferences = answers.get("food_preferences") if isinstance(answers.get("food_preferences"), dict) else {}
+    answers["food_preferences"] = builder_value
+    progress.answers_json = answers
+    progress.save(update_fields=["answers_json", "updated_at"])
+
+    food_preferences_changed = previous_food_preferences != builder_value
+
+    try:
+        saved_count = _persist_client_meal_combo_selections(request.user, answers)
+    except ValueError as exc:
+        return error("INVALID_MEAL_COMBO_SELECTIONS", "Meal selections are incomplete or invalid.", http_status=400, details=exc.args[0] if exc.args else None)
+    except LookupError as exc:
+        return error("UNKNOWN_MEAL_COMBO_IDS", "One or more selected meal combos no longer exist.", http_status=400, details={"combo_ids": list(exc.args[0]) if exc.args else []})
+
+    if food_preferences_changed:
+        ClientFoodPreferenceChangeLog.objects.create(
+            user=request.user,
+            client_profile=profile,
+            before_json=previous_food_preferences or {},
+            after_json=builder_value,
+        )
+
+    return ok(
+        {
+            "message": "Food preferences saved.",
+            "saved_meal_combo_selections": saved_count,
+            "food_preferences_changed": food_preferences_changed,
+            "meal_plan_regeneration_required": bool(food_preferences_changed),
         }
     )
 
@@ -523,32 +762,20 @@ def questionnaire_submit(request):
             details={"missing_steps": missing},
         )
 
-    try:
-        saved_selection_count = _persist_client_meal_combo_selections(request.user, answers)
-    except ValueError as exc:
-        return error(
-            "INVALID_MEAL_COMBO_SELECTIONS",
-            "Meal selections are incomplete or invalid.",
-            http_status=400,
-            details=exc.args[0] if exc.args else None,
-        )
-    except LookupError as exc:
-        missing_combo_ids = list(exc.args[0]) if exc.args else []
-        return error(
-            "UNKNOWN_MEAL_COMBO_IDS",
-            "One or more selected meal combos no longer exist.",
-            http_status=400,
-            details={"combo_ids": missing_combo_ids},
-        )
-
     progress.status = "completed"
     progress.current_step = QUESTIONNAIRE_STEPS[-1]
     progress.completed_at = timezone.now()
     progress.save(update_fields=["status", "current_step", "completed_at", "updated_at"])
+    profile = ClientProfile.objects.filter(user=request.user).select_related("associated_admin").first()
     return ok(
         {
             "message": "Questionnaire submitted.",
             "questionnaire": _questionnaire_payload(progress),
-            "saved_meal_combo_selections": saved_selection_count,
+            "results": build_questionnaire_results(
+                BuildResultsContext(
+                    answers=progress.answers_json or {},
+                    admin_identity=profile.associated_admin if profile else None,
+                )
+            ),
         }
     )

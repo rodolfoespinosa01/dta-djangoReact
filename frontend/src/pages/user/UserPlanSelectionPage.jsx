@@ -3,6 +3,46 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { apiRequest } from '../../api/client';
 import './UserPlanSelectionPage.css';
 
+const DTA_DIRECT_PAGE = {
+  admin_page: {
+    brand_name: 'DTA',
+    admin_slug: null,
+    sale_channel: 'dta_direct',
+  },
+  offers: [
+    {
+      code: 'macro_calculator_free',
+      name: 'Macro Calculator',
+      price_label: 'Free',
+      trial_days: 0,
+      description: 'Get your macro calculations and weekly macro breakdown with a DTA account.',
+      includes_food_plan: false,
+      billing: 'free',
+      featured: false,
+    },
+    {
+      code: 'food_plan_weekly',
+      name: 'Meal Plan With Foods (Weekly)',
+      price_label: '$5/week',
+      trial_days: 5,
+      description: 'Includes food-based meal planning, food preferences, and weekly meal customization.',
+      includes_food_plan: true,
+      billing: 'weekly',
+      featured: true,
+    },
+    {
+      code: 'food_plan_monthly',
+      name: 'Meal Plan With Foods (Monthly)',
+      price_label: '$15/month',
+      trial_days: 5,
+      description: 'Monthly access with food-based meal planning and full weekly customization tools.',
+      includes_food_plan: true,
+      billing: 'monthly',
+      featured: false,
+    },
+  ],
+};
+
 function UserPlanSelectionPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -19,6 +59,11 @@ function UserPlanSelectionPage() {
   useEffect(() => {
     let ignore = false;
     const load = async () => {
+      if (!adminSlug) {
+        setPageData(DTA_DIRECT_PAGE);
+        setStatus('ready');
+        return;
+      }
       try {
         setStatus('loading');
         setError('');
@@ -39,16 +84,13 @@ function UserPlanSelectionPage() {
         }
       }
     };
-    if (adminSlug) load();
-    else {
-      setStatus('error');
-      setError('Missing admin page.');
-    }
+    load();
     return () => { ignore = true; };
   }, [adminSlug]);
 
   const handleHomeCTA = () => {
-    navigate(`/start/${adminSlug}`);
+    if (adminSlug) navigate(`/start/${adminSlug}`);
+    else navigate('/user_homepage');
   };
 
   const offers = pageData?.offers || [];
@@ -99,7 +141,7 @@ function UserPlanSelectionPage() {
     );
   }
 
-  const brandName = pageData?.admin_page?.brand_name || 'DTA Coach';
+  const brandName = pageData?.admin_page?.brand_name || 'DTA';
 
   return (
     <div className="user-plan-page">
@@ -149,7 +191,7 @@ function UserPlanSelectionPage() {
       </div>
 
       <button onClick={handleHomeCTA} className="user-plan-button user-plan-button-secondary">
-        Back to Coach Page
+        {adminSlug ? 'Back to Coach Page' : 'Back to DTA'}
       </button>
     </div>
   );

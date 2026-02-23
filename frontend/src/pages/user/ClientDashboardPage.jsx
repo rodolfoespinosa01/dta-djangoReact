@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiRequest } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
-import MealComboBuilderStep from '../../components/MealComboBuilderStep';
 import './ClientDashboardPage.css';
 
 const QUESTION_STEPS = [
@@ -16,12 +15,29 @@ const QUESTION_STEPS = [
   'workout_days',
   'meal_schedule',
   'training_schedule',
-  'food_preferences',
 ];
 
 const WEEK_DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 function normalizeSubdomainLabel(slug) {
   return slug ? `${slug}.dtameals.com` : 'DTA Direct';
+}
+function prettyDay(day) {
+  return day.charAt(0).toUpperCase() + day.slice(1);
+}
+function formatTrainingLabel(value) {
+  if (!value) return 'No training';
+  return value.replace('before_meal_', 'Before Meal ');
+}
+function summarizeAnswers(answers = {}) {
+  const mealDays = answers?.meal_schedule?.days || {};
+  const training = answers?.training_schedule || {};
+  const workoutDays = Array.isArray(answers?.workout_days) ? answers.workout_days : [];
+  return WEEK_DAYS.map((day) => ({
+    day,
+    isWorkout: workoutDays.includes(day),
+    meals: Number(mealDays[day] || 0),
+    trainingBeforeMeal: training?.[day] || null,
+  }));
 }
 
 function ClientDashboardPage() {
@@ -35,6 +51,8 @@ function ClientDashboardPage() {
   const [savingDraft, setSavingDraft] = useState(false);
   const [submitState, setSubmitState] = useState('idle');
   const [wizardMessage, setWizardMessage] = useState('');
+  const [planActionBusy, setPlanActionBusy] = useState(false);
+  const [planActionMessage, setPlanActionMessage] = useState('');
 
   const questionnaire = dashboard?.questionnaire;
   const isQuestionnaireComplete = questionnaire?.status === 'completed';
@@ -116,15 +134,6 @@ function ClientDashboardPage() {
             && Number(selected.split('_').pop()) <= mealCount;
         });
       }
-      case 'food_preferences':
-        return Boolean(
-          value
-          && value.weekly_days
-          && WEEK_DAYS.every((day) =>
-            Array.isArray(value.weekly_days[day])
-            && value.weekly_days[day].every((meal) => Number(meal?.combo_id) > 0)
-          )
-        );
       default:
         return value !== undefined && value !== null && value !== '';
     }
@@ -200,7 +209,7 @@ function ClientDashboardPage() {
         return;
       }
       const q = res.data?.questionnaire || {};
-      setDashboard((prev) => (prev ? { ...prev, questionnaire: q } : prev));
+      setDashboard((prev) => (prev ? { ...prev, questionnaire: q, results: res.data?.results || prev.results } : prev));
       setWizardMessage('Questionnaire submitted successfully.');
       setSubmitState('success');
     } catch (err) {
@@ -490,15 +499,6 @@ function ClientDashboardPage() {
           </div>
         );
       }
-      case 'food_preferences': {
-        return (
-          <MealComboBuilderStep
-            value={activeAnswer}
-            onChange={updateAnswer}
-            mealScheduleDays={answers.meal_schedule?.days || {}}
-          />
-        );
-      }
       default:
         return <p>Question not configured.</p>;
     }
@@ -515,7 +515,40 @@ function ClientDashboardPage() {
     workout_days: ['What days do you work out?', 'Select Sunday through Saturday.'],
     meal_schedule: ['How many meals do you want each day?', 'Set one meal amount for all days or customize each day of the week.'],
     training_schedule: ['Before which meal do you train?', 'Choose the meal your workout happens before on each workout day.'],
-    food_preferences: ['Build your meals for the week', 'Set a default day of meals, apply it to the week, and customize specific days if needed.'],
+  };
+
+  const weeklySchedule = useMemo(() => summarizeAnswers(questionnaire?.answers || {}), [questionnaire?.answers]);
+  const results = dashboard?.results;
+
+  const handleStartTrialFromDashboard = async () => {
+    setPlanActionBusy(true);
+    setPlanActionMessage('');
+    try {
+      const res = await apiRequest('/api/v1/users/client/app/settings/plan-action/', {
+        method: 'POST',
+        auth: true,
+        body: { action: 'start_free_trial' },
+      });
+      if (!res.ok) {
+        setPlanActionMessage(res.data?.error?.message || 'Unable to start free trial.');
+        return;
+      }
+      setDashboard((prev) => prev ? {
+        ...prev,
+        client: {
+          ...prev.client,
+          ...(res.data?.settings || {}),
+        },
+        settings: res.data?.settings || prev.settings,
+      } : prev);
+      setPlanActionMessage(res.data?.message || 'Free trial started.');
+      navigate('/client_food_preferences');
+    } catch (err) {
+      console.error(err);
+      setPlanActionMessage('Network error while starting free trial.');
+    } finally {
+      setPlanActionBusy(false);
+    }
   };
 
   if (loading) return <div className="client-dashboard-page"><p>Loading dashboard…</p></div>;
@@ -530,10 +563,15 @@ function ClientDashboardPage() {
             Source: {normalizeSubdomainLabel(dashboard?.client?.associated_admin_slug)}
           </p>
         </div>
-        <div className="client-dash-chips">
-          <span>{dashboard?.client?.offer_code}</span>
-          <span>{dashboard?.client?.billing_cycle || 'free'}</span>
-          {dashboard?.client?.trial_days ? <span>{dashboard.client.trial_days}-day teaser</span> : null}
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
+          <div className="client-dash-chips">
+            <span>{dashboard?.client?.offer_code}</span>
+            <span>{dashboard?.client?.billing_cycle || 'free'}</span>
+            {dashboard?.client?.trial_days ? <span>{dashboard.client.trial_days}-day teaser</span> : null}
+          </div>
+          <button type="button" className="client-q-btn danger" onClick={() => logout('/client_login')} disabled={loading}>
+            Log Out
+          </button>
         </div>
       </header>
 
@@ -544,14 +582,162 @@ function ClientDashboardPage() {
           <li>Food-based calculations: {dashboard?.client?.includes_food_plan ? 'Enabled' : 'Not included in this plan'}</li>
           <li>Coaching messaging: {dashboard?.client?.includes_coaching ? 'Enabled' : 'Not included'}</li>
         </ul>
+        {planActionMessage ? <p className={planActionMessage.toLowerCase().includes('unable') ? 'client-q-error' : 'client-q-message'}>{planActionMessage}</p> : null}
+        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+          {!dashboard?.client?.includes_food_plan ? (
+            <button type="button" className="client-q-btn" onClick={handleStartTrialFromDashboard} disabled={planActionBusy || isBlocked}>
+              {planActionBusy ? 'Starting Trial…' : 'Start 5-Day Free Trial + Food Questionnaire'}
+            </button>
+          ) : (
+            <button type="button" className="client-q-btn" onClick={() => navigate('/client_food_preferences')} disabled={isBlocked}>
+              Open Food Preferences / Meal Combos
+            </button>
+          )}
+          <button type="button" className="client-q-btn secondary" onClick={() => navigate('/client_settings')} disabled={isBlocked}>
+            Manage Plan & Subscription
+          </button>
+        </div>
       </section>
 
       <section className="client-dashboard-card">
-        <h2>Dashboard Preview</h2>
-        <p className="client-dash-muted">
-          Once your questionnaire is complete, this area will show your next meal, plan updates, and progress actions.
-        </p>
+        <h2>{isQuestionnaireComplete ? 'Weekly Analytics Overview' : 'Dashboard Preview'}</h2>
+        {!isQuestionnaireComplete ? (
+          <p className="client-dash-muted">
+            Once your questionnaire is complete, this area will show your weekly schedule analytics and upcoming macro calculations.
+          </p>
+        ) : (
+          <div className="client-q-stack">
+            <div className="client-dash-chips">
+              <span>{(questionnaire?.answers?.gender || 'n/a').toString()}</span>
+              <span>{(questionnaire?.answers?.goal || 'n/a').toString()}</span>
+              <span>{(questionnaire?.answers?.meal_plan_type || 'n/a').toString()}</span>
+              <span>{(questionnaire?.answers?.lifestyle || 'n/a').toString()}</span>
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 560 }}>
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.12)' }}>Day</th>
+                    <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.12)' }}>Type</th>
+                    <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.12)' }}>Meals</th>
+                    <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.12)' }}>Training Timing</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {weeklySchedule.map((row) => (
+                    <tr key={`sched-${row.day}`}>
+                      <td style={{ padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.08)' }}>{prettyDay(row.day)}</td>
+                      <td style={{ padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.08)' }}>
+                        {row.isWorkout ? 'Workout Day' : 'Off Day'}
+                      </td>
+                      <td style={{ padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.08)' }}>{row.meals || '-'}</td>
+                      <td style={{ padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.08)' }}>
+                        {row.trainingBeforeMeal ? row.trainingBeforeMeal.replaceAll('_', ' ') : 'No training'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="client-dash-muted">
+              Macro totals and per-meal gram calculations will appear here next (before food-combo generation is applied).
+            </p>
+          </div>
+        )}
       </section>
+
+      {isQuestionnaireComplete && results && (
+        <>
+          <section className="client-dashboard-card">
+            <h2>Core Calculations</h2>
+            <div className="client-dash-chips">
+              <span>BMR: {results?.core_calculations?.bmr ?? '-'} kcal</span>
+              <span>Goal Adj: {results?.core_calculations?.goal_calorie_adjustment_percent ?? '-'}%</span>
+              <span>TDEE Category: {results?.core_calculations?.tdee_category ?? '-'}</span>
+              <span>Avg Multiplier: {results?.core_calculations?.weekly_average_multiplier ?? '-'}</span>
+            </div>
+            <ul>
+              <li>Workout Day Avg TDEE: {results?.summary?.workout_day_avg_tdee ?? '-'} kcal</li>
+              <li>Off Day Avg TDEE: {results?.summary?.off_day_avg_tdee ?? '-'} kcal</li>
+              <li>Workout Day Avg Calories: {results?.summary?.workout_day_avg_calories ?? '-'} kcal</li>
+              <li>Off Day Avg Calories: {results?.summary?.off_day_avg_calories ?? '-'} kcal</li>
+            </ul>
+          </section>
+
+          <section className="client-dashboard-card">
+            <h2>Daily Macro Results</h2>
+            <div className="client-q-stack">
+              {(results.weekly_days || []).map((day) => (
+                <div key={`results-${day.day}`} style={{ border: '1px solid rgba(20,40,74,0.1)', borderRadius: 12, padding: '0.8rem' }}>
+                  <div className="client-dashboard-header" style={{ marginBottom: '0.5rem' }}>
+                    <div>
+                      <strong>{prettyDay(day.day)}</strong>
+                      <p className="client-dash-muted" style={{ margin: '0.2rem 0 0' }}>
+                        {day.is_workout_day ? 'Workout Day' : 'Off Day'} • {day.meals_per_day} meals • {formatTrainingLabel(day.training_before_meal)}
+                      </p>
+                    </div>
+                    <div className="client-dash-chips">
+                      <span>Mult: {day.tdee_multiplier}</span>
+                      <span>TDEE: {day.tdee_calories} kcal</span>
+                      <span>Target: {day.calories_target} kcal</span>
+                    </div>
+                  </div>
+
+                  <div className="client-dash-chips" style={{ marginBottom: '0.5rem' }}>
+                    <span>Protein: {day.daily_macros?.protein_g} g</span>
+                    <span>Carbs: {day.daily_macros?.carbs_g} g</span>
+                    <span>Fats: {day.daily_macros?.fats_g} g</span>
+                    {day.carb_cycling_mode ? <span>{day.carb_cycling_mode === 'high_carbs' ? 'High Carb Day' : 'Low Carb Day'}</span> : null}
+                  </div>
+
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 520 }}>
+                      <thead>
+                        <tr>
+                          <th style={{ textAlign: 'left', padding: '0.4rem', borderBottom: '1px solid rgba(20,40,74,0.12)' }}>Meal</th>
+                          <th style={{ textAlign: 'left', padding: '0.4rem', borderBottom: '1px solid rgba(20,40,74,0.12)' }}>Protein</th>
+                          <th style={{ textAlign: 'left', padding: '0.4rem', borderBottom: '1px solid rgba(20,40,74,0.12)' }}>Carbs</th>
+                          <th style={{ textAlign: 'left', padding: '0.4rem', borderBottom: '1px solid rgba(20,40,74,0.12)' }}>Fats</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(day.meal_macro_splits || []).map((meal) => (
+                          <tr key={`${day.day}-${meal.meal_number}`}>
+                            <td style={{ padding: '0.4rem', borderBottom: '1px solid rgba(20,40,74,0.08)' }}>
+                              Meal {meal.meal_number}
+                            </td>
+                            <td style={{ padding: '0.4rem', borderBottom: '1px solid rgba(20,40,74,0.08)' }}>
+                              {meal.grams?.protein_g} g ({meal.percentages?.protein}%)
+                            </td>
+                            <td style={{ padding: '0.4rem', borderBottom: '1px solid rgba(20,40,74,0.08)' }}>
+                              {meal.grams?.carbs_g} g ({meal.percentages?.carbs}%)
+                            </td>
+                            <td style={{ padding: '0.4rem', borderBottom: '1px solid rgba(20,40,74,0.08)' }}>
+                              {meal.grams?.fats_g} g ({meal.percentages?.fats}%)
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        </>
+      )}
+
+      {isQuestionnaireComplete && dashboard?.client?.includes_food_plan && (
+        <section className="client-dashboard-card">
+          <h2>Food Preferences & Meal Combos</h2>
+          <p className="client-dash-muted">
+            This is now a separate form after questionnaire completion. Next step: build your default meal templates and customize Sunday-Saturday meals.
+          </p>
+          <button type="button" className="client-q-btn secondary" disabled>
+            Food Preference Form (Use button above)
+          </button>
+        </section>
+      )}
 
       {isBlocked && (
         <div className="client-q-backdrop">
