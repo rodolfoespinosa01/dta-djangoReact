@@ -92,6 +92,10 @@ function UserPlanSelectionPage() {
     if (adminSlug) navigate(`/start/${adminSlug}`);
     else navigate('/user_homepage');
   };
+  const handleLoginCTA = () => {
+    if (adminSlug) navigate(`/start/${adminSlug}/login`);
+    else navigate('/user_login');
+  };
 
   const offers = pageData?.offers || [];
   const sortedOffers = useMemo(() => {
@@ -151,6 +155,11 @@ function UserPlanSelectionPage() {
         <p>
           Free macro calculator for everyone. Paid meal-plan options include a free 5-day trial for first-time users, then continue weekly or monthly.
         </p>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <button type="button" className="user-plan-button user-plan-button-secondary" onClick={handleLoginCTA}>
+            Existing Client Login
+          </button>
+        </div>
         <label className="user-plan-email-field">
           Email (we will send your registration link)
           <input

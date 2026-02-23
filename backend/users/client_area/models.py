@@ -81,6 +81,12 @@ class ClientMacroAccessLink(models.Model):
 
 
 class ClientProfile(models.Model):
+    COACHING_TERM_CHOICES = [
+        ("none", "No Coaching"),
+        ("1_month", "1 Month Coaching"),
+        ("3_months", "3 Months Coaching"),
+    ]
+
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="client_profile")
     associated_admin = models.ForeignKey(
         AdminIdentity,
@@ -96,7 +102,12 @@ class ClientProfile(models.Model):
     amount_cents = models.PositiveIntegerField(default=0)
     includes_food_plan = models.BooleanField(default=False)
     includes_coaching = models.BooleanField(default=False)
+    coaching_term = models.CharField(max_length=20, choices=COACHING_TERM_CHOICES, default="none")
+    coaching_expires_at = models.DateTimeField(null=True, blank=True)
+    stripe_customer_id = models.CharField(max_length=64, blank=True, default="")
+    stripe_subscription_id = models.CharField(max_length=64, blank=True, default="")
     is_active = models.BooleanField(default=True)
+    cancel_at_period_end = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -192,3 +203,151 @@ class ClientFoodPreferenceChangeLog(models.Model):
 
     def __str__(self):
         return f"{self.user.email} | food-pref change @ {self.created_at}"
+
+
+class ClientQueuedPlanChange(models.Model):
+    STATUS_CHOICES = [
+        ("queued", "Queued"),
+        ("applied", "Applied"),
+        ("canceled", "Canceled"),
+    ]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="queued_plan_changes")
+    client_profile = models.ForeignKey(
+        "ClientProfile",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="queued_plan_changes",
+    )
+    target_offer_code = models.CharField(max_length=64)
+    target_coaching_term = models.CharField(max_length=20, default="none")
+    amount_cents = models.PositiveIntegerField(default=0)
+    queued_for_period_end_at = models.DateTimeField(null=True, blank=True)
+    stripe_checkout_session_id = models.CharField(max_length=128, blank=True, default="", db_index=True)
+    stripe_payment_intent_id = models.CharField(max_length=128, blank=True, default="")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="queued", db_index=True)
+    notes = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        verbose_name = "Client Queued Plan Change"
+        verbose_name_plural = "Client Queued Plan Changes"
+
+    def __str__(self):
+        return f"{self.user.email} | queued {self.target_offer_code} ({self.target_coaching_term})"
+
+
+class ClientMealPlanGenerationJob(models.Model):
+    DAY_CHOICES = ClientMealComboSelection.DAY_CHOICES
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("running", "Running"),
+        ("completed", "Completed"),
+        ("failed", "Failed"),
+    ]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="meal_plan_generation_jobs")
+    client_profile = models.ForeignKey(
+        "ClientProfile",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="meal_plan_generation_jobs",
+    )
+    day_of_week = models.CharField(max_length=12, choices=DAY_CHOICES, db_index=True)
+    algorithm_version = models.CharField(max_length=32, default="wp_v1")
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default="pending", db_index=True)
+    total_steps = models.PositiveSmallIntegerField(default=10)
+    current_step = models.PositiveSmallIntegerField(default=0)
+    progress_percent = models.PositiveSmallIntegerField(default=0)
+    input_snapshot_json = models.JSONField(default=dict, blank=True)
+    error_message = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        verbose_name = "Client Meal Plan Generation Job"
+        verbose_name_plural = "Client Meal Plan Generation Jobs"
+
+    def __str__(self):
+        return f"{self.user.email} | {self.day_of_week} | {self.status} ({self.progress_percent}%)"
+
+
+class ClientMealPlanGenerationStep1Row(models.Model):
+    job = models.ForeignKey(
+        "ClientMealPlanGenerationJob",
+        on_delete=models.CASCADE,
+        related_name="step1_rows",
+    )
+    meal_number = models.PositiveSmallIntegerField()
+    error_code = models.IntegerField(db_index=True)
+    pro_negative = models.DecimalField(max_digits=12, decimal_places=6, default=0)
+    carbs_negative = models.DecimalField(max_digits=12, decimal_places=6, default=0)
+    fats_negative = models.DecimalField(max_digits=12, decimal_places=6, default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("meal_number", "error_code")
+        verbose_name = "Client Meal Plan Generation Step1 Row"
+        verbose_name_plural = "Client Meal Plan Generation Step1 Rows"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["job", "meal_number", "error_code"],
+                name="client_meal_plan_step1_unique_row",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["job", "meal_number"], name="client_step1_job_meal_idx"),
+        ]
+
+    def __str__(self):
+        return f"Job {self.job_id} | meal {self.meal_number} | error {self.error_code}"
+
+
+class ClientMealPlanGeneratedMeal(models.Model):
+    DAY_CHOICES = ClientMealComboSelection.DAY_CHOICES
+
+    job = models.ForeignKey(
+        "ClientMealPlanGenerationJob",
+        on_delete=models.CASCADE,
+        related_name="generated_meals",
+    )
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="generated_meal_rows")
+    day_of_week = models.CharField(max_length=12, choices=DAY_CHOICES, db_index=True)
+    meal_number = models.PositiveSmallIntegerField()
+    combo_template = models.ForeignKey(
+        "core.MealComboTemplate",
+        to_field="combo_id",
+        db_column="combo_id",
+        on_delete=models.PROTECT,
+        related_name="generated_meal_rows",
+    )
+    error_code = models.IntegerField(default=0)
+    protein1_total = models.DecimalField(max_digits=12, decimal_places=6, default=0)
+    protein2_total = models.DecimalField(max_digits=12, decimal_places=6, default=0)
+    carbs1_total = models.DecimalField(max_digits=12, decimal_places=6, default=0)
+    carbs2_total = models.DecimalField(max_digits=12, decimal_places=6, default=0)
+    fats1_total = models.DecimalField(max_digits=12, decimal_places=6, default=0)
+    fats2_total = models.DecimalField(max_digits=12, decimal_places=6, default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("day_of_week", "meal_number")
+        verbose_name = "Client Meal Plan Generated Meal"
+        verbose_name_plural = "Client Meal Plan Generated Meals"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["job", "day_of_week", "meal_number"],
+                name="client_generated_meal_unique_job_day_meal",
+            )
+        ]
+
+    def __str__(self):
+        return f"Job {self.job_id} | {self.day_of_week} meal {self.meal_number}"
