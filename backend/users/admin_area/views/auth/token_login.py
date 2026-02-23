@@ -6,6 +6,10 @@ from django.contrib.auth import get_user_model
 from rest_framework.exceptions import AuthenticationFailed, NotFound
 from users.admin_area.views.api_contract import error
 
+def _is_gmail_email(value):
+    email = (value or "").strip().lower()
+    return email.endswith("@gmail.com") or email.endswith("@googlemail.com")
+
 class TokenObtainPairSerializer(BaseTokenObtainPairSerializer):
     @classmethod
     def get_token(cls, user):
@@ -46,6 +50,16 @@ class TokenObtainPairSerializer(BaseTokenObtainPairSerializer):
                     message="This account is inactive.",
                     http_status=401,
                     legacy_error_code="INACTIVE",
+                ).data
+            )
+
+        if _is_gmail_email(getattr(user, "email", username)):
+            raise AuthenticationFailed(
+                detail=error(
+                    code="GOOGLE_REQUIRED",
+                    message="Gmail accounts must use Google sign-in.",
+                    http_status=401,
+                    legacy_error_code="GOOGLE_REQUIRED",
                 ).data
             )
 

@@ -1,14 +1,20 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { apiRequest } from '../../../api/client';
 import './AdminParameterSettingsPage.css';
 
-function prettyJson(value) {
-  try {
-    return JSON.stringify(value, null, 2);
-  } catch {
-    return '';
-  }
+const SUBDOMAIN_RE = /^[a-z]+(?:-[a-z]+)*$/;
+
+function normalizeSubdomain(value) {
+  return String(value || '').trim().toLowerCase().replace(/\s+/g, '');
+}
+
+function validateSubdomainSlug(value) {
+  const slug = normalizeSubdomain(value);
+  if (!slug) return 'Subdomain is required.';
+  if (slug.length < 3 || slug.length > 40) return 'Subdomain must be between 3 and 40 characters.';
+  if (!SUBDOMAIN_RE.test(slug)) return 'Use only letters and hyphens (no spaces, numbers, or underscores).';
+  return '';
 }
 
 function setNestedValue(obj, path, value) {
@@ -25,6 +31,7 @@ function setNestedValue(obj, path, value) {
 
 function AdminParameterSettingsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [status, setStatus] = useState('loading');
   const [saveStatus, setSaveStatus] = useState('idle');
   const [message, setMessage] = useState('');
@@ -34,19 +41,56 @@ function AdminParameterSettingsPage() {
   const [selectedScenario, setSelectedScenario] = useState('no_training');
   const [selectedTdeeLifestyle, setSelectedTdeeLifestyle] = useState('low_active');
   const [selectedTdeeTrainingDays, setSelectedTdeeTrainingDays] = useState('1');
-  const [rawText, setRawText] = useState('');
+  const [selectedCorePlanType, setSelectedCorePlanType] = useState('standard');
+  const [selectedCoreGoal, setSelectedCoreGoal] = useState('lose');
   const [metadata, setMetadata] = useState(null);
   const [parsedSettings, setParsedSettings] = useState(null);
+  const [savedSettingsSnapshot, setSavedSettingsSnapshot] = useState(null);
+  const [subdomainInfo, setSubdomainInfo] = useState(null);
+  const [savedSubdomainSlug, setSavedSubdomainSlug] = useState('');
+  const [subdomainInput, setSubdomainInput] = useState('');
+  const [subdomainError, setSubdomainError] = useState('');
 
   const syncSettings = (nextSettings) => {
     setParsedSettings(nextSettings);
-    setRawText(prettyJson(nextSettings));
   };
 
   const updateNumberField = (path, rawValue) => {
     const parsed = Number(rawValue);
     if (!Number.isFinite(parsed)) return;
     const next = setNestedValue(parsedSettings || {}, path, parsed);
+    syncSettings(next);
+  };
+
+  const updateLockedPercentPair = ({ carbPath, fatPath, changedKey, rawValue }) => {
+    const parsed = Number(rawValue);
+    if (!Number.isFinite(parsed)) return;
+
+    const clamped = Math.min(100, Math.max(0, parsed));
+    const roundedPrimary = Number(clamped.toFixed(3));
+    const roundedOther = Number((100 - clamped).toFixed(3));
+
+    const next = JSON.parse(JSON.stringify(parsedSettings || {}));
+    let cursor = next;
+
+    const applyAtPath = (path, value) => {
+      let node = cursor;
+      for (let i = 0; i < path.length - 1; i += 1) {
+        const key = path[i];
+        if (!node[key] || typeof node[key] !== 'object') node[key] = {};
+        node = node[key];
+      }
+      node[path[path.length - 1]] = value;
+    };
+
+    if (changedKey === 'carb') {
+      applyAtPath(carbPath, roundedPrimary);
+      applyAtPath(fatPath, roundedOther);
+    } else {
+      applyAtPath(fatPath, roundedPrimary);
+      applyAtPath(carbPath, roundedOther);
+    }
+
     syncSettings(next);
   };
 
@@ -70,11 +114,20 @@ function AdminParameterSettingsPage() {
         const payload = res.data?.parameter_settings || {};
         setMetadata({
           initialized: Boolean(payload.initialized),
+          setupCompleted: Boolean(payload.setup_completed),
           defaultsVersionApplied: payload.defaults_version_applied || 'v1',
           updatedAt: payload.updated_at || null,
         });
-        setParsedSettings(payload.parameters_json || {});
-        setRawText(prettyJson(payload.parameters_json || {}));
+        const fetchedSubdomain = res.data?.subdomain || null;
+        const suggestedSubdomain = normalizeSubdomain(location.state?.suggestedSubdomain || '');
+        const slugValue = fetchedSubdomain?.slug || suggestedSubdomain || '';
+        setSubdomainInfo(fetchedSubdomain);
+        setSavedSubdomainSlug(fetchedSubdomain?.slug || '');
+        setSubdomainInput(slugValue);
+        setSubdomainError('');
+        const loadedSettings = payload.parameters_json || {};
+        setParsedSettings(loadedSettings);
+        setSavedSettingsSnapshot(loadedSettings);
         setStatus('ready');
       } catch (err) {
         console.error('parameter settings load error', err);
@@ -87,17 +140,7 @@ function AdminParameterSettingsPage() {
 
     load();
     return () => { ignore = true; };
-  }, [navigate]);
-
-  const mealViews = useMemo(() => {
-    if (!parsedSettings) return null;
-    const mealPlans = parsedSettings.meal_plans || {};
-    return {
-      standard: mealPlans.standard?.meal_macro_distribution?.[selectedMealCount] || null,
-      keto: mealPlans.keto?.meal_macro_distribution?.[selectedMealCount] || null,
-      carbCycling: mealPlans.carb_cycling?.meal_macro_distribution?.[selectedMealCount] || null,
-    };
-  }, [parsedSettings, selectedMealCount]);
+  }, [navigate, location.state]);
 
   const goalAdjustments = parsedSettings?.goal_calorie_adjustments || {};
   const mealPlans = parsedSettings?.meal_plans || {};
@@ -199,6 +242,9 @@ function AdminParameterSettingsPage() {
       const res = await apiRequest('/api/v1/users/admin/parameter_settings/use_defaults/', {
         method: 'POST',
         auth: true,
+        body: {
+          subdomain_slug: normalizeSubdomain(subdomainInput),
+        },
       });
       if (res.status === 401) {
         navigate('/admin_login');
@@ -206,7 +252,11 @@ function AdminParameterSettingsPage() {
       }
       if (!res.ok) {
         setSaveStatus('error');
-        setMessage(res.data?.error?.message || 'Unable to apply DTA defaults.');
+        const apiMessage = res.data?.error?.message || 'Unable to apply DTA defaults.';
+        setMessage(apiMessage);
+        if ((res.data?.error?.code || '') === 'INVALID_SUBDOMAIN_SLUG') {
+          setSubdomainError(apiMessage);
+        }
         return;
       }
 
@@ -215,11 +265,17 @@ function AdminParameterSettingsPage() {
         const payload = reload.data?.parameter_settings || {};
         setMetadata({
           initialized: Boolean(payload.initialized),
+          setupCompleted: Boolean(payload.setup_completed),
           defaultsVersionApplied: payload.defaults_version_applied || 'v1',
           updatedAt: payload.updated_at || null,
         });
-        setParsedSettings(payload.parameters_json || {});
-        setRawText(prettyJson(payload.parameters_json || {}));
+        const nextSubdomain = reload.data?.subdomain || null;
+        setSubdomainInfo(nextSubdomain);
+        setSavedSubdomainSlug(nextSubdomain?.slug || '');
+        setSubdomainInput(nextSubdomain?.slug || '');
+        const loadedSettings = payload.parameters_json || {};
+        setParsedSettings(loadedSettings);
+        setSavedSettingsSnapshot(loadedSettings);
       }
       setSaveStatus('success');
       setMessage('DTA v1 defaults applied.');
@@ -231,12 +287,11 @@ function AdminParameterSettingsPage() {
   };
 
   const handleSave = async () => {
-    let parsed;
-    try {
-      parsed = JSON.parse(rawText);
-    } catch (err) {
+    const wasInitialized = Boolean(metadata?.initialized);
+    const parsed = parsedSettings;
+    if (!parsed || typeof parsed !== 'object') {
       setSaveStatus('error');
-      setMessage(`JSON error: ${err.message}`);
+      setMessage('Nothing to save.');
       return;
     }
 
@@ -249,6 +304,7 @@ function AdminParameterSettingsPage() {
         body: {
           parameters_json: parsed,
           initialized: true,
+          subdomain_slug: normalizeSubdomain(subdomainInput),
         },
       });
       if (res.status === 401) {
@@ -257,26 +313,69 @@ function AdminParameterSettingsPage() {
       }
       if (!res.ok) {
         setSaveStatus('error');
-        setMessage(res.data?.error?.message || 'Unable to save admin parameter settings.');
+        const apiMessage = res.data?.error?.message || 'Unable to save admin parameter settings.';
+        setMessage(apiMessage);
+        if ((res.data?.error?.code || '') === 'INVALID_SUBDOMAIN_SLUG') {
+          setSubdomainError(apiMessage);
+        }
         return;
       }
 
       const payload = res.data?.parameter_settings || {};
-      setParsedSettings(payload.parameters_json || parsed);
-      setRawText(prettyJson(payload.parameters_json || parsed));
+      const savedSettings = payload.parameters_json || parsed;
+      setParsedSettings(savedSettings);
+      setSavedSettingsSnapshot(savedSettings);
       setMetadata((prev) => ({
         initialized: Boolean(payload.initialized ?? prev?.initialized),
+        setupCompleted: Boolean(payload.setup_completed ?? prev?.setupCompleted),
         defaultsVersionApplied: payload.defaults_version_applied || prev?.defaultsVersionApplied || 'v1',
         updatedAt: payload.updated_at || prev?.updatedAt || null,
       }));
+      const returnedSubdomain = res.data?.subdomain || null;
+      setSubdomainInfo(returnedSubdomain);
+      setSavedSubdomainSlug(returnedSubdomain?.slug || normalizeSubdomain(subdomainInput));
+      setSubdomainInput(returnedSubdomain?.slug || normalizeSubdomain(subdomainInput));
+      setSubdomainError('');
       setSaveStatus('success');
-      setMessage('Admin parameter settings saved.');
+      const changedCount = typeof payload.changed_paths_count === 'number' ? payload.changed_paths_count : null;
+      if (wasInitialized) {
+        setMessage(
+          changedCount == null
+            ? 'Admin parameter settings updated.'
+            : `Admin parameter settings updated. ${changedCount} change(s) recorded.`
+        );
+      } else {
+        setMessage(
+          changedCount == null
+            ? 'Admin parameter settings approved.'
+            : `Admin parameter settings approved. ${changedCount} change(s) recorded.`
+        );
+      }
     } catch (err) {
       console.error('save parameter settings error', err);
       setSaveStatus('error');
       setMessage('Network error while saving admin parameter settings.');
     }
   };
+
+  const hasUnsavedChanges = useMemo(() => {
+    const normalizedCurrentSubdomain = normalizeSubdomain(subdomainInput);
+    const normalizedSavedSubdomain = normalizeSubdomain(savedSubdomainSlug);
+    const subdomainDirty = !subdomainInfo?.locked && normalizedCurrentSubdomain !== normalizedSavedSubdomain;
+
+    if (!parsedSettings || !savedSettingsSnapshot) return subdomainDirty;
+    try {
+      return subdomainDirty || JSON.stringify(parsedSettings) !== JSON.stringify(savedSettingsSnapshot);
+    } catch {
+      return subdomainDirty;
+    }
+  }, [parsedSettings, savedSettingsSnapshot, subdomainInput, savedSubdomainSlug, subdomainInfo]);
+  const requiresInitialApproval = Boolean(metadata && !metadata.setupCompleted);
+  const showFloatingAction = requiresInitialApproval || hasUnsavedChanges;
+
+  const normalizedSubdomain = normalizeSubdomain(subdomainInput);
+  const currentSubdomainLocked = Boolean(subdomainInfo?.locked);
+  const effectiveSubdomainError = currentSubdomainLocked ? '' : (subdomainError || validateSubdomainSlug(subdomainInput));
 
   const handleMealBreakdownCellChange = (mealKey, macroKey, rawValue) => {
     const parsed = Number(rawValue);
@@ -324,6 +423,20 @@ function AdminParameterSettingsPage() {
     syncSettings(next);
   };
 
+  const corePlanLabel = selectedCorePlanType === 'carb_cycling'
+    ? 'Carb Cycling'
+    : selectedCorePlanType.charAt(0).toUpperCase() + selectedCorePlanType.slice(1);
+  const coreGoalLabel = selectedCoreGoal.replace('_', ' ');
+  const selectedStandardRule = standardMacroRules[selectedCoreGoal] || {};
+  const selectedKetoRule = ketoMacroRules[selectedCoreGoal] || {};
+  const selectedCarbCyclingRule = carbCyclingMacroRules[selectedCoreGoal] || {};
+  const selectedCarbCyclingLow = selectedCarbCyclingRule.low_day || {};
+  const selectedCarbCyclingHigh = selectedCarbCyclingRule.high_day || {};
+  const selectedStandardTotal = Number(selectedStandardRule.carb_percent || 0) + Number(selectedStandardRule.fat_percent || 0);
+  const selectedKetoTotal = Number(selectedKetoRule.carb_percent || 0) + Number(selectedKetoRule.fat_percent || 0);
+  const selectedCarbLowTotal = Number(selectedCarbCyclingLow.carb_percent || 0) + Number(selectedCarbCyclingLow.fat_percent || 0);
+  const selectedCarbHighTotal = Number(selectedCarbCyclingHigh.carb_percent || 0) + Number(selectedCarbCyclingHigh.fat_percent || 0);
+
   if (status === 'loading') {
     return <div className="admin-params-page"><p className="admin-params-muted">Loading admin parameter settings…</p></div>;
   }
@@ -348,6 +461,7 @@ function AdminParameterSettingsPage() {
         </div>
         <div className="admin-params-meta">
           <span>Initialized: {metadata?.initialized ? 'Yes' : 'No'}</span>
+          <span>Setup Complete: {metadata?.setupCompleted ? 'Yes' : 'No'}</span>
           <span>Defaults: {metadata?.defaultsVersionApplied || 'v1'}</span>
           <span>Updated: {metadata?.updatedAt ? new Date(metadata.updatedAt).toLocaleString() : '—'}</span>
         </div>
@@ -355,11 +469,12 @@ function AdminParameterSettingsPage() {
 
       <section className="admin-params-card">
         <div className="admin-params-actions">
-          <button className="admin-params-btn" onClick={handleUseDefaults} disabled={saveStatus === 'saving'}>
+          <button
+            className="admin-params-btn"
+            onClick={handleUseDefaults}
+            disabled={saveStatus === 'saving' || !!effectiveSubdomainError}
+          >
             Use DTA Defaults
-          </button>
-          <button className="admin-params-btn admin-params-btn-primary" onClick={handleSave} disabled={saveStatus === 'saving'}>
-            {saveStatus === 'saving' ? 'Saving…' : 'Save Changes'}
           </button>
           <button className="admin-params-btn" onClick={() => navigate('/admin_dashboard')}>
             Back to Dashboard
@@ -373,9 +488,65 @@ function AdminParameterSettingsPage() {
       </section>
 
       <section className="admin-params-card">
+        <h2 className="admin-params-section-title">Subdomain (One-Time Setup)</h2>
+        <p className="admin-params-muted">
+          This is your branded link. It can only be set once during setup and then becomes locked.
+        </p>
+        <div className="admin-params-form-panel admin-params-form-panel-wide">
+          <label>
+            Subdomain slug
+            <div className="admin-params-subdomain-row">
+              <input
+                type="text"
+                value={subdomainInput}
+                onChange={(e) => {
+                  const next = normalizeSubdomain(e.target.value);
+                  setSubdomainInput(next);
+                  if (subdomainError) setSubdomainError(validateSubdomainSlug(next));
+                }}
+                placeholder="coachmike"
+                autoComplete="off"
+                disabled={currentSubdomainLocked}
+              />
+              <span className="admin-params-subdomain-suffix">.dtameals.com</span>
+            </div>
+          </label>
+          <p className="admin-params-muted">Dev preview: {normalizedSubdomain ? `${normalizedSubdomain}.lvh.me:3000` : '—'}</p>
+          <p className="admin-params-muted">Production: {normalizedSubdomain ? `${normalizedSubdomain}.dtameals.com` : '—'}</p>
+          {currentSubdomainLocked && (
+            <p className="admin-params-success">
+              Subdomain locked on {subdomainInfo?.locked_at ? new Date(subdomainInfo.locked_at).toLocaleString() : 'setup'}.
+            </p>
+          )}
+          {!!effectiveSubdomainError && (
+            <p className="admin-params-error">{effectiveSubdomainError}</p>
+          )}
+        </div>
+      </section>
+
+      {showFloatingAction && (
+        <div className="admin-params-floating-update" role="region" aria-label="Unsaved parameter changes">
+          <div className="admin-params-floating-status">
+            <span className="admin-params-floating-dot" aria-hidden="true" />
+            {requiresInitialApproval ? 'Approval required' : 'Pending changes'}
+          </div>
+          <button
+            className="admin-params-btn admin-params-btn-primary admin-params-floating-btn"
+            onClick={handleSave}
+            disabled={saveStatus === 'saving' || !!effectiveSubdomainError}
+            type="button"
+          >
+            {saveStatus === 'saving'
+              ? (requiresInitialApproval ? 'Approving…' : 'Updating…')
+              : (requiresInitialApproval ? 'Approve Parameters' : 'Update Parameters')}
+          </button>
+        </div>
+      )}
+
+      <section className="admin-params-card">
         <h2 className="admin-params-section-title">Core Editable Parameters (v1)</h2>
         <p className="admin-params-muted">
-          Start here: goal adjustments and macro defaults. This is the first structured editor pass.
+          Start here: goal adjustments and macro defaults. Pick one meal plan type and one goal at a time to reduce clutter.
         </p>
 
         <div className="admin-params-form-grid">
@@ -409,174 +580,181 @@ function AdminParameterSettingsPage() {
               />
             </label>
           </div>
-
-          <div className="admin-params-form-panel">
-            <h3>Standard Macro Rules by Goal</h3>
-            {['lose', 'maintain', 'gain'].map((goalKey) => {
-              const rule = standardMacroRules[goalKey] || {};
-              const total = Number(rule.carb_percent || 0) + Number(rule.fat_percent || 0);
-              return (
-                <div key={`standard-${goalKey}`} className="admin-params-rule-block">
-                  <div className="admin-params-rule-head">
-                    <strong>{goalKey}</strong>
-                    <span className={Math.abs(total - 100) < 0.11 ? 'sum-ok' : 'sum-warn'}>
-                      carbs + fats = {total}
-                    </span>
-                  </div>
-                  <div className="admin-params-rule-grid">
-                    <label>
-                      Protein g/lb
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={rule.protein_factor_value ?? ''}
-                        onChange={(e) => updateNumberField(['meal_plans', 'standard', 'macro_rules_by_goal', goalKey, 'protein_factor_value'], e.target.value)}
-                      />
-                    </label>
-                    <label>
-                      Carb %
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={rule.carb_percent ?? ''}
-                        onChange={(e) => updateNumberField(['meal_plans', 'standard', 'macro_rules_by_goal', goalKey, 'carb_percent'], e.target.value)}
-                      />
-                    </label>
-                    <label>
-                      Fat %
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={rule.fat_percent ?? ''}
-                        onChange={(e) => updateNumberField(['meal_plans', 'standard', 'macro_rules_by_goal', goalKey, 'fat_percent'], e.target.value)}
-                      />
-                    </label>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="admin-params-form-panel">
-            <h3>Keto Macro Rules by Goal</h3>
-            {['lose', 'maintain', 'gain'].map((goalKey) => {
-              const rule = ketoMacroRules[goalKey] || {};
-              const total = Number(rule.carb_percent || 0) + Number(rule.fat_percent || 0);
-              return (
-                <div key={`keto-${goalKey}`} className="admin-params-rule-block">
-                  <div className="admin-params-rule-head">
-                    <strong>{goalKey}</strong>
-                    <span className={Math.abs(total - 100) < 0.11 ? 'sum-ok' : 'sum-warn'}>
-                      carbs + fats = {total}
-                    </span>
-                  </div>
-                  <div className="admin-params-rule-grid">
-                    <label>
-                      Protein g/lb
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={rule.protein_factor_value ?? ''}
-                        onChange={(e) => updateNumberField(['meal_plans', 'keto', 'macro_rules_by_goal', goalKey, 'protein_factor_value'], e.target.value)}
-                      />
-                    </label>
-                    <label>
-                      Carb %
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={rule.carb_percent ?? ''}
-                        onChange={(e) => updateNumberField(['meal_plans', 'keto', 'macro_rules_by_goal', goalKey, 'carb_percent'], e.target.value)}
-                      />
-                    </label>
-                    <label>
-                      Fat %
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={rule.fat_percent ?? ''}
-                        onChange={(e) => updateNumberField(['meal_plans', 'keto', 'macro_rules_by_goal', goalKey, 'fat_percent'], e.target.value)}
-                      />
-                    </label>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
         </div>
 
         <div className="admin-params-form-panel admin-params-form-panel-wide">
-          <h3>Carb Cycling Macro Rules by Goal</h3>
-          <p className="admin-params-muted">
-            Edit low-day and high-day macro percentages for each goal.
-          </p>
-          {['lose', 'maintain', 'gain'].map((goalKey) => {
-            const rule = carbCyclingMacroRules[goalKey] || {};
-            const lowDay = rule.low_day || {};
-            const highDay = rule.high_day || {};
-            const lowTotal = Number(lowDay.carb_percent || 0) + Number(lowDay.fat_percent || 0);
-            const highTotal = Number(highDay.carb_percent || 0) + Number(highDay.fat_percent || 0);
-            return (
-              <div key={`carb-cycling-${goalKey}`} className="admin-params-rule-block">
-                <div className="admin-params-rule-head">
-                  <strong>{goalKey}</strong>
-                  <span className={Math.abs(lowTotal - 100) < 0.11 ? 'sum-ok' : 'sum-warn'}>
-                    low day total = {lowTotal}
-                  </span>
-                  <span className={Math.abs(highTotal - 100) < 0.11 ? 'sum-ok' : 'sum-warn'}>
-                    high day total = {highTotal}
-                  </span>
-                </div>
-                <div className="admin-params-rule-grid">
-                  <label>
-                    Protein g/lb
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={rule.protein_factor_value ?? ''}
-                      onChange={(e) => updateNumberField(['meal_plans', 'carb_cycling', 'macro_rules_by_goal', goalKey, 'protein_factor_value'], e.target.value)}
-                    />
-                  </label>
-                  <label>
-                    Low Day Carb %
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={lowDay.carb_percent ?? ''}
-                      onChange={(e) => updateNumberField(['meal_plans', 'carb_cycling', 'macro_rules_by_goal', goalKey, 'low_day', 'carb_percent'], e.target.value)}
-                    />
-                  </label>
-                  <label>
-                    Low Day Fat %
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={lowDay.fat_percent ?? ''}
-                      onChange={(e) => updateNumberField(['meal_plans', 'carb_cycling', 'macro_rules_by_goal', goalKey, 'low_day', 'fat_percent'], e.target.value)}
-                    />
-                  </label>
-                  <label>
-                    High Day Carb %
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={highDay.carb_percent ?? ''}
-                      onChange={(e) => updateNumberField(['meal_plans', 'carb_cycling', 'macro_rules_by_goal', goalKey, 'high_day', 'carb_percent'], e.target.value)}
-                    />
-                  </label>
-                  <label>
-                    High Day Fat %
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={highDay.fat_percent ?? ''}
-                      onChange={(e) => updateNumberField(['meal_plans', 'carb_cycling', 'macro_rules_by_goal', goalKey, 'high_day', 'fat_percent'], e.target.value)}
-                    />
-                  </label>
-                </div>
+          <h3>Macro Rules by Goal</h3>
+          <div className="admin-params-editor-controls">
+            <div className="admin-params-editor-group">
+              <span className="admin-params-editor-label">Meal Plan Type</span>
+              <div className="admin-params-tabs">
+                {['standard', 'keto', 'carb_cycling'].map((key) => (
+                  <button
+                    key={`core-plan-${key}`}
+                    type="button"
+                    className={`admin-params-tab ${selectedCorePlanType === key ? 'is-active' : ''}`}
+                    onClick={() => setSelectedCorePlanType(key)}
+                  >
+                    {key === 'carb_cycling' ? 'Carb Cycling' : key.charAt(0).toUpperCase() + key.slice(1)}
+                  </button>
+                ))}
               </div>
-            );
-          })}
+            </div>
+
+            <div className="admin-params-editor-group">
+              <span className="admin-params-editor-label">Goal</span>
+              <div className="admin-params-tabs">
+                {['lose', 'maintain', 'gain'].map((key) => (
+                  <button
+                    key={`core-goal-${key}`}
+                    type="button"
+                    className={`admin-params-tab ${selectedCoreGoal === key ? 'is-active' : ''}`}
+                    onClick={() => setSelectedCoreGoal(key)}
+                  >
+                    {key === 'lose' ? 'Lose Weight' : key === 'maintain' ? 'Maintain' : 'Gain Weight'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="admin-params-rule-block">
+            <div className="admin-params-rule-head">
+              <strong>{corePlanLabel} - {coreGoalLabel}</strong>
+              {selectedCorePlanType === 'standard' && (
+                <span className={Math.abs(selectedStandardTotal - 100) < 0.11 ? 'sum-ok' : 'sum-warn'}>
+                  carbs + fats = {selectedStandardTotal}
+                </span>
+              )}
+              {selectedCorePlanType === 'keto' && (
+                <span className={Math.abs(selectedKetoTotal - 100) < 0.11 ? 'sum-ok' : 'sum-warn'}>
+                  carbs + fats = {selectedKetoTotal}
+                </span>
+              )}
+              {selectedCorePlanType === 'carb_cycling' && (
+                <>
+                  <span className={Math.abs(selectedCarbLowTotal - 100) < 0.11 ? 'sum-ok' : 'sum-warn'}>
+                    low day total = {selectedCarbLowTotal}
+                  </span>
+                  <span className={Math.abs(selectedCarbHighTotal - 100) < 0.11 ? 'sum-ok' : 'sum-warn'}>
+                    high day total = {selectedCarbHighTotal}
+                  </span>
+                </>
+              )}
+            </div>
+
+            {selectedCorePlanType !== 'carb_cycling' && (
+              <div className="admin-params-rule-grid">
+                <label>
+                  Protein g/lb
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={(selectedCorePlanType === 'standard' ? selectedStandardRule : selectedKetoRule).protein_factor_value ?? ''}
+                    onChange={(e) => updateNumberField(['meal_plans', selectedCorePlanType, 'macro_rules_by_goal', selectedCoreGoal, 'protein_factor_value'], e.target.value)}
+                  />
+                </label>
+                <label>
+                  Carb %
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={(selectedCorePlanType === 'standard' ? selectedStandardRule : selectedKetoRule).carb_percent ?? ''}
+                    onChange={(e) => updateLockedPercentPair({
+                      carbPath: ['meal_plans', selectedCorePlanType, 'macro_rules_by_goal', selectedCoreGoal, 'carb_percent'],
+                      fatPath: ['meal_plans', selectedCorePlanType, 'macro_rules_by_goal', selectedCoreGoal, 'fat_percent'],
+                      changedKey: 'carb',
+                      rawValue: e.target.value,
+                    })}
+                  />
+                </label>
+                <label>
+                  Fat %
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={(selectedCorePlanType === 'standard' ? selectedStandardRule : selectedKetoRule).fat_percent ?? ''}
+                    onChange={(e) => updateLockedPercentPair({
+                      carbPath: ['meal_plans', selectedCorePlanType, 'macro_rules_by_goal', selectedCoreGoal, 'carb_percent'],
+                      fatPath: ['meal_plans', selectedCorePlanType, 'macro_rules_by_goal', selectedCoreGoal, 'fat_percent'],
+                      changedKey: 'fat',
+                      rawValue: e.target.value,
+                    })}
+                  />
+                </label>
+              </div>
+            )}
+
+            {selectedCorePlanType === 'carb_cycling' && (
+              <div className="admin-params-rule-grid">
+                <label>
+                  Protein g/lb
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={selectedCarbCyclingRule.protein_factor_value ?? ''}
+                    onChange={(e) => updateNumberField(['meal_plans', 'carb_cycling', 'macro_rules_by_goal', selectedCoreGoal, 'protein_factor_value'], e.target.value)}
+                  />
+                </label>
+                <label>
+                  Low Day Carb %
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={selectedCarbCyclingLow.carb_percent ?? ''}
+                    onChange={(e) => updateLockedPercentPair({
+                      carbPath: ['meal_plans', 'carb_cycling', 'macro_rules_by_goal', selectedCoreGoal, 'low_day', 'carb_percent'],
+                      fatPath: ['meal_plans', 'carb_cycling', 'macro_rules_by_goal', selectedCoreGoal, 'low_day', 'fat_percent'],
+                      changedKey: 'carb',
+                      rawValue: e.target.value,
+                    })}
+                  />
+                </label>
+                <label>
+                  Low Day Fat %
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={selectedCarbCyclingLow.fat_percent ?? ''}
+                    onChange={(e) => updateLockedPercentPair({
+                      carbPath: ['meal_plans', 'carb_cycling', 'macro_rules_by_goal', selectedCoreGoal, 'low_day', 'carb_percent'],
+                      fatPath: ['meal_plans', 'carb_cycling', 'macro_rules_by_goal', selectedCoreGoal, 'low_day', 'fat_percent'],
+                      changedKey: 'fat',
+                      rawValue: e.target.value,
+                    })}
+                  />
+                </label>
+                <label>
+                  High Day Carb %
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={selectedCarbCyclingHigh.carb_percent ?? ''}
+                    onChange={(e) => updateLockedPercentPair({
+                      carbPath: ['meal_plans', 'carb_cycling', 'macro_rules_by_goal', selectedCoreGoal, 'high_day', 'carb_percent'],
+                      fatPath: ['meal_plans', 'carb_cycling', 'macro_rules_by_goal', selectedCoreGoal, 'high_day', 'fat_percent'],
+                      changedKey: 'carb',
+                      rawValue: e.target.value,
+                    })}
+                  />
+                </label>
+                <label>
+                  High Day Fat %
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={selectedCarbCyclingHigh.fat_percent ?? ''}
+                    onChange={(e) => updateLockedPercentPair({
+                      carbPath: ['meal_plans', 'carb_cycling', 'macro_rules_by_goal', selectedCoreGoal, 'high_day', 'carb_percent'],
+                      fatPath: ['meal_plans', 'carb_cycling', 'macro_rules_by_goal', selectedCoreGoal, 'high_day', 'fat_percent'],
+                      changedKey: 'fat',
+                      rawValue: e.target.value,
+                    })}
+                  />
+                </label>
+              </div>
+            )}
+          </div>
         </div>
       </section>
 
@@ -848,10 +1026,22 @@ function AdminParameterSettingsPage() {
               <tbody>
                 <tr>
                   {Array.from({ length: 7 }).map((_, dayIndex) => (
-                    <td key={`weekly-day-cell-${dayIndex}`}>
+                    <td
+                      key={`weekly-day-cell-${dayIndex}`}
+                      className={
+                        weeklyDayRoleLabels?.[dayIndex] === 'workout'
+                          ? 'tdee-day-cell tdee-day-cell-workout'
+                          : 'tdee-day-cell tdee-day-cell-off'
+                      }
+                    >
                       <input
                         type="number"
                         step="0.000001"
+                        className={
+                          weeklyDayRoleLabels?.[dayIndex] === 'workout'
+                            ? 'tdee-day-input tdee-day-input-workout'
+                            : 'tdee-day-input tdee-day-input-off'
+                        }
                         value={selectedWeeklyDayMultipliers?.[dayIndex] ?? ''}
                         onChange={(e) => handleWeeklyDayMultiplierChange(dayIndex, e.target.value)}
                       />
@@ -876,82 +1066,6 @@ function AdminParameterSettingsPage() {
         </div>
       </section>
 
-      <section className="admin-params-card">
-        <h2 className="admin-params-section-title">Meal Split Quick View</h2>
-        <p className="admin-params-muted">
-          Compare Standard, Keto, and Carb Cycling distributions for one meal count at a time.
-        </p>
-        <div className="admin-params-tabs">
-          {['meals_3', 'meals_4', 'meals_5', 'meals_6'].map((key) => (
-            <button
-              key={key}
-              className={`admin-params-tab ${selectedMealCount === key ? 'is-active' : ''}`}
-              onClick={() => setSelectedMealCount(key)}
-              type="button"
-            >
-              {key.replace('meals_', '')} Meals
-            </button>
-          ))}
-        </div>
-
-        <div className="admin-params-grid">
-          <div className="admin-params-panel">
-            <h3>Standard</h3>
-            <pre>{prettyJson(mealViews?.standard || {})}</pre>
-          </div>
-          <div className="admin-params-panel">
-            <h3>Keto</h3>
-            <pre>{prettyJson(mealViews?.keto || {})}</pre>
-          </div>
-          <div className="admin-params-panel">
-            <h3>Carb Cycling ({selectedMealCount})</h3>
-            <pre>{prettyJson(mealViews?.carbCycling || {})}</pre>
-          </div>
-        </div>
-      </section>
-
-      <section className="admin-params-card">
-        <h2 className="admin-params-section-title">Global (Goal + TDEE) Quick View</h2>
-        <pre className="admin-params-inline-pre">
-          {prettyJson({
-            version: parsedSettings?.version,
-            goal_calorie_adjustments: parsedSettings?.goal_calorie_adjustments,
-            tdee: parsedSettings?.tdee,
-          })}
-        </pre>
-      </section>
-
-      <section className="admin-params-card">
-        <h2 className="admin-params-section-title">Full JSON Editor (v1)</h2>
-        <p className="admin-params-muted">
-          Advanced fallback editor. Structured edits above automatically update this JSON.
-        </p>
-        <textarea
-          className="admin-params-textarea"
-          value={rawText}
-          onChange={(e) => setRawText(e.target.value)}
-          spellCheck={false}
-        />
-        <div className="admin-params-actions admin-params-actions-inline">
-          <button
-            className="admin-params-btn"
-            type="button"
-            onClick={() => {
-              try {
-                const parsed = JSON.parse(rawText);
-                setParsedSettings(parsed);
-                setMessage('JSON editor synced to page preview.');
-                setSaveStatus('success');
-              } catch (err) {
-                setSaveStatus('error');
-                setMessage(`JSON error: ${err.message}`);
-              }
-            }}
-          >
-            Sync JSON to Preview
-          </button>
-        </div>
-      </section>
     </div>
   );
 }

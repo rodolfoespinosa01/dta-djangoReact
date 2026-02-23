@@ -1,16 +1,128 @@
 .user-plan-page {
   padding: 2rem 1rem;
-  text-align: center;
-  max-width: 720px;
+  max-width: 1080px;
   margin: 0 auto;
 }
 
-.user-plan-page p {
-  color: var(--muted);
+.user-plan-header-card {
+  border: 1px solid rgba(20, 40, 74, 0.12);
+  border-radius: 18px;
+  padding: 1rem;
+  background: linear-gradient(150deg, #f7fbff, #eef5ff);
+  box-shadow: 0 12px 24px rgba(12, 24, 44, 0.06);
+}
+
+.user-plan-brand {
+  margin: 0;
+  color: #2f4e7c;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.user-plan-header-card h2 {
+  margin: 0.4rem 0 0;
+  color: #13233f;
+}
+
+.user-plan-header-card p:last-child {
+  color: #4c6484;
+}
+
+.user-plan-email-field {
+  margin-top: 0.7rem;
+  display: grid;
+  gap: 0.35rem;
+  color: #243853;
+  font-weight: 600;
+}
+
+.user-plan-email-field input {
+  border: 1px solid rgba(20, 40, 74, 0.18);
+  border-radius: 10px;
+  padding: 0.65rem 0.7rem;
+}
+
+.user-plan-inline-message {
+  margin: 0.55rem 0 0;
+  color: #b42318;
+  font-weight: 600;
+}
+
+.user-plan-grid {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.user-plan-card {
+  border: 1px solid rgba(20, 40, 74, 0.12);
+  border-radius: 16px;
+  background: #fff;
+  padding: 0.9rem;
+  box-shadow: 0 10px 22px rgba(12, 24, 44, 0.05);
+  display: flex;
+  flex-direction: column;
+}
+
+.user-plan-card.is-featured {
+  border-color: rgba(37, 99, 235, 0.25);
+  box-shadow: 0 14px 26px rgba(37, 99, 235, 0.08);
+}
+
+.user-plan-card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  align-items: flex-start;
+}
+
+.user-plan-card-top h3 {
+  margin: 0;
+  color: #13233f;
+  font-size: 1rem;
+}
+
+.user-plan-price {
+  border-radius: 999px;
+  background: #f1f5ff;
+  border: 1px solid rgba(37, 99, 235, 0.12);
+  color: #27447d;
+  padding: 0.2rem 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.user-plan-trial {
+  margin: 0.6rem 0 0;
+  font-weight: 700;
+  color: #0f766e;
+  font-size: 0.85rem;
+}
+
+.user-plan-trial.is-free {
+  color: #1d4ed8;
+}
+
+.user-plan-description {
+  margin: 0.45rem 0 0;
+  color: #4c6484;
+  font-size: 0.9rem;
+}
+
+.user-plan-features {
+  margin: 0.7rem 0 0;
+  padding-left: 1rem;
+  color: #344a6a;
+  font-size: 0.88rem;
+  display: grid;
+  gap: 0.35rem;
+  flex: 1;
 }
 
 .user-plan-button {
-  margin-top: 1rem;
+  margin-top: 0.9rem;
   padding: 0.9rem 1.3rem;
   font-size: 0.95rem;
   border-radius: 10px;
@@ -21,9 +133,20 @@
   cursor: pointer;
 }
 
+.user-plan-button-secondary {
+  margin-top: 1rem;
+  background: #fff;
+  color: #13233f;
+  border: 1px solid rgba(20, 40, 74, 0.18);
+ }
+
 @media (max-width: 640px) {
   .user-plan-page {
     padding: 1.6rem 0.9rem;
+  }
+
+  .user-plan-grid {
+    grid-template-columns: 1fr;
   }
 
   .user-plan-button {

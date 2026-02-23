@@ -8,6 +8,7 @@ from .TransactionLog import TransactionLog
 from .EventTracker import EventTracker 
 from .AdminAccountHistory import AdminAccountHistory
 from .AdminParameterSettings import AdminParameterSettings
+from .AdminParameterSettingsChangeLog import AdminParameterSettingsChangeLog
 __all__ = [
     'Plan',
     'Profile',
@@ -19,4 +20,5 @@ __all__ = [
     'EventTracker',
     'AdminAccountHistory',
     'AdminParameterSettings',
+    'AdminParameterSettingsChangeLog',
 ]

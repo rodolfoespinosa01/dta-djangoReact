@@ -23,6 +23,12 @@
   text-align: center;
 }
 
+.admin-register-subtitle {
+  margin: 0 0 1rem;
+  color: #4b5563;
+  text-align: center;
+}
+
 .admin-register-input {
   margin-bottom: 1.5rem;
   width: 100%;
@@ -44,6 +50,44 @@
   border: none;
   border-radius: 6px;
   cursor: pointer;
+}
+
+.admin-register-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.admin-register-card form {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.admin-register-card label {
+  color: #374151;
+  font-weight: 600;
+}
+
+.admin-register-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.25rem 0;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.admin-register-divider::before,
+.admin-register-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #e5e7eb;
+}
+
+.admin-register-error {
+  margin: 0;
+  color: #b42318;
+  font-weight: 600;
 }
 
 @media (max-width: 640px) {

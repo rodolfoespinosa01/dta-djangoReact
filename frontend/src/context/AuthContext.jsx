@@ -18,13 +18,23 @@ const PUBLIC_PATHS = new Set([
   '/admin_forgot_password',         // forgot page
   '/user_homepage',
   '/user_plans',
+  '/client_login',
+  '/client_register',
+  '/macro_calculator',
   '/superadmin_login',
 ]);
 
 // Public routes that may include tokens / dynamic parts
 const PUBLIC_PREFIXES = [
   '/admin_reset_password',          // e.g. /admin_reset_password?token=...
+  '/start/',                       // admin-branded end-user marketing pages
 ];
+
+const getDefaultLoginRouteForPath = (pathname) => {
+  if ((pathname || '').startsWith('/superadmin')) return '/superadmin_login';
+  if ((pathname || '').startsWith('/client')) return '/client_login';
+  return '/admin_login';
+};
 
 const isPublicRoute = (pathname) =>
   PUBLIC_PATHS.has(pathname) || PUBLIC_PREFIXES.some(p => pathname.startsWith(p));
@@ -83,14 +93,14 @@ export const AuthProvider = ({ children }) => {
     // Unauthenticated: allow public routes; otherwise redirect
     if (!access || !refresh) {
       setAuth({ user: null, accessToken: null, isAuthenticated: false, loading: false });
-      if (!isPublicRoute(location.pathname)) logout('/admin_login');
+      if (!isPublicRoute(location.pathname)) logout(getDefaultLoginRouteForPath(location.pathname));
       return;
     }
 
     // Tokens present: validate access token
     if (isExpired(access)) {
       console.warn('⏰ Access token expired — logging out');
-      logout(isPublicRoute(location.pathname) ? location.pathname : '/admin_login');
+      logout(isPublicRoute(location.pathname) ? location.pathname : getDefaultLoginRouteForPath(location.pathname));
       return;
     }
 
@@ -115,7 +125,7 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (err) {
       console.error('❌ Error decoding token on rehydrate:', err);
-      logout(isPublicRoute(location.pathname) ? location.pathname : '/admin_login');
+      logout(isPublicRoute(location.pathname) ? location.pathname : getDefaultLoginRouteForPath(location.pathname));
     }
     // Re-run on path change so public-route checks apply to direct navigations
   }, [location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
