@@ -82,6 +82,13 @@ function AdminClientLandingPage() {
           >
             Free Macro Calculator
           </button>
+          <button
+            type="button"
+            className="admin-client-secondary-cta"
+            onClick={() => navigate(`/start/${adminSlug}/login`)}
+          >
+            Client Login
+          </button>
         </div>
       </section>
 

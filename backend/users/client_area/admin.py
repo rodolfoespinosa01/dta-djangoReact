@@ -5,11 +5,15 @@ from django.utils.html import format_html
 
 from .models import (
     ClientFoodPreferenceChangeLog,
+    ClientMealPlanGeneratedMeal,
+    ClientMealPlanGenerationJob,
+    ClientMealPlanGenerationStep1Row,
     ClientMacroAccessLink,
     ClientMealComboSelection,
     ClientPendingSignup,
     ClientProfile,
     ClientQuestionnaireProgress,
+    ClientQueuedPlanChange,
 )
 
 
@@ -53,6 +57,10 @@ class ClientProfileAdmin(admin.ModelAdmin):
         "amount_cents",
         "includes_food_plan",
         "includes_coaching",
+        "coaching_term",
+        "coaching_expires_at",
+        "stripe_customer_id",
+        "stripe_subscription_id",
         "is_active",
         "created_at",
         "updated_at",
@@ -70,6 +78,10 @@ class ClientProfileAdmin(admin.ModelAdmin):
         "amount_cents",
         "includes_food_plan",
         "includes_coaching",
+        "coaching_term",
+        "coaching_expires_at",
+        "stripe_customer_id",
+        "stripe_subscription_id",
         "is_active",
         "created_at",
         "updated_at",
@@ -339,3 +351,156 @@ class ClientMacroAccessLinkAdmin(admin.ModelAdmin):
     list_filter = ("questionnaire_status", "sale_channel")
     search_fields = ("email", "token", "admin__admin_email", "admin__subdomain_slug")
     readonly_fields = ("created_at", "last_opened_at", "questionnaire_completed_at")
+
+
+@admin.register(ClientQueuedPlanChange)
+class ClientQueuedPlanChangeAdmin(admin.ModelAdmin):
+    list_display = (
+        "user",
+        "source_owner",
+        "target_offer_code",
+        "target_coaching_term",
+        "amount_cents",
+        "queued_for_period_end_at",
+        "status",
+        "created_at",
+    )
+    list_filter = ("status", "target_offer_code", "target_coaching_term")
+    search_fields = ("user__email", "stripe_checkout_session_id", "stripe_payment_intent_id")
+    list_select_related = ("user", "client_profile", "client_profile__associated_admin")
+    readonly_fields = (
+        "user", "client_profile", "target_offer_code", "target_coaching_term", "amount_cents",
+        "queued_for_period_end_at", "stripe_checkout_session_id", "stripe_payment_intent_id",
+        "status", "notes", "created_at", "updated_at",
+    )
+
+    def source_owner(self, obj):
+        profile = obj.client_profile or getattr(obj.user, "client_profile", None)
+        if not profile or profile.sale_channel == "dta_direct" or not profile.associated_admin:
+            return "DTA"
+        return profile.associated_admin.admin_email
+
+    source_owner.short_description = "Sold By"
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(ClientMealPlanGenerationJob)
+class ClientMealPlanGenerationJobAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "user",
+        "source_owner",
+        "day_of_week",
+        "status",
+        "current_step",
+        "progress_percent",
+        "created_at",
+        "completed_at",
+    )
+    list_filter = ("status", "day_of_week", "algorithm_version")
+    search_fields = ("user__email", "error_message")
+    list_select_related = ("user", "client_profile", "client_profile__associated_admin")
+    readonly_fields = (
+        "user",
+        "client_profile",
+        "day_of_week",
+        "algorithm_version",
+        "status",
+        "total_steps",
+        "current_step",
+        "progress_percent",
+        "error_message",
+        "input_snapshot_json",
+        "input_snapshot_pretty",
+        "created_at",
+        "started_at",
+        "completed_at",
+        "updated_at",
+    )
+    fields = readonly_fields
+
+    def source_owner(self, obj):
+        profile = obj.client_profile or getattr(obj.user, "client_profile", None)
+        if not profile or profile.sale_channel == "dta_direct" or not profile.associated_admin:
+            return "DTA"
+        return profile.associated_admin.admin_email
+
+    source_owner.short_description = "Sold By"
+
+    def input_snapshot_pretty(self, obj):
+        pretty = json.dumps(obj.input_snapshot_json or {}, indent=2, sort_keys=True, ensure_ascii=True)
+        return format_html("<pre style='max-width:1000px;white-space:pre-wrap'>{}</pre>", pretty)
+
+    input_snapshot_pretty.short_description = "Input Snapshot (Pretty)"
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(ClientMealPlanGenerationStep1Row)
+class ClientMealPlanGenerationStep1RowAdmin(admin.ModelAdmin):
+    list_display = ("job", "user_email", "meal_number", "error_code", "pro_negative", "carbs_negative", "fats_negative")
+    list_filter = ("meal_number", "job__day_of_week")
+    search_fields = ("job__user__email", "error_code", "job__id")
+    list_select_related = ("job", "job__user")
+    readonly_fields = ("job", "meal_number", "error_code", "pro_negative", "carbs_negative", "fats_negative", "created_at")
+
+    def user_email(self, obj):
+        return obj.job.user.email
+
+    user_email.short_description = "User"
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(ClientMealPlanGeneratedMeal)
+class ClientMealPlanGeneratedMealAdmin(admin.ModelAdmin):
+    list_display = ("job", "user", "day_of_week", "meal_number", "combo_template_id", "error_code", "updated_at")
+    list_filter = ("day_of_week",)
+    search_fields = ("user__email", "job__id", "combo_template__combo_id")
+    readonly_fields = (
+        "job",
+        "user",
+        "day_of_week",
+        "meal_number",
+        "combo_template",
+        "error_code",
+        "protein1_total",
+        "protein2_total",
+        "carbs1_total",
+        "carbs2_total",
+        "fats1_total",
+        "fats2_total",
+        "created_at",
+        "updated_at",
+    )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

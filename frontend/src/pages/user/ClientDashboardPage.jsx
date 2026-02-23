@@ -21,6 +21,10 @@ const WEEK_DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'frid
 function normalizeSubdomainLabel(slug) {
   return slug ? `${slug}.dtameals.com` : 'DTA Direct';
 }
+function portalLabel(client) {
+  if (!client) return 'Client Portal';
+  return client.sale_channel === 'admin_white_label' ? 'Coach Portal' : 'DTA Direct Portal';
+}
 function prettyDay(day) {
   return day.charAt(0).toUpperCase() + day.slice(1);
 }
@@ -521,34 +525,7 @@ function ClientDashboardPage() {
   const results = dashboard?.results;
 
   const handleStartTrialFromDashboard = async () => {
-    setPlanActionBusy(true);
-    setPlanActionMessage('');
-    try {
-      const res = await apiRequest('/api/v1/users/client/app/settings/plan-action/', {
-        method: 'POST',
-        auth: true,
-        body: { action: 'start_free_trial' },
-      });
-      if (!res.ok) {
-        setPlanActionMessage(res.data?.error?.message || 'Unable to start free trial.');
-        return;
-      }
-      setDashboard((prev) => prev ? {
-        ...prev,
-        client: {
-          ...prev.client,
-          ...(res.data?.settings || {}),
-        },
-        settings: res.data?.settings || prev.settings,
-      } : prev);
-      setPlanActionMessage(res.data?.message || 'Free trial started.');
-      navigate('/client_food_preferences');
-    } catch (err) {
-      console.error(err);
-      setPlanActionMessage('Network error while starting free trial.');
-    } finally {
-      setPlanActionBusy(false);
-    }
+    navigate('/client_settings');
   };
 
   if (loading) return <div className="client-dashboard-page"><p>Loading dashboard…</p></div>;
@@ -559,9 +536,10 @@ function ClientDashboardPage() {
       <header className="client-dashboard-header">
         <div>
           <h1>Client Dashboard</h1>
-          <p className="client-dash-muted">
-            Source: {normalizeSubdomainLabel(dashboard?.client?.associated_admin_slug)}
-          </p>
+          <div className="client-dash-chips" style={{ marginTop: '0.35rem' }}>
+            <span>{portalLabel(dashboard?.client)}</span>
+            <span>Source: {normalizeSubdomainLabel(dashboard?.client?.associated_admin_slug)}</span>
+          </div>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
           <div className="client-dash-chips">
@@ -586,7 +564,7 @@ function ClientDashboardPage() {
         <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
           {!dashboard?.client?.includes_food_plan ? (
             <button type="button" className="client-q-btn" onClick={handleStartTrialFromDashboard} disabled={planActionBusy || isBlocked}>
-              {planActionBusy ? 'Starting Trial…' : 'Start 5-Day Free Trial + Food Questionnaire'}
+              Choose Plan + Start 5-Day Free Trial
             </button>
           ) : (
             <button type="button" className="client-q-btn" onClick={() => navigate('/client_food_preferences')} disabled={isBlocked}>

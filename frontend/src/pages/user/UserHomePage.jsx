@@ -132,37 +132,37 @@ function UserHomePage() {
         <div className="user-story-copy">
           <h1>{t('user_home.hero_title')}</h1>
           <p>{t('user_home.hero_subtitle')}</p>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.75rem' }}>
+            <button type="button" className="user-home-button" onClick={() => navigate('/welcome')}>
+              Back to Main Page
+            </button>
+            <button type="button" className="user-home-button" onClick={() => navigate('/admin_homepage')}>
+              Admin Access
+            </button>
+          </div>
         </div>
       </section>
 
-      <form className="user-login-form">
-        <label className="user-login-label" htmlFor="user-email">
-          {t('common.email')}
-        </label>
-        <input
-          id="user-email"
-          type="email"
-          className="user-login-input"
-          placeholder={t('user_home.email_placeholder')}
-          autoComplete="email"
-        />
-        <label className="user-login-label" htmlFor="user-password">
-          {t('common.password')}
-        </label>
-        <input
-          id="user-password"
-          type="password"
-          className="user-login-input"
-          placeholder={t('user_home.password_placeholder')}
-          autoComplete="current-password"
-        />
-        <button type="button" className="user-home-button" disabled>
-          {t('user_home.login_soon')}
+      <div className="user-login-form">
+        <p className="user-login-label" style={{ margin: 0 }}>
+          DTA Client Access
+        </p>
+        <p className="user-section-subtitle" style={{ marginTop: 0 }}>
+          Already have a DTA client account? Use the dedicated DTA client login page to sign in with password or Google.
+        </p>
+        <button type="button" className="user-home-button" onClick={() => navigate('/user_login')}>
+          Go To DTA Client Login
         </button>
+        <p className="user-section-subtitle" style={{ marginTop: '0.25rem' }}>
+          DTA clients log in on the DTA client login page. If you are a coach&apos;s client, use your coach link and log in from that coach page.
+        </p>
         <button type="button" className="user-home-button" onClick={() => navigate('/user_plans')}>
           View DTA Plans
         </button>
-      </form>
+        <button type="button" className="user-home-button" onClick={() => navigate('/welcome')}>
+          Back to Main Page
+        </button>
+      </div>
 
       <section className="user-macro-showcase" aria-label="Macro food categories">
         <h2>{t('user_home.macros_title')}</h2>

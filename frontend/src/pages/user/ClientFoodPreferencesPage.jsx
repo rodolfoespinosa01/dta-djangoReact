@@ -5,6 +5,15 @@ import MealComboBuilderStep from '../../components/MealComboBuilderStep';
 import { useAuth } from '../../context/AuthContext';
 import './ClientDashboardPage.css';
 
+function normalizeSubdomainLabel(slug) {
+  return slug ? `${slug}.dtameals.com` : 'DTA Direct';
+}
+
+function portalLabel(settings) {
+  if (!settings) return 'Client Portal';
+  return settings.sale_channel === 'admin_white_label' ? 'Coach Portal' : 'DTA Direct Portal';
+}
+
 function ClientFoodPreferencesPage() {
   const { logout } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -14,6 +23,7 @@ function ClientFoodPreferencesPage() {
   const [builderValue, setBuilderValue] = useState({});
   const [mealScheduleDays, setMealScheduleDays] = useState({});
   const [weeklyResults, setWeeklyResults] = useState([]);
+  const [settingsMeta, setSettingsMeta] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -28,6 +38,10 @@ function ClientFoodPreferencesPage() {
     setBuilderValue(payload.builder_value || {});
     setMealScheduleDays(payload.meal_schedule_days || {});
     setWeeklyResults(payload.results?.weekly_days || []);
+    const settingsRes = await apiRequest('/api/v1/users/client/app/settings/', { auth: true });
+    if (settingsRes.ok) {
+      setSettingsMeta(settingsRes.data?.settings || null);
+    }
     setLoading(false);
   };
 
@@ -69,6 +83,10 @@ function ClientFoodPreferencesPage() {
       <header className="client-dashboard-header">
         <div>
           <h1>Food Preferences & Meal Combos</h1>
+          <div className="client-dash-chips" style={{ marginTop: '0.35rem' }}>
+            <span>{portalLabel(settingsMeta)}</span>
+            <span>Source: {normalizeSubdomainLabel(settingsMeta?.associated_admin_slug)}</span>
+          </div>
           <p className="client-dash-muted">
             Choose your meal combos for the week using templates or custom combinations. We save combo IDs for your Sunday-Saturday plan.
           </p>

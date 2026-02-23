@@ -1,16 +1,32 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import './ClientDashboardPage.css';
 
+function normalizeSubdomainLabel(slug) {
+  return slug ? `${slug}.dtameals.com` : 'DTA Direct';
+}
+
+function portalLabel(settings) {
+  if (!settings) return 'Client Portal';
+  return settings.sale_channel === 'admin_white_label' ? 'Coach Portal' : 'DTA Direct Portal';
+}
+
 function ClientSettingsPage() {
   const { logout } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [busyAction, setBusyAction] = useState('');
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
+  const [checkoutOfferCode, setCheckoutOfferCode] = useState('food_plan_weekly');
+  const [checkoutCoachingTerm, setCheckoutCoachingTerm] = useState('none');
+  const [queuedCheckoutBusy, setQueuedCheckoutBusy] = useState(false);
+  const [queuedCheckoutOfferCode, setQueuedCheckoutOfferCode] = useState('food_plan_monthly');
+  const [queuedCheckoutCoachingTerm, setQueuedCheckoutCoachingTerm] = useState('none');
 
   const load = async () => {
     setLoading(true);
@@ -19,10 +35,12 @@ function ClientSettingsPage() {
     if (!res.ok) {
       setError(res.data?.error?.message || 'Unable to load client settings.');
       setLoading(false);
-      return;
+      return null;
     }
-    setSettings(res.data?.settings || null);
+    const nextSettings = res.data?.settings || null;
+    setSettings(nextSettings);
     setLoading(false);
+    return nextSettings;
   };
 
   useEffect(() => {
@@ -32,6 +50,55 @@ function ClientSettingsPage() {
       setLoading(false);
     });
   }, []);
+
+  useEffect(() => {
+    const checkoutState = searchParams.get('checkout') || searchParams.get('queued_checkout');
+    const sessionId = searchParams.get('session_id');
+    if (checkoutState !== 'success') return undefined;
+
+    let canceled = false;
+    let attempts = 0;
+    setMessage('Checkout completed. Updating your plan access…');
+
+    const run = async () => {
+      attempts += 1;
+      try {
+        if (sessionId) {
+          await apiRequest('/api/v1/users/client/app/settings/checkout-sync/', {
+            method: 'POST',
+            auth: true,
+            body: { session_id: sessionId },
+          });
+        }
+        const latestSettings = await load();
+        if (canceled) return;
+        // Stop polling once food plan access is present or after a few attempts.
+        if ((latestSettings?.includes_food_plan || attempts >= 6)) {
+          setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            next.delete('checkout');
+            next.delete('queued_checkout');
+            next.delete('session_id');
+            return next;
+          }, { replace: true });
+          if (attempts >= 6 && !latestSettings?.includes_food_plan) {
+            setMessage('Checkout returned successfully. If access has not updated yet, refresh in a few seconds.');
+          }
+          return;
+        }
+      } catch (err) {
+        console.error(err);
+      }
+      if (!canceled && attempts < 6) {
+        setTimeout(run, 1500);
+      }
+    };
+
+    // Start a short polling window to wait for Stripe webhook processing.
+    run();
+    return () => { canceled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, setSearchParams]);
 
   const runAction = async (action) => {
     setBusyAction(action);
@@ -57,15 +124,86 @@ function ClientSettingsPage() {
     }
   };
 
+  const startStripeCheckout = async () => {
+    setCheckoutBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      const res = await apiRequest('/api/v1/users/client/app/settings/start-checkout/', {
+        method: 'POST',
+        auth: true,
+        body: {
+          offer_code: checkoutOfferCode,
+          coaching_term: checkoutCoachingTerm,
+        },
+      });
+      if (!res.ok) {
+        setError(res.data?.error?.message || 'Unable to start checkout.');
+        return;
+      }
+      if (res.data?.checkout_url) {
+        window.location.href = res.data.checkout_url;
+        return;
+      }
+      setError('Checkout URL was not returned.');
+    } catch (err) {
+      console.error(err);
+      setError('Network error while starting checkout.');
+    } finally {
+      setCheckoutBusy(false);
+    }
+  };
+
+  const startQueuedStripeCheckout = async () => {
+    setQueuedCheckoutBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      const res = await apiRequest('/api/v1/users/client/app/settings/start-queued-checkout/', {
+        method: 'POST',
+        auth: true,
+        body: {
+          offer_code: queuedCheckoutOfferCode,
+          coaching_term: queuedCheckoutCoachingTerm,
+        },
+      });
+      if (!res.ok) {
+        setError(res.data?.error?.message || 'Unable to start queued checkout.');
+        return;
+      }
+      if (res.data?.checkout_url) {
+        window.location.href = res.data.checkout_url;
+        return;
+      }
+      setError('Queued checkout URL was not returned.');
+    } catch (err) {
+      console.error(err);
+      setError('Network error while starting queued checkout.');
+    } finally {
+      setQueuedCheckoutBusy(false);
+    }
+  };
+
   if (loading) return <div className="client-dashboard-page"><p>Loading settings…</p></div>;
   if (error && !settings) return <div className="client-dashboard-page"><p className="client-dash-error">{error}</p></div>;
+
+  const hasActivePaidAccess = Boolean(
+    settings
+    && settings.is_active
+    && settings.includes_food_plan
+    && settings.offer_code !== 'macro_calculator_free'
+  );
 
   return (
     <div className="client-dashboard-page">
       <header className="client-dashboard-header">
         <div>
           <h1>Client Settings</h1>
-          <p className="client-dash-muted">Manage your plan access and subscription state (DEV flow).</p>
+          <div className="client-dash-chips" style={{ marginTop: '0.35rem' }}>
+            <span>{portalLabel(settings)}</span>
+            <span>Source: {normalizeSubdomainLabel(settings?.associated_admin_slug)}</span>
+          </div>
+          <p className="client-dash-muted">Manage your plan access and subscription state.</p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <Link className="client-q-btn secondary" to="/client_dashboard">Back to Dashboard</Link>
@@ -90,28 +228,97 @@ function ClientSettingsPage() {
         <ul>
           <li>Food plan access: {settings?.includes_food_plan ? 'Enabled' : 'Not included'}</li>
           <li>Coaching messaging: {settings?.includes_coaching ? 'Enabled' : 'Not included'}</li>
+          <li>Coaching term: {settings?.coaching_term || 'none'}</li>
+          <li>Coaching access until: {settings?.coaching_expires_at ? new Date(settings.coaching_expires_at).toLocaleString() : 'N/A'}</li>
+          <li>Auto-renew: {settings?.cancel_at_period_end ? 'Off (cancels at period end)' : 'On'}</li>
           <li>Current charge: ${((settings?.amount_cents || 0) / 100).toFixed(2)}</li>
         </ul>
       </section>
 
+      {!hasActivePaidAccess ? (
+        <section className="client-dashboard-card">
+          <h2>Secure Checkout (Stripe)</h2>
+          <p className="client-dash-muted">
+            Start your 5-day free trial by entering a card in Stripe. You can cancel within the first 5 days.
+          </p>
+          <div className="client-q-inline-grid">
+            <label>
+              Food Plan
+              <select value={checkoutOfferCode} onChange={(e) => setCheckoutOfferCode(e.target.value)} disabled={checkoutBusy}>
+                <option value="food_plan_weekly">Weekly ($5/week)</option>
+                <option value="food_plan_monthly">Monthly ($15/month)</option>
+              </select>
+            </label>
+            <label>
+              Coaching Add-On (Optional)
+              <select value={checkoutCoachingTerm} onChange={(e) => setCheckoutCoachingTerm(e.target.value)} disabled={checkoutBusy}>
+                <option value="none">No Coaching</option>
+                <option value="1_month">Add Coaching (1 Month - $30)</option>
+                <option value="3_months">Add Coaching (3 Months - $50)</option>
+              </select>
+            </label>
+          </div>
+          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+            <button type="button" className="client-q-btn" onClick={startStripeCheckout} disabled={checkoutBusy}>
+              {checkoutBusy ? 'Redirecting…' : 'Go To Secure Checkout'}
+            </button>
+          </div>
+        </section>
+      ) : (
+        <section className="client-dashboard-card">
+          <h2>Queue a Paid Plan Change (No Proration)</h2>
+          <p className="client-dash-muted">
+            Your paid access stays active. Use secure checkout to pay now and queue the next plan/coaching combination for your next billing period.
+          </p>
+          <div className="client-q-inline-grid">
+            <label>
+              Next Food Plan
+              <select value={queuedCheckoutOfferCode} onChange={(e) => setQueuedCheckoutOfferCode(e.target.value)} disabled={queuedCheckoutBusy}>
+                <option value="food_plan_weekly">Weekly ($5/week)</option>
+                <option value="food_plan_monthly">Monthly ($15/month)</option>
+              </select>
+            </label>
+            <label>
+              Next Coaching Add-On (Optional)
+              <select value={queuedCheckoutCoachingTerm} onChange={(e) => setQueuedCheckoutCoachingTerm(e.target.value)} disabled={queuedCheckoutBusy}>
+                <option value="none">No Coaching</option>
+                <option value="1_month">Add Coaching (1 Month - $30)</option>
+                <option value="3_months">Add Coaching (3 Months - $50)</option>
+              </select>
+            </label>
+          </div>
+          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+            <button type="button" className="client-q-btn" onClick={startQueuedStripeCheckout} disabled={queuedCheckoutBusy}>
+              {queuedCheckoutBusy ? 'Redirecting…' : 'Queue Next Plan (Secure Checkout)'}
+            </button>
+          </div>
+          {(settings?.queued_changes || []).length ? (
+            <div style={{ marginTop: '0.75rem' }}>
+              <h3 style={{ marginBottom: '0.5rem' }}>Queued Purchases</h3>
+              <div className="client-q-stack">
+                {settings.queued_changes.map((q) => (
+                  <div key={`queued-${q.id}`} style={{ border: '1px solid rgba(20,40,74,0.1)', borderRadius: 10, padding: '0.65rem' }}>
+                    <div className="client-dash-chips">
+                      <span>{q.target_offer_code}</span>
+                      <span>{q.target_coaching_term || 'none'}</span>
+                      <span>${((q.amount_cents || 0) / 100).toFixed(2)}</span>
+                      <span>{q.status}</span>
+                    </div>
+                    <p className="client-dash-muted" style={{ marginTop: '0.4rem' }}>
+                      Queued for period end: {q.queued_for_period_end_at ? new Date(q.queued_for_period_end_at).toLocaleString() : 'TBD'}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </section>
+      )}
+
       <section className="client-dashboard-card">
-        <h2>Plan Actions</h2>
+        <h2>Subscription Controls</h2>
+        <p className="client-dash-muted">Manage auto-renew for your active subscription.</p>
         <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-          {settings?.available_actions?.start_free_trial ? (
-            <button type="button" className="client-q-btn" onClick={() => runAction('start_free_trial')} disabled={busyAction !== ''}>
-              {busyAction === 'start_free_trial' ? 'Starting…' : 'Start 5-Day Free Trial (Weekly)'}
-            </button>
-          ) : null}
-          {settings?.available_actions?.switch_weekly ? (
-            <button type="button" className="client-q-btn secondary" onClick={() => runAction('switch_weekly')} disabled={busyAction !== ''}>
-              {busyAction === 'switch_weekly' ? 'Updating…' : 'Switch to Weekly ($5)'}
-            </button>
-          ) : null}
-          {settings?.available_actions?.switch_monthly ? (
-            <button type="button" className="client-q-btn secondary" onClick={() => runAction('switch_monthly')} disabled={busyAction !== ''}>
-              {busyAction === 'switch_monthly' ? 'Updating…' : 'Switch to Monthly ($15)'}
-            </button>
-          ) : null}
           {settings?.available_actions?.cancel ? (
             <button type="button" className="client-q-btn danger" onClick={() => runAction('cancel_subscription')} disabled={busyAction !== ''}>
               {busyAction === 'cancel_subscription' ? 'Canceling…' : 'Cancel Subscription'}
@@ -121,6 +328,9 @@ function ClientSettingsPage() {
             <button type="button" className="client-q-btn secondary" onClick={() => runAction('reactivate_subscription')} disabled={busyAction !== ''}>
               {busyAction === 'reactivate_subscription' ? 'Reactivating…' : 'Reactivate Subscription'}
             </button>
+          ) : null}
+          {!settings?.available_actions?.cancel && !settings?.available_actions?.reactivate ? (
+            <span className="client-dash-muted">No subscription controls available for this plan yet.</span>
           ) : null}
         </div>
       </section>
