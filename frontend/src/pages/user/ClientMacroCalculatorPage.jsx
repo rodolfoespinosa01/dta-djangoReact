@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../../api/client';
-import MealComboBuilderStep from '../../components/MealComboBuilderStep';
 import './ClientDashboardPage.css';
 import './ClientAuthPages.css';
 
@@ -16,10 +15,27 @@ const QUESTION_STEPS = [
   'workout_days',
   'meal_schedule',
   'training_schedule',
-  'food_preferences',
 ];
 
 const WEEK_DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+function prettyDay(day) {
+  return day.charAt(0).toUpperCase() + day.slice(1);
+}
+function formatTrainingLabel(value) {
+  if (!value) return 'No training';
+  return value.replace('before_meal_', 'Before Meal ');
+}
+function summarizeAnswers(answers = {}) {
+  const mealDays = answers?.meal_schedule?.days || {};
+  const training = answers?.training_schedule || {};
+  const workoutDays = Array.isArray(answers?.workout_days) ? answers.workout_days : [];
+  return WEEK_DAYS.map((day) => ({
+    day,
+    isWorkout: workoutDays.includes(day),
+    meals: Number(mealDays[day] || 0),
+    trainingBeforeMeal: training?.[day] || null,
+  }));
+}
 function ClientMacroCalculatorPage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') || '';
@@ -114,15 +130,6 @@ function ClientMacroCalculatorPage() {
             && Number(selected.split('_').pop()) <= mealCount;
         });
       }
-      case 'food_preferences':
-        return Boolean(
-          value
-          && value.weekly_days
-          && WEEK_DAYS.every((day) =>
-            Array.isArray(value.weekly_days[day])
-            && value.weekly_days[day].every((meal) => Number(meal?.combo_id) > 0)
-          )
-        );
       default:
         return value !== undefined && value !== null && value !== '';
     }
@@ -188,7 +195,7 @@ function ClientMacroCalculatorPage() {
         return;
       }
       const q = res.data?.questionnaire || {};
-      setContext((prev) => (prev ? { ...prev, questionnaire: q } : prev));
+      setContext((prev) => (prev ? { ...prev, questionnaire: q, results: res.data?.results || prev.results } : prev));
       setWizardMessage('Questionnaire submitted successfully.');
       setSubmitState('success');
     } catch (err) {
@@ -428,15 +435,6 @@ function ClientMacroCalculatorPage() {
           </div>
         );
       }
-      case 'food_preferences': {
-        return (
-          <MealComboBuilderStep
-            value={activeAnswer}
-            onChange={updateAnswer}
-            mealScheduleDays={answers.meal_schedule?.days || {}}
-          />
-        );
-      }
       default:
         return <p>Question not configured.</p>;
     }
@@ -453,8 +451,9 @@ function ClientMacroCalculatorPage() {
     workout_days: ['What days do you work out?', 'Select Sunday through Saturday.'],
     meal_schedule: ['How many meals do you want each day?', 'Set one meal amount for all days or customize each day of the week.'],
     training_schedule: ['Before which meal do you train?', 'Choose the meal your workout happens before on each workout day.'],
-    food_preferences: ['Build your meals for the week', 'Set a default day of meals, apply it to the week, and customize specific days if needed.'],
   };
+  const weeklySchedule = useMemo(() => summarizeAnswers(questionnaire?.answers || {}), [questionnaire?.answers]);
+  const results = context?.results;
 
   if (status === 'loading') {
     return <div className="client-auth-page"><div className="client-auth-card"><p>Opening macro calculator…</p></div></div>;
@@ -493,12 +492,113 @@ function ClientMacroCalculatorPage() {
       </section>
 
       {isComplete && (
-        <section className="client-dashboard-card">
-          <h2>Macro Calculator Ready</h2>
-          <p className="client-dash-muted">
-            Your questionnaire is complete. Next we will calculate and display your macros from this page.
-          </p>
-        </section>
+        <>
+          <section className="client-dashboard-card">
+            <h2>Macro Calculator Ready</h2>
+            <div className="client-q-stack">
+              <p className="client-dash-muted">
+                Your questionnaire is complete. Below is your weekly schedule summary. Macro totals/per-meal macro calculations are now shown from your current settings.
+              </p>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 560 }}>
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.12)' }}>Day</th>
+                      <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.12)' }}>Type</th>
+                      <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.12)' }}>Meals</th>
+                      <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.12)' }}>Training Timing</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {weeklySchedule.map((row) => (
+                      <tr key={`macro-sched-${row.day}`}>
+                        <td style={{ padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.08)' }}>{prettyDay(row.day)}</td>
+                        <td style={{ padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.08)' }}>{row.isWorkout ? 'Workout Day' : 'Off Day'}</td>
+                        <td style={{ padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.08)' }}>{row.meals || '-'}</td>
+                        <td style={{ padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.08)' }}>
+                          {row.trainingBeforeMeal ? row.trainingBeforeMeal.replaceAll('_', ' ') : 'No training'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
+          {results && (
+            <>
+              <section className="client-dashboard-card">
+                <h2>Core Calculations</h2>
+                <div className="client-dash-chips">
+                  <span>BMR: {results?.core_calculations?.bmr ?? '-'} kcal</span>
+                  <span>Goal Adj: {results?.core_calculations?.goal_calorie_adjustment_percent ?? '-'}%</span>
+                  <span>TDEE Category: {results?.core_calculations?.tdee_category ?? '-'}</span>
+                  <span>Avg Multiplier: {results?.core_calculations?.weekly_average_multiplier ?? '-'}</span>
+                </div>
+                <ul>
+                  <li>Workout Day Avg TDEE: {results?.summary?.workout_day_avg_tdee ?? '-'} kcal</li>
+                  <li>Off Day Avg TDEE: {results?.summary?.off_day_avg_tdee ?? '-'} kcal</li>
+                  <li>Workout Day Avg Calories: {results?.summary?.workout_day_avg_calories ?? '-'} kcal</li>
+                  <li>Off Day Avg Calories: {results?.summary?.off_day_avg_calories ?? '-'} kcal</li>
+                </ul>
+              </section>
+
+              <section className="client-dashboard-card">
+                <h2>Daily Macro Results</h2>
+                <div className="client-q-stack">
+                  {(results.weekly_days || []).map((day) => (
+                    <div key={`macro-results-${day.day}`} style={{ border: '1px solid rgba(20,40,74,0.1)', borderRadius: 12, padding: '0.8rem' }}>
+                      <div className="client-dashboard-header" style={{ marginBottom: '0.5rem' }}>
+                        <div>
+                          <strong>{prettyDay(day.day)}</strong>
+                          <p className="client-dash-muted" style={{ margin: '0.2rem 0 0' }}>
+                            {day.is_workout_day ? 'Workout Day' : 'Off Day'} • {day.meals_per_day} meals • {formatTrainingLabel(day.training_before_meal)}
+                          </p>
+                        </div>
+                        <div className="client-dash-chips">
+                          <span>Mult: {day.tdee_multiplier}</span>
+                          <span>TDEE: {day.tdee_calories} kcal</span>
+                          <span>Target: {day.calories_target} kcal</span>
+                        </div>
+                      </div>
+
+                      <div className="client-dash-chips" style={{ marginBottom: '0.5rem' }}>
+                        <span>Protein: {day.daily_macros?.protein_g} g</span>
+                        <span>Carbs: {day.daily_macros?.carbs_g} g</span>
+                        <span>Fats: {day.daily_macros?.fats_g} g</span>
+                        {day.carb_cycling_mode ? <span>{day.carb_cycling_mode === 'high_carbs' ? 'High Carb Day' : 'Low Carb Day'}</span> : null}
+                      </div>
+
+                      <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 520 }}>
+                          <thead>
+                            <tr>
+                              <th style={{ textAlign: 'left', padding: '0.4rem', borderBottom: '1px solid rgba(20,40,74,0.12)' }}>Meal</th>
+                              <th style={{ textAlign: 'left', padding: '0.4rem', borderBottom: '1px solid rgba(20,40,74,0.12)' }}>Protein</th>
+                              <th style={{ textAlign: 'left', padding: '0.4rem', borderBottom: '1px solid rgba(20,40,74,0.12)' }}>Carbs</th>
+                              <th style={{ textAlign: 'left', padding: '0.4rem', borderBottom: '1px solid rgba(20,40,74,0.12)' }}>Fats</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(day.meal_macro_splits || []).map((meal) => (
+                              <tr key={`${day.day}-${meal.meal_number}`}>
+                                <td style={{ padding: '0.4rem', borderBottom: '1px solid rgba(20,40,74,0.08)' }}>Meal {meal.meal_number}</td>
+                                <td style={{ padding: '0.4rem', borderBottom: '1px solid rgba(20,40,74,0.08)' }}>{meal.grams?.protein_g} g ({meal.percentages?.protein}%)</td>
+                                <td style={{ padding: '0.4rem', borderBottom: '1px solid rgba(20,40,74,0.08)' }}>{meal.grams?.carbs_g} g ({meal.percentages?.carbs}%)</td>
+                                <td style={{ padding: '0.4rem', borderBottom: '1px solid rgba(20,40,74,0.08)' }}>{meal.grams?.fats_g} g ({meal.percentages?.fats}%)</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </>
+          )}
+        </>
       )}
 
       {!isComplete && (

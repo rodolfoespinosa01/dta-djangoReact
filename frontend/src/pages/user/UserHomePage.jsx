@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './UserHomePage.css';
 import { useLanguage } from '../../context/LanguageContext';
 import dtaLogo from '../../assets/dta_brand_content/DTA_Logo.png';
@@ -93,6 +94,7 @@ function buildCategorySlides(foods, t) {
 }
 
 function UserHomePage() {
+  const navigate = useNavigate();
   const { t } = useLanguage();
   const categorySlides = useMemo(() => buildCategorySlides(foodSlides, t), [t]);
   const [categoryIndices, setCategoryIndices] = useState({
@@ -156,6 +158,9 @@ function UserHomePage() {
         />
         <button type="button" className="user-home-button" disabled>
           {t('user_home.login_soon')}
+        </button>
+        <button type="button" className="user-home-button" onClick={() => navigate('/user_plans')}>
+          View DTA Plans
         </button>
       </form>
 

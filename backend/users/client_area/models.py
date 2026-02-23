@@ -170,3 +170,25 @@ class ClientMealComboSelection(models.Model):
 
     def __str__(self):
         return f"{self.user.email} | {self.day_of_week} meal {self.meal_number} -> combo {self.combo_template_id}"
+
+
+class ClientFoodPreferenceChangeLog(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="food_preference_change_logs")
+    client_profile = models.ForeignKey(
+        "ClientProfile",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="food_preference_change_logs",
+    )
+    before_json = models.JSONField(default=dict, blank=True)
+    after_json = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        verbose_name = "Client Food Preference Change Log"
+        verbose_name_plural = "Client Food Preference Change Logs"
+
+    def __str__(self):
+        return f"{self.user.email} | food-pref change @ {self.created_at}"
