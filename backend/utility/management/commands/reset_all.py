@@ -2,6 +2,7 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from django.core.management.color import no_style
+from django.db import ProgrammingError
 from django.db import connection, transaction
 
 from users.admin_area.models import (
@@ -20,6 +21,22 @@ SUPERADMIN_USERNAME = "dta_user"
 class Command(BaseCommand):
     help = "Fully resets admin data (users, tokens, profiles, identities, logs) for local testing."
 
+    def _table_exists(self, model):
+        table_name = model._meta.db_table
+        with connection.cursor() as cursor:
+            return table_name in connection.introspection.table_names(cursor)
+
+    def _safe_delete_all(self, queryset, label):
+        model = queryset.model
+        if not self._table_exists(model):
+            self.stdout.write(self.style.WARNING(f"⏭️ Skipping {label} (table not migrated yet)."))
+            return
+        try:
+            queryset.delete()
+            self.stdout.write(self.style.WARNING(label))
+        except ProgrammingError:
+            self.stdout.write(self.style.WARNING(f"⏭️ Skipping {label} (table unavailable)."))
+
     def handle(self, *args, **kwargs):
         User = get_user_model()
 
@@ -31,11 +48,8 @@ class Command(BaseCommand):
             User.objects.exclude(username=SUPERADMIN_USERNAME).delete()
 
             # 2) App data wipes
-            PasswordResetToken.objects.all().delete()
-            self.stdout.write(self.style.WARNING("🔒 Password reset tokens deleted."))
-
-            PreCheckout.objects.all().delete()
-            self.stdout.write(self.style.WARNING("📬 Pre-checkout emails deleted."))
+            self._safe_delete_all(PasswordResetToken.objects.all(), "🔒 Password reset tokens deleted.")
+            self._safe_delete_all(PreCheckout.objects.all(), "📬 Pre-checkout emails deleted.")
 
             # Delete all profiles except superadmin's (if it exists)
             if superadmin:
@@ -44,17 +58,10 @@ class Command(BaseCommand):
                 Profile.objects.all().delete()
             self.stdout.write(self.style.WARNING("👤 Admin profiles deleted."))
 
-            PendingSignup.objects.all().delete()
-            self.stdout.write(self.style.WARNING("⏳ Pending signup entries deleted."))
-
-            EventTracker.objects.all().delete()
-            self.stdout.write(self.style.WARNING("📚 Event tracker entries deleted."))
-
-            AdminIdentity.objects.all().delete()
-            self.stdout.write(self.style.WARNING("🆔 Admin identities deleted."))
-
-            TransactionLog.objects.all().delete()
-            self.stdout.write(self.style.WARNING("🗒️ Transaction log entries deleted."))
+            self._safe_delete_all(PendingSignup.objects.all(), "⏳ Pending signup entries deleted.")
+            self._safe_delete_all(EventTracker.objects.all(), "📚 Event tracker entries deleted.")
+            self._safe_delete_all(AdminIdentity.objects.all(), "🆔 Admin identities deleted.")
+            self._safe_delete_all(TransactionLog.objects.all(), "🗒️ Transaction log entries deleted.")
 
             # 3) Reset sequences (include auth user and your app models)
             models_to_reset = [
@@ -67,7 +74,8 @@ class Command(BaseCommand):
                 TransactionLog,
                 Profile,
             ]
-            sql_list = connection.ops.sequence_reset_sql(no_style(), models_to_reset)
+            resettable_models = [m for m in models_to_reset if self._table_exists(m)]
+            sql_list = connection.ops.sequence_reset_sql(no_style(), resettable_models)
             with connection.cursor() as cursor:
                 for sql in sql_list:
                     cursor.execute(sql)

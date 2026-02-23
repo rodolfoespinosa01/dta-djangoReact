@@ -5,7 +5,7 @@
 
 .superadmin-dashboard-page {
   padding: 2rem 1rem;
-  max-width: 980px;
+  max-width: 1200px;
   margin: 0 auto;
   color: #111827;
 }
@@ -20,6 +20,146 @@
   margin-top: 2rem;
   font-size: 1.05rem;
   font-weight: 600;
+}
+
+.superadmin-library-panel {
+  margin-top: 1rem;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow: 0 8px 20px rgba(17, 24, 39, 0.04);
+}
+
+.superadmin-library-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.superadmin-library-subtitle {
+  margin: 0.35rem 0 0;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.superadmin-library-counts {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.superadmin-library-counts span {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #1f2937;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  padding: 0.25rem 0.5rem;
+}
+
+.superadmin-library-controls {
+  margin-top: 0.85rem;
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.superadmin-library-tabs {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.superadmin-library-tab {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #111827;
+  border-radius: 999px;
+  padding: 0.45rem 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.superadmin-library-tab.is-active {
+  background: #111827;
+  color: #fff;
+  border-color: #111827;
+}
+
+.superadmin-library-search {
+  min-width: 260px;
+  flex: 1 1 320px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+  color: #111827;
+  background: #fff;
+}
+
+.superadmin-library-error {
+  margin: 0.8rem 0 0;
+  color: #b42318;
+  font-weight: 600;
+}
+
+.superadmin-library-loading {
+  margin: 0.8rem 0 0;
+  color: #6b7280;
+}
+
+.superadmin-table-wrap {
+  margin-top: 0.85rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: auto;
+  background: #fff;
+}
+
+.superadmin-library-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+}
+
+.superadmin-library-table th,
+.superadmin-library-table td {
+  padding: 0.55rem 0.6rem;
+  border-bottom: 1px solid #f1f5f9;
+  text-align: left;
+  vertical-align: middle;
+  color: #1f2937;
+  font-size: 0.88rem;
+}
+
+.superadmin-library-table th {
+  background: #f9fafb;
+  color: #111827;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.superadmin-library-table .row-muted td {
+  color: #9ca3af;
+}
+
+.superadmin-library-footer {
+  margin-top: 0.8rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.superadmin-library-hint {
+  color: #4b5563;
+  font-size: 0.88rem;
+  max-width: 640px;
 }
 
 .superadmin-toolbar {
@@ -116,5 +256,14 @@
     display: block;
     overflow-x: auto;
     white-space: nowrap;
+  }
+
+  .superadmin-library-footer {
+    align-items: stretch;
+  }
+
+  .superadmin-library-search {
+    min-width: 0;
+    width: 100%;
   }
 }

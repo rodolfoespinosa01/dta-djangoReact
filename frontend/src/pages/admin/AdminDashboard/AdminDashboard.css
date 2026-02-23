@@ -88,6 +88,132 @@
   color: #9ff3d7;
 }
 
+.admin-subdomain-summary {
+  margin-top: 0.9rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: 12px;
+  border: 1px solid rgba(36, 164, 255, 0.22);
+  background: rgba(10, 26, 44, 0.5);
+}
+
+.admin-subdomain-summary-label {
+  margin: 0;
+  color: #b8d8ff;
+  font-size: 0.84rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.admin-subdomain-summary-value {
+  margin: 0.25rem 0 0;
+  color: #f1f7ff;
+  font-weight: 800;
+  font-size: 1.05rem;
+  word-break: break-word;
+}
+
+.admin-subdomain-summary-dev {
+  margin: 0.25rem 0 0;
+  color: #9ec7f3;
+  font-size: 0.86rem;
+  word-break: break-word;
+}
+
+.admin-setup-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background:
+    linear-gradient(180deg, rgba(8, 12, 20, 0.7), rgba(8, 12, 20, 0.82)),
+    radial-gradient(520px 220px at 50% 18%, rgba(54, 114, 255, 0.16), transparent 70%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  backdrop-filter: blur(4px);
+}
+
+.admin-setup-modal {
+  width: min(720px, 100%);
+  border-radius: 18px;
+  border: 1px solid rgba(130, 170, 255, 0.22);
+  background: linear-gradient(160deg, rgba(10, 16, 28, 0.96), rgba(12, 19, 34, 0.92));
+  box-shadow: 0 28px 56px rgba(0, 0, 0, 0.45);
+  padding: 1.15rem 1.1rem 1.05rem;
+  color: #eaf1ff;
+}
+
+.admin-setup-modal-title {
+  margin: 0;
+  font-size: clamp(1.15rem, 2.2vw, 1.45rem);
+  letter-spacing: 0.02em;
+}
+
+.admin-setup-modal-text {
+  margin: 0.65rem 0 0;
+  color: #d5e4ff;
+  line-height: 1.45;
+}
+
+.admin-setup-modal-note {
+  margin: 0.6rem 0 0;
+  color: #a7bfdc;
+  font-size: 0.92rem;
+}
+
+.admin-setup-modal-subdomain {
+  margin-top: 0.9rem;
+  padding: 0.85rem;
+  border-radius: 12px;
+  border: 1px solid rgba(130, 170, 255, 0.18);
+  background: rgba(15, 24, 41, 0.55);
+}
+
+.admin-setup-modal-subdomain > label {
+  display: block;
+  font-weight: 700;
+  color: #e5efff;
+  margin-bottom: 0.45rem;
+}
+
+.admin-setup-subdomain-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.admin-setup-subdomain-row input {
+  flex: 1 1 240px;
+  min-width: 0;
+  border-radius: 10px;
+  border: 1px solid rgba(130, 170, 255, 0.22);
+  background: rgba(255, 255, 255, 0.96);
+  color: #0d1b2d;
+  padding: 0.6rem 0.7rem;
+  font-weight: 700;
+}
+
+.admin-setup-subdomain-suffix {
+  color: #c6d9fb;
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.admin-setup-modal-preview {
+  margin: 0.45rem 0 0;
+  color: #b4cbed;
+  font-size: 0.88rem;
+}
+
+.admin-setup-modal-actions {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
 .loading {
   margin-top: 2rem;
   text-align: center;
@@ -179,6 +305,15 @@
   }
 
   .banner-setup-actions {
+    flex-direction: column;
+  }
+
+  .admin-setup-modal {
+    padding: 1rem 0.9rem;
+    border-radius: 16px;
+  }
+
+  .admin-setup-modal-actions {
     flex-direction: column;
   }
 }

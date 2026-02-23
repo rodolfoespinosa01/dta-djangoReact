@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'core', # 👉 core app (settings, shared utils, base config)
     'users', # 👉 custom app for user-related logic (models, views, auth)
     'users.admin_area', # 👉 submodule for admin-specific views and logic
+    'users.client_area', # 👉 client/end-user onboarding + dashboard logic
     'utility', # 👉 general utility functions/helpers used across the project
 ]
 

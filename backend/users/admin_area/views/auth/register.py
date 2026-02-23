@@ -14,9 +14,14 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from users.admin_area.models import Plan, PendingSignup, AdminIdentity, EventTracker
 from users.admin_area.utils.log_Profile import log_Profile
 from users.admin_area.views.api_contract import ok, error
+from core.services.google_oauth import verify_google_id_token
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 User = get_user_model()
+
+def _is_gmail_email(value):
+    email = (value or '').strip().lower()
+    return email.endswith('@gmail.com') or email.endswith('@googlemail.com')
 
 def _truthy(v):
     return str(v).strip().lower() in ("true", "1", "yes", "y", "t")
@@ -33,12 +38,29 @@ def _ts_to_aware(ts):
 @permission_classes([AllowAny])
 def register(request):
     data = request.data
-    email = data.get('email')
+    email = (data.get('email') or '').strip().lower()
     password = data.get('password')
     token = data.get('token')
+    credential = (data.get('credential') or '').strip()
 
-    if not all([email, password, token]):
-        return error(code='MISSING_FIELDS', message='Missing fields', http_status=status.HTTP_400_BAD_REQUEST)
+    if not email or not token or (not password and not credential):
+        return error(code='MISSING_FIELDS', message='Email, token, and password or Google credential are required.', http_status=status.HTTP_400_BAD_REQUEST)
+    if _is_gmail_email(email) and not credential:
+        return error(code='GOOGLE_REQUIRED', message='Gmail accounts must continue with Google.', http_status=status.HTTP_400_BAD_REQUEST)
+
+    if credential:
+        try:
+            google_payload = verify_google_id_token(credential)
+        except RuntimeError as exc:
+            return error(code='GOOGLE_CONFIG_ERROR', message=str(exc), http_status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except ValueError as exc:
+            return error(code='INVALID_GOOGLE_TOKEN', message=str(exc), http_status=status.HTTP_401_UNAUTHORIZED)
+        google_email = (google_payload.get('email') or '').strip().lower()
+        email_verified = bool(google_payload.get('email_verified'))
+        if not google_email or not email_verified:
+            return error(code='GOOGLE_EMAIL_UNVERIFIED', message='Google email is missing or not verified.', http_status=status.HTTP_401_UNAUTHORIZED)
+        if google_email != email:
+            return error(code='EMAIL_TOKEN_MISMATCH', message='Google account email does not match this registration link.', http_status=status.HTTP_400_BAD_REQUEST)
 
     try:
         pending = PendingSignup.objects.get(token=token)
@@ -90,7 +112,11 @@ def register(request):
         return error(code='USER_EXISTS', message='User already exists', http_status=status.HTTP_400_BAD_REQUEST)
 
     # Create user
-    user = User.objects.create_user(username=email, email=email, password=password)
+    if credential:
+        user = User.objects.create_user(username=email, email=email)
+        user.set_unusable_password()
+    else:
+        user = User.objects.create_user(username=email, email=email, password=password)
     user.role = 'admin'
     user.is_staff = True
     user.subscription_status = subscription_status

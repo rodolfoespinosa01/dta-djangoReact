@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { useLanguage } from '../../../context/LanguageContext';
 import { buildApiUrl } from '../../../config/api';
+import GoogleSignInButton from '../../../components/auth/GoogleSignInButton';
 import './AdminLoginPage.css';
 
 function AdminLoginPage() {
@@ -13,6 +14,7 @@ function AdminLoginPage() {
   const { login } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const isGmailEmail = /@gmail\.com$|@googlemail\.com$/i.test((email || '').trim());
 
   const extractError = (data, status) => {
     const payload = data?.detail && typeof data.detail === 'object' ? data.detail : data;
@@ -22,9 +24,36 @@ function AdminLoginPage() {
     return payload?.error?.message || payload?.error || t('admin_login.err_try_again');
   };
 
+  const handleGoogleCredential = async (credential) => {
+    setError(null);
+    try {
+      const response = await fetch(buildApiUrl('/api/v1/users/admin/google_login/'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ credential }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.ok) {
+        login(data);
+        localStorage.setItem('refresh_token', data.refresh);
+        navigate('/admin_dashboard');
+      } else {
+        setError(extractError(data, response.status));
+      }
+    } catch (err) {
+      console.error('google login error:', err);
+      setError(t('admin_login.err_generic'));
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
+    if (isGmailEmail) {
+      setError('Gmail accounts must use Google sign-in.');
+      return;
+    }
 
     try {
       const response = await fetch(buildApiUrl('/api/v1/users/admin/login/'), {
@@ -66,13 +95,17 @@ function AdminLoginPage() {
           <input
             type="password"
             placeholder={t('admin_login.password_placeholder')}
-            required
+            required={!isGmailEmail}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="admin-login-input"
             autoComplete="current-password"
+            disabled={isGmailEmail}
           />
+          {isGmailEmail ? <p className="admin-login-helper">Gmail account detected. Continue with Google below.</p> : null}
           <button type="submit" className="admin-login-button">{t('admin_login.login_btn')}</button>
+          <div className="admin-login-divider"><span>or</span></div>
+          <GoogleSignInButton onCredential={handleGoogleCredential} />
 
           {error && <div className="admin-login-error" role="alert">{error}</div>}
 
