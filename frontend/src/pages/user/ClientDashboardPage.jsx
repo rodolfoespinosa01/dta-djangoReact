@@ -567,9 +567,14 @@ function ClientDashboardPage() {
               Choose Plan + Start 5-Day Free Trial
             </button>
           ) : (
-            <button type="button" className="client-q-btn" onClick={() => navigate('/client_food_preferences')} disabled={isBlocked}>
-              Open Food Preferences / Meal Combos
-            </button>
+            <>
+              <button type="button" className="client-q-btn" onClick={() => navigate('/client_food_preferences')} disabled={isBlocked}>
+                Open Food Preferences / Meal Combos
+              </button>
+              <button type="button" className="client-q-btn secondary" onClick={() => navigate('/client_meal_generation')} disabled={isBlocked}>
+                Run Meal Generation
+              </button>
+            </>
           )}
           <button type="button" className="client-q-btn secondary" onClick={() => navigate('/client_settings')} disabled={isBlocked}>
             Manage Plan & Subscription

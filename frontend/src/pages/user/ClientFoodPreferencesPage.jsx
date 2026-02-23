@@ -94,6 +94,7 @@ function ClientFoodPreferencesPage() {
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <Link className="client-q-btn secondary" to="/client_dashboard">Back to Dashboard</Link>
           <Link className="client-q-btn secondary" to="/client_settings">Settings</Link>
+          <Link className="client-q-btn secondary" to="/client_meal_generation">Run Meal Generation</Link>
           <button type="button" className="client-q-btn" onClick={handleSave} disabled={saving}>
             {saving ? 'Saving…' : 'Save Food Preferences'}
           </button>

@@ -74,10 +74,19 @@ def _calculate_bmr(gender: str | None, weight_kg: float, height_cm: float, age: 
 
 
 def _safe_get_admin_params(admin_identity):
+    # DTA direct / B2C clients may not have an associated admin. In that case we use the
+    # platform defaults so the algorithm can run with a stable baseline configuration.
     settings = getattr(admin_identity, "parameter_settings", None) if admin_identity else None
     if settings and getattr(settings, "parameters_json", None):
         return settings.parameters_json
     return get_admin_parameter_defaults_v1()
+
+
+def _admin_param_source(admin_identity):
+    settings = getattr(admin_identity, "parameter_settings", None) if admin_identity else None
+    if settings and getattr(settings, "parameters_json", None):
+        return "associated_admin"
+    return "dta_default_v1"
 
 
 def _get_goal_adjustment_percent(params: dict[str, Any], goal: str):
@@ -230,6 +239,7 @@ def build_questionnaire_results(context: BuildResultsContext):
     training_days_per_week = len(workout_days)
 
     params = _safe_get_admin_params(context.admin_identity)
+    admin_param_source = _admin_param_source(context.admin_identity)
     bmr = _calculate_bmr(gender, weight_kg, height_cm, age)
     goal_pct = _get_goal_adjustment_percent(params, goal)
 
@@ -304,6 +314,10 @@ def build_questionnaire_results(context: BuildResultsContext):
             "tdee_category_target_multiplier": round(target_category_multiplier, 6) if target_category_multiplier else None,
             "weekly_average_multiplier": round(sum(r["tdee_multiplier"] for r in weekly_rows) / len(weekly_rows), 6) if weekly_rows else None,
         },
+        "parameter_settings": {
+            "source": admin_param_source,
+            "defaults_version": (params or {}).get("version") or "v1",
+        },
         "summary": {
             "workout_day_avg_calories": avg(workout_rows, "calories_target"),
             "off_day_avg_calories": avg(off_rows, "calories_target"),
@@ -313,4 +327,3 @@ def build_questionnaire_results(context: BuildResultsContext):
         "weekly_days": weekly_rows,
         "generated_at": datetime.utcnow().isoformat() + "Z",
     }
-
