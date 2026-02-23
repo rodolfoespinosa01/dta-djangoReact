@@ -19,17 +19,37 @@
       }
     },
     {
+      "label": "Run Redis Server",
+      "type": "shell",
+      "command": "redis-server",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Run Celery Worker",
+      "type": "shell",
+      "command": "source venv/bin/activate && celery -A core worker -l info",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Run Stripe Webhook",
       "type": "shell",
-      "command": "stripe listen --forward-to http://localhost:8000/api/users/admin/stripe_webhook/",
+      "command": "stripe listen --forward-to http://localhost:8000/api/v1/users/admin/stripe_webhook/",
       "options": { "cwd": "${workspaceFolder}" }
     },
     {
       "label": "Start All Services",
       "dependsOn": [
+        "Run Redis Server",
+        "Run Celery Worker",
         "Run Django Server",
         "Run React App",
-        "Run Stripe Webhook",
+        "Run Stripe Webhook"
       ],
       "dependsOrder": "parallel"
     },

@@ -33,6 +33,7 @@ import ClientDashboardPage from './pages/user/ClientDashboardPage';
 import ClientMacroCalculatorPage from './pages/user/ClientMacroCalculatorPage';
 import ClientSettingsPage from './pages/user/ClientSettingsPage';
 import ClientFoodPreferencesPage from './pages/user/ClientFoodPreferencesPage';
+import ClientMealPlanGenerationPage from './pages/user/ClientMealPlanGenerationPage';
 
 // protected pages
 import AdminDashboard from './pages/admin/AdminDashboard/AdminDashboard';
@@ -99,6 +100,14 @@ function AppLayout() {
             element={
               <ClientProtectedRoute>
                 <ClientFoodPreferencesPage />
+              </ClientProtectedRoute>
+            }
+          />
+          <Route
+            path="/client_meal_generation"
+            element={
+              <ClientProtectedRoute>
+                <ClientMealPlanGenerationPage />
               </ClientProtectedRoute>
             }
           />
