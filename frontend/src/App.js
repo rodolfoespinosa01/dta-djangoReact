@@ -72,10 +72,12 @@ function AppLayout() {
           <Route path="/user_homepage" element={<UserHomePage />} />
           <Route path="/user_plans" element={<UserPlanSelectionPage />} />
           <Route path="/client_register" element={<ClientRegisterPage />} />
-          <Route path="/client_login" element={<ClientLoginPage />} />
+          <Route path="/client_login" element={<Navigate to="/user_login" replace />} />
+          <Route path="/user_login" element={<ClientLoginPage />} />
           <Route path="/macro_calculator" element={<ClientMacroCalculatorPage />} />
           <Route path="/start/:adminSlug" element={<AdminClientLandingPage />} />
           <Route path="/start/:adminSlug/plans" element={<UserPlanSelectionPage />} />
+          <Route path="/start/:adminSlug/login" element={<ClientLoginPage />} />
           <Route
             path="/client_dashboard"
             element={

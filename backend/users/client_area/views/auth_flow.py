@@ -3,10 +3,12 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
 from django.utils.crypto import get_random_string
+from datetime import timedelta
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
+import stripe
 
 from users.admin_area.models import AdminIdentity
 from users.client_area.models import (
@@ -16,12 +18,14 @@ from users.client_area.models import (
     ClientPendingSignup,
     ClientProfile,
     ClientQuestionnaireProgress,
+    ClientQueuedPlanChange,
 )
 from users.client_area.views.api_contract import error, ok, require_client
 from core.services.google_oauth import verify_google_id_token
 from core.models import MealComboTemplate
 from users.client_area.services.results_engine import BuildResultsContext, build_questionnaire_results
 
+stripe.api_key = getattr(settings, "STRIPE_SECRET_KEY", None)
 
 OFFER_CATALOG = {
     "macro_calculator_free": {
@@ -112,6 +116,18 @@ def _build_client_settings_payload(profile: ClientProfile | None):
     if not profile:
         return None
     trial_eligible = profile.offer_code == "macro_calculator_free"
+    queued_changes = [
+        {
+            "id": q.id,
+            "target_offer_code": q.target_offer_code,
+            "target_coaching_term": q.target_coaching_term,
+            "amount_cents": q.amount_cents,
+            "queued_for_period_end_at": q.queued_for_period_end_at,
+            "status": q.status,
+            "created_at": q.created_at,
+        }
+        for q in ClientQueuedPlanChange.objects.filter(user=profile.user, status="queued").order_by("-created_at")[:10]
+    ]
     return {
         "offer_code": profile.offer_code,
         "billing_cycle": profile.billing_cycle,
@@ -119,16 +135,22 @@ def _build_client_settings_payload(profile: ClientProfile | None):
         "amount_cents": profile.amount_cents,
         "includes_food_plan": profile.includes_food_plan,
         "includes_coaching": profile.includes_coaching,
+        "coaching_term": profile.coaching_term,
+        "coaching_expires_at": profile.coaching_expires_at,
         "is_active": profile.is_active,
+        "cancel_at_period_end": bool(getattr(profile, "cancel_at_period_end", False)),
         "sale_channel": profile.sale_channel,
         "associated_admin_slug": profile.associated_admin.subdomain_slug if profile.associated_admin else None,
         "can_start_trial": trial_eligible,
+        "queued_changes": queued_changes,
         "available_actions": {
             "start_free_trial": profile.offer_code == "macro_calculator_free",
             "switch_weekly": profile.offer_code != "food_plan_weekly",
             "switch_monthly": profile.offer_code != "food_plan_monthly",
-            "cancel": profile.offer_code in PAID_OFFER_CODES and profile.is_active,
-            "reactivate": profile.offer_code in PAID_OFFER_CODES and not profile.is_active,
+            "add_coaching_1_month": profile.includes_food_plan and profile.coaching_term != "1_month",
+            "add_coaching_3_months": profile.includes_food_plan and profile.coaching_term != "3_months",
+            "cancel": profile.offer_code in PAID_OFFER_CODES and profile.is_active and not getattr(profile, "cancel_at_period_end", False),
+            "reactivate": profile.offer_code in PAID_OFFER_CODES and bool(getattr(profile, "cancel_at_period_end", False)),
         },
     }
 
@@ -156,6 +178,8 @@ def _apply_offer_to_profile(profile: ClientProfile, offer_code: str, *, use_tria
     profile.trial_days = trial_days
     if offer_code in PAID_OFFER_CODES:
         profile.is_active = True
+        if hasattr(profile, "cancel_at_period_end"):
+            profile.cancel_at_period_end = False
     profile.save(
         update_fields=[
             "offer_code",
@@ -165,9 +189,25 @@ def _apply_offer_to_profile(profile: ClientProfile, offer_code: str, *, use_tria
             "includes_coaching",
             "trial_days",
             "is_active",
+            "cancel_at_period_end",
             "updated_at",
         ]
     )
+    return profile
+
+
+def _apply_coaching_to_profile(profile: ClientProfile, coaching_term: str):
+    if coaching_term not in {"none", "1_month", "3_months"}:
+        raise ValueError("INVALID_COACHING_TERM")
+    profile.includes_coaching = coaching_term != "none"
+    profile.coaching_term = coaching_term
+    if coaching_term == "none":
+        profile.coaching_expires_at = None
+    elif coaching_term == "1_month":
+        profile.coaching_expires_at = timezone.now() + timedelta(days=30)
+    elif coaching_term == "3_months":
+        profile.coaching_expires_at = timezone.now() + timedelta(days=90)
+    profile.save(update_fields=["includes_coaching", "coaching_term", "coaching_expires_at", "updated_at"])
     return profile
 
 
@@ -558,6 +598,7 @@ def client_dashboard(request):
                 "trial_days": profile.trial_days if profile else 0,
                 "includes_food_plan": bool(profile and profile.includes_food_plan),
                 "includes_coaching": bool(profile and profile.includes_coaching),
+                "sale_channel": profile.sale_channel if profile else "dta_direct",
                 "associated_admin_slug": profile.associated_admin.subdomain_slug if profile and profile.associated_admin else None,
             },
             "questionnaire": _questionnaire_payload(progress),
@@ -597,33 +638,73 @@ def client_plan_action(request):
     action = (request.data or {}).get("action") or ""
     action = str(action).strip()
 
-    if action == "start_free_trial":
-        if profile.offer_code != "macro_calculator_free":
-            return error("INVALID_ACTION", "Free trial can only start from the free macro plan.", http_status=400)
-        profile = _apply_offer_to_profile(profile, "food_plan_weekly", use_trial_if_eligible=True)
-        return ok({"message": "Free trial started.", "settings": _build_client_settings_payload(profile)})
-
-    if action == "switch_weekly":
-        profile = _apply_offer_to_profile(profile, "food_plan_weekly", use_trial_if_eligible=False)
-        return ok({"message": "Switched to weekly plan.", "settings": _build_client_settings_payload(profile)})
-
-    if action == "switch_monthly":
-        profile = _apply_offer_to_profile(profile, "food_plan_monthly", use_trial_if_eligible=False)
-        return ok({"message": "Switched to monthly plan.", "settings": _build_client_settings_payload(profile)})
+    if action in {"start_free_trial", "switch_weekly", "switch_monthly", "add_coaching_1_month", "add_coaching_3_months"}:
+        return error(
+            "SECURE_CHECKOUT_REQUIRED",
+            "Use Secure Checkout to start, upgrade, or add coaching to your plan.",
+            http_status=400,
+        )
 
     if action == "cancel_subscription":
         if profile.offer_code not in PAID_OFFER_CODES:
             return error("INVALID_ACTION", "No paid subscription to cancel.", http_status=400)
+        if not profile.stripe_subscription_id:
+            return error("STRIPE_SUBSCRIPTION_NOT_FOUND", "No Stripe subscription found for this client.", http_status=400)
+        if stripe.api_key:
+            try:
+                sub = stripe.Subscription.retrieve(profile.stripe_subscription_id)
+                if sub.get("status") in ("active", "trialing", "past_due") and not bool(sub.get("cancel_at_period_end")):
+                    sub = stripe.Subscription.modify(profile.stripe_subscription_id, cancel_at_period_end=True)
+                period_end = sub.get("current_period_end")
+                profile.is_active = True  # access continues until Stripe period end
+                profile.cancel_at_period_end = True
+                profile.save(update_fields=["is_active", "cancel_at_period_end", "updated_at"])
+                return ok(
+                    {
+                        "message": "Subscription will cancel at period end.",
+                        "stripe": {
+                            "status": sub.get("status"),
+                            "cancel_at_period_end": bool(sub.get("cancel_at_period_end")),
+                            "current_period_end": period_end,
+                        },
+                        "settings": _build_client_settings_payload(profile),
+                    }
+                )
+            except Exception as exc:
+                return error("STRIPE_CANCEL_FAILED", f"Could not cancel subscription: {exc}", http_status=400)
         profile.is_active = False
-        profile.save(update_fields=["is_active", "updated_at"])
-        return ok({"message": "Subscription canceled.", "settings": _build_client_settings_payload(profile)})
+        profile.cancel_at_period_end = True
+        profile.save(update_fields=["is_active", "cancel_at_period_end", "updated_at"])
+        return ok({"message": "Subscription canceled (local fallback).", "settings": _build_client_settings_payload(profile)})
 
     if action == "reactivate_subscription":
         if profile.offer_code not in PAID_OFFER_CODES:
             return error("INVALID_ACTION", "No paid subscription to reactivate.", http_status=400)
+        if not profile.stripe_subscription_id:
+            return error("STRIPE_SUBSCRIPTION_NOT_FOUND", "No Stripe subscription found for this client.", http_status=400)
+        if stripe.api_key:
+            try:
+                sub = stripe.Subscription.modify(profile.stripe_subscription_id, cancel_at_period_end=False)
+                profile.is_active = True
+                profile.cancel_at_period_end = False
+                profile.save(update_fields=["is_active", "cancel_at_period_end", "updated_at"])
+                return ok(
+                    {
+                        "message": "Subscription reactivated (auto-renew restored).",
+                        "stripe": {
+                            "status": sub.get("status"),
+                            "cancel_at_period_end": bool(sub.get("cancel_at_period_end")),
+                            "current_period_end": sub.get("current_period_end"),
+                        },
+                        "settings": _build_client_settings_payload(profile),
+                    }
+                )
+            except Exception as exc:
+                return error("STRIPE_REACTIVATE_FAILED", f"Could not reactivate subscription: {exc}", http_status=400)
         profile.is_active = True
-        profile.save(update_fields=["is_active", "updated_at"])
-        return ok({"message": "Subscription reactivated.", "settings": _build_client_settings_payload(profile)})
+        profile.cancel_at_period_end = False
+        profile.save(update_fields=["is_active", "cancel_at_period_end", "updated_at"])
+        return ok({"message": "Subscription reactivated (local fallback).", "settings": _build_client_settings_payload(profile)})
 
     return error("INVALID_ACTION", "Unsupported plan action.", http_status=400)
 

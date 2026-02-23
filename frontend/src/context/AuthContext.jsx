@@ -18,6 +18,7 @@ const PUBLIC_PATHS = new Set([
   '/admin_forgot_password',         // forgot page
   '/user_homepage',
   '/user_plans',
+  '/user_login',
   '/client_login',
   '/client_register',
   '/macro_calculator',
