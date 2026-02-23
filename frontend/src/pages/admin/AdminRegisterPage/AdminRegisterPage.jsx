@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { useLanguage } from '../../../context/LanguageContext';
 import { buildApiUrl } from '../../../config/api';
+import GoogleSignInButton from '../../../components/auth/GoogleSignInButton';
 import './AdminRegisterPage.css';
 
 function AdminRegisterPage() {
@@ -10,6 +11,9 @@ function AdminRegisterPage() {
   const [password, setPassword] = useState('');
   const [token, setToken] = useState('');
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [inlineError, setInlineError] = useState('');
+  const isGmailEmail = /@gmail\.com$|@googlemail\.com$/i.test((email || '').trim());
 
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -54,6 +58,12 @@ function AdminRegisterPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isGmailEmail) {
+      setInlineError('Gmail accounts must continue with Google.');
+      return;
+    }
+    setSubmitting(true);
+    setInlineError('');
 
     try {
       const res = await fetch(buildApiUrl('/api/v1/users/admin/register/'), {
@@ -74,32 +84,41 @@ function AdminRegisterPage() {
       }
 
       if (!res.ok) {
-        alert(data?.error?.message || data?.error || t('admin_register.registration_failed'));
+        setInlineError(data?.error?.message || data?.error || t('admin_register.registration_failed'));
         return;
       }
-
-      alert(`✅ ${t('admin_register.created')}`);
-
-      const loginRes = await fetch(buildApiUrl('/api/v1/users/admin/login/'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ username: email, password }),
-      });
-
-      const loginData = await loginRes.json();
-
-      if (!loginRes.ok) {
-        alert(loginData?.error?.message || loginData?.error || t('admin_register.auto_login_failed'));
-        navigate('/admin_login');
-        return;
-      }
-
-      login(loginData);
+      login(data);
       navigate('/admin_dashboard');
     } catch (err) {
       console.error('unexpected error:', err);
-      alert(t('admin_register.unexpected'));
+      setInlineError(t('admin_register.unexpected'));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleGoogleCredential = async (credential) => {
+    setSubmitting(true);
+    setInlineError('');
+    try {
+      const res = await fetch(buildApiUrl('/api/v1/users/admin/register/'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email, token, credential }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setInlineError(data?.error?.message || data?.error || t('admin_register.registration_failed'));
+        return;
+      }
+      login(data);
+      navigate('/admin_dashboard');
+    } catch (err) {
+      console.error('google registration error:', err);
+      setInlineError(t('admin_register.unexpected'));
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -115,6 +134,12 @@ function AdminRegisterPage() {
     <div className="admin-register-wrapper">
       <div className="admin-register-card">
         <h2 className="admin-register-title">📝 {t('admin_register.title')}</h2>
+        <p className="admin-register-subtitle">Use the invited email below.</p>
+        {isGmailEmail ? (
+          <p className="admin-register-subtitle">Gmail account detected. Google signup is required to create this account.</p>
+        ) : (
+          <p className="admin-register-subtitle">Create a password to register. Google is also available if you want to use it now.</p>
+        )}
         <form onSubmit={handleSubmit}>
           <label>{t('admin_register.email')}</label>
           <input
@@ -123,18 +148,26 @@ function AdminRegisterPage() {
             disabled
             className="admin-register-input disabled"
           />
-          <label>{t('admin_register.create_password')}</label>
-          <input
-            type="password"
-            placeholder={t('admin_register.choose_password')}
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="admin-register-input"
-          />
-          <button type="submit" className="admin-register-button">
-            {t('admin_register.create_account')}
-          </button>
+          <div className="admin-register-divider"><span>{isGmailEmail ? 'Continue with Google' : 'Optional Google signup'}</span></div>
+          <GoogleSignInButton onCredential={handleGoogleCredential} disabled={submitting} />
+          {!isGmailEmail && (
+            <>
+              <div className="admin-register-divider"><span>Create with password</span></div>
+              <label>{t('admin_register.create_password')}</label>
+              <input
+                type="password"
+                placeholder={t('admin_register.choose_password')}
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="admin-register-input"
+              />
+              <button type="submit" className="admin-register-button" disabled={submitting}>
+                {submitting ? 'Creating…' : t('admin_register.create_account')}
+              </button>
+            </>
+          )}
+          {inlineError && <p className="admin-register-error" role="alert">{inlineError}</p>}
         </form>
       </div>
     </div>

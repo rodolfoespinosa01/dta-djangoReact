@@ -54,6 +54,48 @@
   margin-top: 0.8rem;
 }
 
+.admin-params-floating-update {
+  position: fixed;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 150;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.7rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 14px;
+  background: rgba(12, 19, 34, 0.94);
+  border: 1px solid rgba(110, 154, 255, 0.18);
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(8px);
+}
+
+.admin-params-floating-status {
+  color: #d9e8ff;
+  font-weight: 700;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  text-align: center;
+}
+
+.admin-params-floating-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #2affc8;
+  box-shadow: 0 0 0 4px rgba(42, 255, 200, 0.14);
+}
+
+.admin-params-floating-btn {
+  margin: 0;
+  white-space: nowrap;
+}
+
 .admin-params-btn {
   border: 1px solid rgba(24, 45, 83, 0.2);
   background: #f6f9ff;
@@ -139,6 +181,24 @@
   padding: 0.55rem 0.65rem;
   background: #fff;
   color: #13233f;
+  font-size: 0.9rem;
+}
+
+.admin-params-subdomain-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.admin-params-subdomain-row input {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.admin-params-subdomain-suffix {
+  color: #243853;
+  font-weight: 700;
   font-size: 0.9rem;
 }
 
@@ -309,6 +369,32 @@
   padding: 0.4rem 0.5rem;
   color: #13233f;
   background: #fff;
+}
+
+.tdee-day-cell {
+  transition: background-color 120ms ease;
+}
+
+.tdee-day-cell-workout {
+  background: rgba(13, 107, 75, 0.035);
+}
+
+.tdee-day-cell-off {
+  background: rgba(234, 88, 12, 0.03);
+}
+
+.tdee-day-input {
+  font-weight: 700;
+}
+
+.tdee-day-input-workout {
+  border-color: rgba(13, 107, 75, 0.22) !important;
+  background: rgba(13, 107, 75, 0.03) !important;
+}
+
+.tdee-day-input-off {
+  border-color: rgba(234, 88, 12, 0.2) !important;
+  background: rgba(234, 88, 12, 0.025) !important;
 }
 
 .tdee-row-label {
@@ -529,5 +615,20 @@
 
   .admin-params-category-grid {
     grid-template-columns: 1fr;
+  }
+
+  .admin-params-floating-update {
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: 0.75rem;
+    top: auto;
+    transform: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.55rem;
+  }
+
+  .admin-params-floating-btn {
+    width: 100%;
   }
 }

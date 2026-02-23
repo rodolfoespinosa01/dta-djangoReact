@@ -3,6 +3,7 @@ from django.urls import path
 # 🔐 Auth
 from users.admin_area.views.auth.register import register
 from users.admin_area.views.auth.token_login import TokenObtainPairView
+from users.admin_area.views.auth.google_login import admin_google_login
 from users.admin_area.views.pendingsignup.get_pending_signup import get_pending_signup  # keep this ONE
 
 # 🔑 Password
@@ -27,12 +28,15 @@ from users.admin_area.views.parameters.admin_parameter_settings import (
     parameter_settings_status,
     parameter_settings_use_defaults,
 )
+from users.admin_area.views.dev.create_test_admin import create_test_admin
 
 
 urlpatterns = [
     # 🔐 Auth
     path('register/', register, name='register'),
     path('login/', TokenObtainPairView.as_view(), name='login'),
+    path('google_login/', admin_google_login, name='google_login'),
+    path('dev/create_test_admin/', create_test_admin, name='dev_create_test_admin'),
     path('pending_signup/<str:token>/', get_pending_signup, name='get_pending_signup'),
 
     # 🔑 Password

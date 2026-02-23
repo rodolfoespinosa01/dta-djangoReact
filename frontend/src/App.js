@@ -26,6 +26,11 @@ import AdminConfirmTrialPage from './pages/admin/AdminConfirmTrialPage/AdminConf
 
 import UserHomePage from './pages/user/UserHomePage';
 import UserPlanSelectionPage from './pages/user/UserPlanSelectionPage';
+import AdminClientLandingPage from './pages/user/AdminClientLandingPage';
+import ClientRegisterPage from './pages/user/ClientRegisterPage';
+import ClientLoginPage from './pages/user/ClientLoginPage';
+import ClientDashboardPage from './pages/user/ClientDashboardPage';
+import ClientMacroCalculatorPage from './pages/user/ClientMacroCalculatorPage';
 
 // protected pages
 import AdminDashboard from './pages/admin/AdminDashboard/AdminDashboard';
@@ -38,6 +43,7 @@ import SuperAdminAnalyticsPage from './pages/superadmin/SuperAdminAnalyticsPage'
 // Route Guards
 import AdminProtectedRoute from './routes/AdminProtectedRoute';
 import SuperAdminProtectedRoute from './routes/SuperAdminProtectedRoute';
+import ClientProtectedRoute from './routes/ClientProtectedRoute';
 
 function AppLayout() {
   const location = useLocation();
@@ -63,6 +69,19 @@ function AppLayout() {
           <Route path="/superadmin_login" element={<SuperAdminLoginPage />} />
           <Route path="/user_homepage" element={<UserHomePage />} />
           <Route path="/user_plans" element={<UserPlanSelectionPage />} />
+          <Route path="/client_register" element={<ClientRegisterPage />} />
+          <Route path="/client_login" element={<ClientLoginPage />} />
+          <Route path="/macro_calculator" element={<ClientMacroCalculatorPage />} />
+          <Route path="/start/:adminSlug" element={<AdminClientLandingPage />} />
+          <Route path="/start/:adminSlug/plans" element={<UserPlanSelectionPage />} />
+          <Route
+            path="/client_dashboard"
+            element={
+              <ClientProtectedRoute>
+                <ClientDashboardPage />
+              </ClientProtectedRoute>
+            }
+          />
 
           {/* Protected Admin Routes */}
           <Route

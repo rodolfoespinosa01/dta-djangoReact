@@ -15,6 +15,7 @@ from users.admin_area.models import (
     EventTracker,
     AdminAccountHistory,
     AdminParameterSettings,
+    AdminParameterSettingsChangeLog,
 )
 from users.admin_area.configs.admin_parameter_defaults import get_admin_parameter_defaults_v1
 
@@ -72,12 +73,12 @@ class PendingSignupAdmin(admin.ModelAdmin):
 
 @admin.register(AdminIdentity)
 class AdminIdentityAdmin(admin.ModelAdmin):
-    list_display = ('id', 'admin_email', 'adminID', 'created_at')
+    list_display = ('id', 'admin_email', 'subdomain_slug', 'subdomain_locked_at', 'adminID', 'created_at')
     search_fields = ('admin_email',)
     ordering = ('-created_at',)
 
-    readonly_fields = ('id', 'adminID', 'admin_email', 'created_at')
-    fields = ('id', 'adminID', 'admin_email', 'created_at')
+    readonly_fields = ('id', 'adminID', 'admin_email', 'subdomain_slug', 'subdomain_locked_at', 'created_at')
+    fields = ('id', 'adminID', 'admin_email', 'subdomain_slug', 'subdomain_locked_at', 'created_at')
 
 
 @admin.register(AdminAccountHistory)
@@ -137,6 +138,67 @@ class AdminParameterSettingsAdmin(admin.ModelAdmin):
         )
 
     parameters_json_pretty.short_description = "Formatted JSON"
+
+
+@admin.register(AdminParameterSettingsChangeLog)
+class AdminParameterSettingsChangeLogAdmin(admin.ModelAdmin):
+    list_display = ("admin_email", "action", "changed_paths_count", "created_at")
+    list_filter = ("action", "created_at")
+    search_fields = ("admin__admin_email",)
+    readonly_fields = (
+        "admin",
+        "parameter_settings",
+        "action",
+        "changed_paths_pretty",
+        "before_json_pretty",
+        "after_json_pretty",
+        "created_at",
+    )
+    autocomplete_fields = ("admin", "parameter_settings")
+    fieldsets = (
+        (None, {"fields": ("admin", "parameter_settings", "action", "created_at")}),
+        ("Changed Paths", {"fields": ("changed_paths_pretty",)}),
+        ("Before", {"fields": ("before_json_pretty",)}),
+        ("After", {"fields": ("after_json_pretty",)}),
+    )
+
+    def admin_email(self, obj):
+        return obj.admin.admin_email
+
+    admin_email.short_description = "Admin Email"
+    admin_email.admin_order_field = "admin__admin_email"
+
+    def changed_paths_count(self, obj):
+        return len(obj.changed_paths or [])
+
+    changed_paths_count.short_description = "Changed Paths"
+
+    def changed_paths_pretty(self, obj):
+        pretty = json.dumps(obj.changed_paths or [], indent=2)
+        return format_html(
+            '<pre style="max-height:240px; overflow:auto; background:#111827; color:#e5e7eb; padding:12px; border-radius:8px;">{}</pre>',
+            pretty,
+        )
+
+    changed_paths_pretty.short_description = "Changed Paths"
+
+    def before_json_pretty(self, obj):
+        pretty = json.dumps(obj.before_json, indent=2)
+        return format_html(
+            '<pre style="max-height:360px; overflow:auto; background:#111827; color:#e5e7eb; padding:12px; border-radius:8px;">{}</pre>',
+            pretty,
+        )
+
+    before_json_pretty.short_description = "Before"
+
+    def after_json_pretty(self, obj):
+        pretty = json.dumps(obj.after_json, indent=2)
+        return format_html(
+            '<pre style="max-height:360px; overflow:auto; background:#111827; color:#e5e7eb; padding:12px; border-radius:8px;">{}</pre>',
+            pretty,
+        )
+
+    after_json_pretty.short_description = "After"
 
 
 def admin_parameter_defaults_view(request):
