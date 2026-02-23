@@ -29,7 +29,11 @@ from users.client_area.views.meal_combo_public import (
     meal_combo_starter_templates,
 )
 from users.client_area.views.meal_plan_generation import (
+    client_meal_plan_day_detail,
     client_meal_plan_generation_job_status,
+    client_meal_plan_generation_run_full,
+    client_meal_plan_generation_run_week,
+    client_meal_plan_generation_run_week_status,
     client_meal_plan_generation_step1_run,
 )
 
@@ -55,8 +59,12 @@ urlpatterns = [
     path('app/settings/plan-action/', client_plan_action, name='client_app_plan_action'),
     path('stripe_webhook/', client_stripe_webhook, name='client_stripe_webhook'),
     path('app/food-preferences/', client_food_preferences, name='client_app_food_preferences'),
+    path('app/meal-plan-generation/run/', client_meal_plan_generation_run_full, name='client_meal_plan_generation_run_full'),
+    path('app/meal-plan-generation/run-week/', client_meal_plan_generation_run_week, name='client_meal_plan_generation_run_week'),
+    path('app/meal-plan-generation/run-week/<str:batch_id>/status/', client_meal_plan_generation_run_week_status, name='client_meal_plan_generation_run_week_status'),
     path('app/meal-plan-generation/step1-run/', client_meal_plan_generation_step1_run, name='client_meal_plan_generation_step1_run'),
     path('app/meal-plan-generation/jobs/<int:job_id>/', client_meal_plan_generation_job_status, name='client_meal_plan_generation_job_status'),
+    path('app/meal-plan-days/<str:day_of_week>/detailed/', client_meal_plan_day_detail, name='client_meal_plan_day_detail'),
     path('app/questionnaire/', questionnaire_status_or_draft, name='client_questionnaire_status_or_draft'),
     path('app/questionnaire/submit/', questionnaire_submit, name='client_questionnaire_submit'),
 ]
