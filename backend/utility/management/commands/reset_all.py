@@ -2,7 +2,7 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from django.core.management.color import no_style
-from django.db import ProgrammingError
+from django.db import DatabaseError, ProgrammingError
 from django.db import connection, transaction
 
 from users.admin_area.models import (
@@ -13,8 +13,10 @@ from users.admin_area.models import (
     TransactionLog,
     AdminIdentity,
     EventTracker,
+    AdminDiscountCode,
     # Plan,  # uncomment if you want optional seeding at the end
 )
+from users.client_area.models import DiscountCode as ClientDiscountCode
 
 SUPERADMIN_USERNAME = "dta_user"
 
@@ -32,10 +34,13 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING(f"⏭️ Skipping {label} (table not migrated yet)."))
             return
         try:
-            queryset.delete()
+            # Use a savepoint so a missing related table (from unapplied migrations)
+            # does not break the outer reset transaction.
+            with transaction.atomic():
+                queryset.delete()
             self.stdout.write(self.style.WARNING(label))
-        except ProgrammingError:
-            self.stdout.write(self.style.WARNING(f"⏭️ Skipping {label} (table unavailable)."))
+        except (ProgrammingError, DatabaseError) as exc:
+            self.stdout.write(self.style.WARNING(f"⏭️ Skipping {label} (table unavailable: {exc.__class__.__name__})."))
 
     def handle(self, *args, **kwargs):
         User = get_user_model()
@@ -60,6 +65,8 @@ class Command(BaseCommand):
 
             self._safe_delete_all(PendingSignup.objects.all(), "⏳ Pending signup entries deleted.")
             self._safe_delete_all(EventTracker.objects.all(), "📚 Event tracker entries deleted.")
+            self._safe_delete_all(ClientDiscountCode.objects.all(), "🏷️ Client discount codes deleted.")
+            self._safe_delete_all(AdminDiscountCode.objects.all(), "🏷️ Admin discount codes deleted.")
             self._safe_delete_all(AdminIdentity.objects.all(), "🆔 Admin identities deleted.")
             self._safe_delete_all(TransactionLog.objects.all(), "🗒️ Transaction log entries deleted.")
 
@@ -70,6 +77,8 @@ class Command(BaseCommand):
                 PreCheckout,
                 PendingSignup,
                 EventTracker,
+                ClientDiscountCode,
+                AdminDiscountCode,
                 AdminIdentity,
                 TransactionLog,
                 Profile,

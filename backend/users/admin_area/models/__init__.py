@@ -9,6 +9,7 @@ from .EventTracker import EventTracker
 from .AdminAccountHistory import AdminAccountHistory
 from .AdminParameterSettings import AdminParameterSettings
 from .AdminParameterSettingsChangeLog import AdminParameterSettingsChangeLog
+from .AdminDiscountCode import AdminDiscountCode
 __all__ = [
     'Plan',
     'Profile',
@@ -21,4 +22,5 @@ __all__ = [
     'AdminAccountHistory',
     'AdminParameterSettings',
     'AdminParameterSettingsChangeLog',
+    'AdminDiscountCode',
 ]

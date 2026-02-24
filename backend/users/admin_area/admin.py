@@ -16,6 +16,7 @@ from users.admin_area.models import (
     AdminAccountHistory,
     AdminParameterSettings,
     AdminParameterSettingsChangeLog,
+    AdminDiscountCode,
 )
 from users.admin_area.configs.admin_parameter_defaults import get_admin_parameter_defaults_v1
 
@@ -25,6 +26,25 @@ admin.site.register(Profile)
 admin.site.register(PasswordResetToken)
 admin.site.register(PreCheckout)
 admin.site.register(TransactionLog)
+
+
+@admin.register(AdminDiscountCode)
+class AdminDiscountCodeAdmin(admin.ModelAdmin):
+    list_display = (
+        "code",
+        "name",
+        "discount_type",
+        "percent_off",
+        "amount_cents",
+        "scope",
+        "is_active",
+        "associated_admin",
+        "starts_at",
+        "ends_at",
+    )
+    list_filter = ("is_active", "discount_type", "scope")
+    search_fields = ("code", "name", "associated_admin__admin_email", "associated_admin__subdomain_slug")
+    readonly_fields = ("created_at", "updated_at", "redeemed_count")
 
 @admin.register(EventTracker)
 class EventTrackerAdmin(admin.ModelAdmin):

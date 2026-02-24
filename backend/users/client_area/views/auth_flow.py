@@ -20,36 +20,21 @@ from users.client_area.models import (
     ClientQuestionnaireProgress,
     ClientQueuedPlanChange,
 )
+from users.client_area.services.pricing import (
+    OFFER_CATALOG,
+    PAID_OFFER_CODES,
+    PLAN_ACTIONABLE_OFFER_CODES,
+    QuoteError,
+    build_client_purchase_quote,
+    trial_days_for_offer,
+)
 from users.client_area.views.api_contract import error, ok, require_client
 from core.services.google_oauth import verify_google_id_token
 from core.models import MealComboTemplate
 from users.client_area.services.results_engine import BuildResultsContext, build_questionnaire_results
 
 stripe.api_key = getattr(settings, "STRIPE_SECRET_KEY", None)
-
-OFFER_CATALOG = {
-    "macro_calculator_free": {
-        "billing_cycle": "free",
-        "trial_days": 0,
-        "amount_cents": 0,
-        "includes_food_plan": False,
-        "includes_coaching": False,
-    },
-    "food_plan_weekly": {
-        "billing_cycle": "weekly",
-        "trial_days": 5,
-        "amount_cents": 500,
-        "includes_food_plan": True,
-        "includes_coaching": False,
-    },
-    "food_plan_monthly": {
-        "billing_cycle": "monthly",
-        "trial_days": 5,
-        "amount_cents": 1500,
-        "includes_food_plan": True,
-        "includes_coaching": False,
-    },
-}
+FRONTEND_URL = getattr(settings, "FRONTEND_URL", None) or "https://localhost:3000"
 
 QUESTIONNAIRE_STEPS = [
     "gender",
@@ -65,9 +50,31 @@ QUESTIONNAIRE_STEPS = [
 ]
 WEEK_DAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
 
-PAID_OFFER_CODES = {"food_plan_weekly", "food_plan_monthly"}
-PLAN_ACTIONABLE_OFFER_CODES = {"macro_calculator_free", "food_plan_weekly", "food_plan_monthly"}
 
+def _stripe_once_discount_from_quote(quote_payload):
+    discount = (quote_payload or {}).get("discount") or {}
+    amounts = (quote_payload or {}).get("amounts") or {}
+    discount_cents = int(amounts.get("discount_cents") or 0)
+    if not discount or discount_cents <= 0:
+        return None
+
+    discount_type = str(discount.get("discount_type") or "").strip()
+    coupon_kwargs = {
+        "duration": "once",
+        "name": f"App Discount {discount.get('code') or ''}".strip(),
+        "metadata": {
+            "source": "app_discount_code",
+            "code": str(discount.get("code") or ""),
+        },
+    }
+    if discount_type == "percent" and discount.get("percent_off") is not None:
+        coupon_kwargs["percent_off"] = float(discount.get("percent_off"))
+    else:
+        coupon_kwargs["amount_off"] = discount_cents
+        coupon_kwargs["currency"] = "usd"
+
+    coupon = stripe.Coupon.create(**coupon_kwargs)
+    return {"coupon": coupon.id}
 
 def _is_gmail_email(value):
     email = (value or "").strip().lower()
@@ -95,21 +102,7 @@ def _macro_link_questionnaire_payload(link):
 
 
 def _trial_days_for_offer(email, offer_code):
-    offer = OFFER_CATALOG[offer_code]
-    if offer["billing_cycle"] == "free":
-        return 0
-
-    # ClientProfile stores email through the related user; pending signups covers in-progress prior trials.
-    has_used_trial = ClientProfile.objects.filter(
-        user__email__iexact=email,
-        offer_code__in=PAID_OFFER_CODES,
-        trial_days__gt=0,
-    ).exists() or ClientPendingSignup.objects.filter(
-        email__iexact=email,
-        offer_code__in=PAID_OFFER_CODES,
-        trial_days__gt=0,
-    ).exists()
-    return 0 if has_used_trial else offer["trial_days"]
+    return trial_days_for_offer(email, offer_code)
 
 
 def _build_client_settings_payload(profile: ClientProfile | None):
@@ -311,10 +304,83 @@ def _persist_client_meal_combo_selections(user, answers):
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
+def public_signup_quote(request):
+    payload = request.data or {}
+    email = (payload.get("email") or "").strip().lower()
+    offer_code = (payload.get("offer_code") or "").strip()
+    admin_slug = (payload.get("admin_slug") or "").strip().lower()
+    discount_code = (payload.get("discount_code") or "").strip()
+    coaching_term = (payload.get("coaching_term") or "none").strip()
+
+    if not offer_code:
+        return error("MISSING_OFFER_CODE", "Offer code is required.", http_status=400)
+    if offer_code not in OFFER_CATALOG:
+        return error("INVALID_OFFER", "Offer not recognized.", http_status=400)
+
+    admin = None
+    sale_channel = "dta_direct"
+    if admin_slug:
+        admin = AdminIdentity.objects.filter(subdomain_slug=admin_slug).first()
+        if not admin:
+            return error("ADMIN_PAGE_NOT_FOUND", "Admin page not found.", http_status=404)
+        sale_channel = "admin_white_label"
+
+    offer = OFFER_CATALOG[offer_code]
+    if offer.get("billing_cycle") == "free":
+        trial_days = _trial_days_for_offer(email, offer_code) if email else 0
+        return ok(
+            {
+                "quote": {
+                    "offer_code": offer_code,
+                    "offer_display_name": offer.get("display_name") or offer_code,
+                    "billing_cycle": offer.get("billing_cycle"),
+                    "sale_channel": sale_channel,
+                    "purchase_mode": "subscription",
+                    "coaching_term": coaching_term,
+                    "trial_days": trial_days,
+                    "currency": "usd",
+                    "entitlements_preview": {
+                        "includes_food_plan": bool(offer.get("includes_food_plan")),
+                        "includes_coaching": bool(offer.get("includes_coaching")),
+                        "has_premium_dashboard": bool(offer.get("premium_dashboard")),
+                    },
+                    "amounts": {
+                        "plan_base_cents": int(offer.get("amount_cents") or 0),
+                        "coaching_addon_base_cents": 0,
+                        "subtotal_cents": int(offer.get("amount_cents") or 0),
+                        "discount_cents": 0,
+                        "plan_final_cents": int(offer.get("amount_cents") or 0),
+                        "coaching_addon_final_cents": 0,
+                        "total_cents": int(offer.get("amount_cents") or 0),
+                    },
+                    "discount": None,
+                }
+            }
+        )
+
+    try:
+        quote = build_client_purchase_quote(
+            email=email or "pending@example.com",
+            offer_code=offer_code,
+            coaching_term=coaching_term,
+            sale_channel=sale_channel,
+            purchase_mode="subscription",
+            associated_admin_id=admin.id if admin else None,
+            discount_code=discount_code,
+            trial_eligible=bool(email),
+        )
+    except QuoteError as exc:
+        return error(exc.code, exc.message, http_status=400)
+
+    return ok({"quote": quote})
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
 def start_signup(request):
     """
-    DEV-friendly stand-in for Stripe checkout completion so you can test the full questionnaire flow now.
-    Creates a pending signup and returns/prints a registration link.
+    Free offer path remains DEV-friendly (creates a pending signup directly).
+    Paid offers now require Stripe checkout and return a checkout URL.
     """
     if not getattr(settings, "DEBUG", False):
         return error("FORBIDDEN", "This endpoint is available only in DEBUG mode.", http_status=403)
@@ -323,6 +389,7 @@ def start_signup(request):
     email = (payload.get("email") or "").strip().lower()
     offer_code = (payload.get("offer_code") or "").strip()
     admin_slug = (payload.get("admin_slug") or "").strip().lower()
+    discount_code = (payload.get("discount_code") or "").strip()
 
     if not email or not offer_code:
         return error("MISSING_FIELDS", "Email and offer_code are required.", http_status=400)
@@ -347,7 +414,132 @@ def start_signup(request):
     if existing_pending:
         existing_pending.delete()
 
-    applied_trial_days = _trial_days_for_offer(email, offer_code)
+    if offer.get("billing_cycle") == "free":
+        applied_trial_days = _trial_days_for_offer(email, offer_code)
+        pending_amount_cents = int(offer["amount_cents"])
+        pending_includes_food_plan = bool(offer["includes_food_plan"])
+        pending_includes_coaching = bool(offer["includes_coaching"])
+        quote_payload = None
+    else:
+        if not stripe.api_key:
+            return error("STRIPE_NOT_CONFIGURED", "Stripe is not configured on the server.", http_status=500)
+        try:
+            quote_payload = build_client_purchase_quote(
+                email=email,
+                offer_code=offer_code,
+                coaching_term="none",
+                sale_channel=sale_channel,
+                purchase_mode="subscription",
+                associated_admin_id=admin.id if admin else None,
+                discount_code=discount_code,
+                trial_eligible=True,
+            )
+        except QuoteError as exc:
+            return error(exc.code, exc.message, http_status=400)
+        applied_trial_days = int(quote_payload.get("trial_days") or 0)
+        amounts = quote_payload.get("amounts") or {}
+        pending_amount_cents = int(amounts.get("total_cents") or offer["amount_cents"])
+        ent = quote_payload.get("entitlements_preview") or {}
+        pending_includes_food_plan = bool(ent.get("includes_food_plan", offer["includes_food_plan"]))
+        pending_includes_coaching = bool(ent.get("includes_coaching", offer["includes_coaching"]))
+        if pending_amount_cents <= 0:
+            return error(
+                "UNSUPPORTED_ZERO_AMOUNT_SUBSCRIPTION",
+                "This discount reduces the checkout total to $0.00, which is not supported in the current checkout flow.",
+                http_status=400,
+            )
+
+        customer = stripe.Customer.create(
+            email=email,
+            metadata={
+                "flow": "public_client_signup_checkout",
+                "sale_channel": sale_channel,
+                "admin_slug": admin_slug or "",
+                "offer_code": offer_code,
+            },
+        )
+
+        discount = quote_payload.get("discount") or {}
+        discount_code_clean = str(discount.get("code") or "").strip()
+        product_name = quote_payload.get("offer_display_name") or offer_code
+        if discount_code_clean and int((amounts or {}).get("discount_cents") or 0) > 0:
+            product_name = f"{product_name} (Special Applied: {discount_code_clean})"
+
+        recurring_interval = "week" if offer["billing_cycle"] == "weekly" else "month"
+        success_path = f"/start/{admin_slug}/plans" if admin_slug else "/user_plans"
+        cancel_path = success_path
+
+        subscription_data = {
+            "metadata": {
+                "flow": "public_client_signup_checkout",
+                "signup_email": email,
+                "sale_channel": sale_channel,
+                "admin_slug": admin_slug or "",
+                "admin_id": str(admin.id if admin else ""),
+                "offer_code": offer_code,
+                "discount_code": discount_code_clean,
+                "trial_days": str(applied_trial_days),
+                "amount_cents": str(pending_amount_cents),
+                "includes_food_plan": "1" if pending_includes_food_plan else "0",
+                "includes_coaching": "1" if pending_includes_coaching else "0",
+            }
+        }
+        if applied_trial_days > 0:
+            subscription_data["trial_period_days"] = int(applied_trial_days)
+
+        stripe_discount = _stripe_once_discount_from_quote(quote_payload)
+        allow_promotion_codes = not bool(stripe_discount)
+        line_unit_amount = int(offer.get("amount_cents") or pending_amount_cents)
+
+        session_kwargs = dict(
+            mode="subscription",
+            payment_method_types=["card"],
+            customer=customer.id,
+            allow_promotion_codes=allow_promotion_codes,
+            line_items=[
+                {
+                    "price_data": {
+                        "currency": "usd",
+                        "product_data": {"name": product_name},
+                        "unit_amount": line_unit_amount,
+                        "recurring": {"interval": recurring_interval},
+                    },
+                    "quantity": 1,
+                }
+            ],
+            subscription_data=subscription_data,
+            metadata={
+                "flow": "public_client_signup_checkout",
+                "signup_email": email,
+                "sale_channel": sale_channel,
+                "admin_slug": admin_slug or "",
+                "admin_id": str(admin.id if admin else ""),
+                "offer_code": offer_code,
+                "discount_code": discount_code_clean,
+                "trial_days": str(applied_trial_days),
+                "amount_cents": str(pending_amount_cents),
+            },
+            success_url=f"{FRONTEND_URL}{success_path}?signup_checkout=success&session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{FRONTEND_URL}{cancel_path}?signup_checkout=cancel",
+        )
+        if stripe_discount:
+            session_kwargs["discounts"] = [stripe_discount]
+
+        session = stripe.checkout.Session.create(**session_kwargs)
+
+        return ok(
+            {
+                "message": "Redirecting to secure checkout.",
+                "checkout_url": session.url,
+                "checkout_session_id": session.id,
+                "offer": {"code": offer_code, **offer, "trial_days": applied_trial_days},
+                "quote": quote_payload,
+                "sale_channel": sale_channel,
+                "admin_slug": admin_slug or None,
+            },
+            http_status=201,
+        )
+
     token = get_random_string(64)
     pending = ClientPendingSignup.objects.create(
         email=email,
@@ -357,13 +549,13 @@ def start_signup(request):
         offer_code=offer_code,
         billing_cycle=offer["billing_cycle"],
         trial_days=applied_trial_days,
-        amount_cents=offer["amount_cents"],
-        includes_food_plan=offer["includes_food_plan"],
-        includes_coaching=offer["includes_coaching"],
+        amount_cents=pending_amount_cents,
+        includes_food_plan=pending_includes_food_plan,
+        includes_coaching=pending_includes_coaching,
         registration_link_printed_at=timezone.now(),
     )
 
-    registration_link = f"http://localhost:3000/client_register?token={pending.token}"
+    registration_link = f"{FRONTEND_URL}/client_register?token={pending.token}"
     print("\n" + "=" * 60)
     print("📩 Client registration email (simulated):")
     print(f"To: {email}")
@@ -376,6 +568,7 @@ def start_signup(request):
             "message": "Signup started (DEV). Registration link created.",
             "registration_link": registration_link,
             "offer": {"code": offer_code, **offer, "trial_days": applied_trial_days},
+            "quote": quote_payload,
             "sale_channel": sale_channel,
             "admin_slug": admin_slug or None,
         },

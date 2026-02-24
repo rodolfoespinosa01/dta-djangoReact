@@ -31,6 +31,17 @@ const DTA_DIRECT_PAGE = {
       featured: true,
     },
     {
+      code: 'food_plan_weekly_premium',
+      name: 'Meal Plan + Coaching (Weekly Premium)',
+      price_label: '$12/week',
+      trial_days: 5,
+      description: 'Includes meal planning plus premium coaching access and coaching dashboard features.',
+      includes_food_plan: true,
+      includes_coaching: true,
+      billing: 'weekly',
+      featured: false,
+    },
+    {
       code: 'food_plan_monthly',
       name: 'Meal Plan With Foods (Monthly)',
       price_label: '$15/month',
@@ -40,8 +51,54 @@ const DTA_DIRECT_PAGE = {
       billing: 'monthly',
       featured: false,
     },
+    {
+      code: 'food_plan_monthly_premium',
+      name: 'Meal Plan + Coaching (Monthly Premium)',
+      price_label: '$35/month',
+      trial_days: 5,
+      description: 'Best value premium tier with food planning plus coaching features and premium dashboard access.',
+      includes_food_plan: true,
+      includes_coaching: true,
+      billing: 'monthly',
+      featured: false,
+    },
   ],
 };
+
+function QuoteChip({ quote }) {
+  if (!quote) return null;
+  const amounts = quote.amounts || {};
+  const entitlements = quote.entitlements_preview || {};
+  const hasDiscount = Number(amounts.discount_cents || 0) > 0;
+  const originalTotal = Number(amounts.subtotal_cents || 0) / 100;
+  const discountedTotal = Number(amounts.total_cents || 0) / 100;
+  return (
+    <div style={{ marginTop: '0.6rem', border: '1px solid rgba(20,40,74,0.10)', borderRadius: 10, padding: '0.55rem' }}>
+      <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        {hasDiscount ? (
+          <>
+            <span className="user-plan-trial is-free" style={{ textDecoration: 'line-through', opacity: 0.75 }}>
+              ${originalTotal.toFixed(2)}
+            </span>
+            <span className="user-plan-trial">Now ${discountedTotal.toFixed(2)}</span>
+          </>
+        ) : (
+          <span className="user-plan-trial is-free">Total ${discountedTotal.toFixed(2)}</span>
+        )}
+        {hasDiscount ? <span className="user-plan-trial">Discount -${(Number(amounts.discount_cents || 0) / 100).toFixed(2)}</span> : null}
+        {quote.trial_days > 0 ? <span className="user-plan-trial">{quote.trial_days}-day trial</span> : null}
+      </div>
+      {quote.discount?.code ? (
+        <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem' }}>
+          Special applied: <strong>{quote.discount.code}</strong>
+        </p>
+      ) : null}
+      {entitlements.has_premium_dashboard ? (
+        <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem' }}>Includes premium coaching dashboard.</p>
+      ) : null}
+    </div>
+  );
+}
 
 function UserPlanSelectionPage() {
   const navigate = useNavigate();
@@ -53,8 +110,11 @@ function UserPlanSelectionPage() {
   const [signupEmail, setSignupEmail] = useState('');
   const [ctaMessage, setCtaMessage] = useState('');
   const [startingOfferCode, setStartingOfferCode] = useState('');
-
-  const focusOffer = location.state?.focusOffer;
+  const [discountCode, setDiscountCode] = useState('');
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [paidQuote, setPaidQuote] = useState(null);
+  const [paidBilling, setPaidBilling] = useState('weekly');
+  const [includeCoaching, setIncludeCoaching] = useState(false);
 
   useEffect(() => {
     let ignore = false;
@@ -88,6 +148,69 @@ function UserPlanSelectionPage() {
     return () => { ignore = true; };
   }, [adminSlug]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search || '');
+    const state = params.get('signup_checkout');
+    if (state === 'success') {
+      setCtaMessage('Checkout completed. Your registration link is being generated (check the email simulation / backend terminal).');
+    } else if (state === 'cancel') {
+      setCtaMessage('Checkout was canceled. You can preview pricing and try again when ready.');
+    }
+  }, [location.search]);
+
+  const offers = useMemo(() => pageData?.offers || [], [pageData]);
+  const freeOffer = useMemo(() => offers.find((o) => o.billing === 'free') || null, [offers]);
+  const paidOffers = useMemo(() => offers.filter((o) => o.billing !== 'free'), [offers]);
+  const selectedPaidOffer = useMemo(() => {
+    const targetBilling = paidBilling;
+    const targetCoaching = includeCoaching;
+    return paidOffers.find((o) => o.billing === targetBilling && Boolean(o.includes_coaching) === targetCoaching) || null;
+  }, [paidOffers, paidBilling, includeCoaching]);
+
+  useEffect(() => {
+    if (!selectedPaidOffer) {
+      setPaidQuote(null);
+      return;
+    }
+    let ignore = false;
+    setQuoteLoading(true);
+    apiRequest('/api/v1/users/client/signup/quote/', {
+      method: 'POST',
+      body: {
+        email: signupEmail.trim(),
+        offer_code: selectedPaidOffer.code,
+        admin_slug: adminSlug,
+        discount_code: discountCode.trim(),
+      },
+    })
+      .then((res) => {
+        if (ignore) return;
+        if (!res.ok) {
+          setPaidQuote(null);
+          if (discountCode.trim()) {
+            setCtaMessage(res.data?.error?.message || 'Unable to apply discount code.');
+          }
+          return;
+        }
+        setPaidQuote(res.data?.quote || null);
+        if (discountCode.trim()) {
+          setCtaMessage('');
+        }
+      })
+      .catch((err) => {
+        if (ignore) return;
+        console.error(err);
+        setPaidQuote(null);
+      })
+      .finally(() => {
+        if (!ignore) setQuoteLoading(false);
+      });
+
+    return () => { ignore = true; };
+  // Intentionally re-run on plan toggles/admin page changes; discount code is applied on field blur.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPaidOffer, adminSlug, paidBilling, includeCoaching]);
+
   const handleHomeCTA = () => {
     if (adminSlug) navigate(`/start/${adminSlug}`);
     else navigate('/user_homepage');
@@ -96,12 +219,6 @@ function UserPlanSelectionPage() {
     if (adminSlug) navigate(`/start/${adminSlug}/login`);
     else navigate('/user_login');
   };
-
-  const offers = pageData?.offers || [];
-  const sortedOffers = useMemo(() => {
-    if (!focusOffer) return offers;
-    return [...offers].sort((a, b) => (a.code === focusOffer ? -1 : b.code === focusOffer ? 1 : 0));
-  }, [offers, focusOffer]);
 
   const handleOfferSelect = (offer) => {
     setCtaMessage('');
@@ -116,11 +233,16 @@ function UserPlanSelectionPage() {
         email: signupEmail.trim(),
         offer_code: offer.code,
         admin_slug: adminSlug,
+        discount_code: discountCode.trim(),
       },
     })
       .then((res) => {
         if (!res.ok) {
           throw new Error(res.data?.error?.message || 'Unable to start signup.');
+        }
+        if (res.data?.checkout_url) {
+          window.location.href = res.data.checkout_url;
+          return;
         }
         setCtaMessage('Signup started. Check the backend terminal for the registration link (email simulation).');
       })
@@ -146,9 +268,28 @@ function UserPlanSelectionPage() {
   }
 
   const brandName = pageData?.admin_page?.brand_name || 'DTA';
+  const signupCheckoutState = new URLSearchParams(location.search || '').get('signup_checkout');
+  const paidOfferLabel = includeCoaching ? 'Premium Coaching' : 'Standard Meal Plan';
 
   return (
     <div className="user-plan-page">
+      {signupCheckoutState === 'success' ? (
+        <div className="user-plan-header-card" style={{ marginBottom: '1rem' }}>
+          <p className="user-plan-brand">{brandName}</p>
+          <h2>Checkout Completed</h2>
+          <p>
+            Payment/trial setup was completed successfully. Check your email (and backend terminal in dev) for the registration link to finish account setup.
+          </p>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button type="button" className="user-plan-button user-plan-button-secondary" onClick={() => navigate(location.pathname, { replace: true })}>
+              Start Another Signup
+            </button>
+            <button type="button" className="user-plan-button" onClick={handleLoginCTA}>
+              Existing Client Login
+            </button>
+          </div>
+        </div>
+      ) : null}
       <div className="user-plan-header-card">
         <p className="user-plan-brand">{brandName}</p>
         <h2>Choose Your Access</h2>
@@ -169,34 +310,144 @@ function UserPlanSelectionPage() {
             placeholder="you@example.com"
           />
         </label>
+        <label className="user-plan-email-field">
+          Discount Code (optional)
+          <input
+            type="text"
+            value={discountCode}
+            onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+            onBlur={() => {
+              // Re-run quote after editing the discount field
+              if (!selectedPaidOffer) return;
+              setQuoteLoading(true);
+              apiRequest('/api/v1/users/client/signup/quote/', {
+                method: 'POST',
+                body: {
+                  email: signupEmail.trim(),
+                  offer_code: selectedPaidOffer.code,
+                  admin_slug: adminSlug,
+                  discount_code: discountCode.trim(),
+                },
+              })
+                .then((res) => {
+                  if (!res.ok) {
+                    setPaidQuote(null);
+                    setCtaMessage(res.data?.error?.message || 'Unable to apply discount code.');
+                    return;
+                  }
+                  setPaidQuote(res.data?.quote || null);
+                  setCtaMessage('');
+                })
+                .catch((err) => {
+                  console.error(err);
+                  setCtaMessage('Unable to apply discount code.');
+                })
+                .finally(() => setQuoteLoading(false));
+            }}
+            placeholder="SUMMER20"
+          />
+        </label>
         {ctaMessage && <p className="user-plan-inline-message">{ctaMessage}</p>}
       </div>
 
       <div className="user-plan-grid">
-        {sortedOffers.map((offer) => (
-          <article key={offer.code} className={`user-plan-card ${offer.featured ? 'is-featured' : ''}`}>
+        {freeOffer ? (
+          <article key={freeOffer.code} className="user-plan-card">
             <div className="user-plan-card-top">
-              <h3>{offer.name}</h3>
-              <span className="user-plan-price">{offer.price_label}</span>
+              <h3>{freeOffer.name}</h3>
+              <span className="user-plan-price">{freeOffer.price_label}</span>
             </div>
-            {offer.trial_days > 0 ? (
-              <p className="user-plan-trial">{offer.trial_days}-day free trial for first-time users</p>
-            ) : (
-              <p className="user-plan-trial is-free">Free account + login required</p>
-            )}
-            <p className="user-plan-description">{offer.description}</p>
+            <p className="user-plan-trial is-free">Free account + login required</p>
+            <p className="user-plan-description">{freeOffer.description}</p>
             <ul className="user-plan-features">
-              <li>{offer.includes_food_plan ? 'Includes foods + meal structure' : 'Macros only (no food assignments)'}</li>
+              <li>Macros only (no food assignments)</li>
               <li>Questionnaire required before dashboard access</li>
-              <li>{offer.billing === 'free' ? 'No billing required' : `Billing cadence: ${offer.billing}`}</li>
+              <li>No billing required</li>
             </ul>
-            <button type="button" className="user-plan-button" onClick={() => handleOfferSelect(offer)}>
-              {startingOfferCode === offer.code
-                ? 'Starting…'
-                : (offer.billing === 'free' ? 'Send Registration Link' : 'Start Free Trial')}
+            <button type="button" className="user-plan-button" onClick={() => handleOfferSelect(freeOffer)}>
+              {startingOfferCode === freeOffer.code ? 'Starting…' : 'Send Registration Link'}
             </button>
           </article>
-        ))}
+        ) : null}
+
+        <article className="user-plan-card is-featured">
+          <div className="user-plan-card-top">
+            <h3>Paid Plan Builder</h3>
+            <span className="user-plan-price">
+              {quoteLoading ? 'Updating…' : (paidQuote ? `$${((paidQuote.amounts?.total_cents || 0) / 100).toFixed(2)}` : (selectedPaidOffer?.price_label || '-'))}
+            </span>
+          </div>
+          <p className="user-plan-trial">
+            {paidQuote?.trial_days ? `${paidQuote.trial_days}-day free trial for first-time users` : 'Card required to begin paid access'}
+          </p>
+          <p className="user-plan-description">
+            Choose a billing cadence and whether coaching is included. Paid plans go to secure Stripe checkout.
+          </p>
+
+          <div style={{ display: 'grid', gap: '0.55rem', marginTop: '0.4rem' }}>
+            <div>
+              <p style={{ margin: '0 0 0.3rem', fontWeight: 600 }}>Billing</p>
+              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="user-plan-button user-plan-button-secondary"
+                  onClick={() => setPaidBilling('weekly')}
+                  style={{ opacity: paidBilling === 'weekly' ? 1 : 0.8 }}
+                >
+                  Weekly
+                </button>
+                <button
+                  type="button"
+                  className="user-plan-button user-plan-button-secondary"
+                  onClick={() => setPaidBilling('monthly')}
+                  style={{ opacity: paidBilling === 'monthly' ? 1 : 0.8 }}
+                >
+                  Monthly
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <p style={{ margin: '0 0 0.3rem', fontWeight: 600 }}>Coaching</p>
+              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="user-plan-button user-plan-button-secondary"
+                  onClick={() => setIncludeCoaching(false)}
+                  style={{ opacity: includeCoaching ? 0.8 : 1 }}
+                >
+                  Standard
+                </button>
+                <button
+                  type="button"
+                  className="user-plan-button user-plan-button-secondary"
+                  onClick={() => setIncludeCoaching(true)}
+                  style={{ opacity: includeCoaching ? 1 : 0.8 }}
+                >
+                  Coaching Premium
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <ul className="user-plan-features">
+            <li>{includeCoaching ? 'Premium coaching dashboard and coaching features included' : 'Standard meal-planning dashboard'}</li>
+            <li>Questionnaire required before dashboard access</li>
+            <li>Billing cadence: {paidBilling}</li>
+            <li>Selection: {paidOfferLabel}</li>
+          </ul>
+
+          <QuoteChip quote={paidQuote} />
+
+          <button
+            type="button"
+            className="user-plan-button"
+            onClick={() => selectedPaidOffer && handleOfferSelect(selectedPaidOffer)}
+            disabled={!selectedPaidOffer}
+          >
+            {startingOfferCode === selectedPaidOffer?.code ? 'Starting…' : 'Go To Secure Checkout'}
+          </button>
+        </article>
       </div>
 
       <button onClick={handleHomeCTA} className="user-plan-button user-plan-button-secondary">

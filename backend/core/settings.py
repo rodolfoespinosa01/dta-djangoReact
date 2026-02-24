@@ -170,16 +170,22 @@ AUTH_USER_MODEL = 'core.CustomUser'
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://localhost:3000",
+    "https://127.0.0.1:3000",
 ]
 # 👆 allows frontend origins to send csrf-protected requests (needed when using react in development)
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://localhost:3000",
+    "https://127.0.0.1:3000",
 ]
 # 👆 allows the frontend to make cross-origin api calls to the backend (used by axios or fetch)
 
 CORS_ALLOW_CREDENTIALS = True
+
+FRONTEND_URL = os.getenv("FRONTEND_URL") or "https://localhost:3000"
 
 
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL") or os.getenv("REDIS_URL") or "redis://127.0.0.1:6379/0"

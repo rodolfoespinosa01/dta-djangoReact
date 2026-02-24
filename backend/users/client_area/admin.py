@@ -10,11 +10,31 @@ from .models import (
     ClientMealPlanGenerationStep1Row,
     ClientMacroAccessLink,
     ClientMealComboSelection,
+    DiscountCode,
     ClientPendingSignup,
     ClientProfile,
     ClientQuestionnaireProgress,
     ClientQueuedPlanChange,
 )
+
+
+@admin.register(DiscountCode)
+class DiscountCodeAdmin(admin.ModelAdmin):
+    list_display = (
+        "code",
+        "name",
+        "discount_type",
+        "percent_off",
+        "amount_cents",
+        "scope",
+        "is_active",
+        "associated_admin",
+        "starts_at",
+        "ends_at",
+    )
+    list_filter = ("is_active", "discount_type", "scope")
+    search_fields = ("code", "name", "associated_admin__admin_email", "associated_admin__subdomain_slug")
+    readonly_fields = ("created_at", "updated_at", "redeemed_count")
 
 
 @admin.register(ClientPendingSignup)

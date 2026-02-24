@@ -1,4 +1,5 @@
 from rest_framework import serializers  # 👉 base class for creating custom api serializers
+from django.conf import settings
 from django.contrib.auth.tokens import default_token_generator  # 👉 generates secure password reset tokens
 from django.utils.http import urlsafe_base64_encode  # 👉 encodes the user id into a url-safe format
 from django.utils.encoding import force_bytes  # 👉 converts user id into bytes for encoding
@@ -23,7 +24,8 @@ class ForgotPasswordSerializer(serializers.Serializer):  # 👉 handles the pass
 
         PasswordResetToken.objects.create(user=user, token=token)  # 👉 saves the token to the database for validation
 
-        reset_link = f"http://localhost:3000/admin_reset_password?uid={uid}&token={token}"  # 👉 builds the reset link for the frontend
+        frontend_url = getattr(settings, "FRONTEND_URL", None) or "https://localhost:3000"
+        reset_link = f"{frontend_url}/admin_reset_password?uid={uid}&token={token}"  # 👉 builds the reset link for the frontend
 
         print("\n=================== 📩 Admin Password Reset Email ===================")
         print(f"To: {email}")

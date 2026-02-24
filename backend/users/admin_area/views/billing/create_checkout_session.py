@@ -20,6 +20,7 @@ from users.admin_area.views.api_contract import error, ok
 from users.admin_area.views.idempotency import begin_idempotent_request
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
+FRONTEND_URL = getattr(settings, "FRONTEND_URL", None) or "https://localhost:3000"
 
 # Alias map so callers can use snake_case or your canonical names
 PLAN_NAME_ALIASES = {
@@ -216,8 +217,8 @@ def create_checkout_session(request):
                 'is_trial': 'true' if is_trial else 'false',
                 'reactivation': '0',  # not a reactivation flow
             },
-            success_url='http://localhost:3000/admin_thank_you?session_id={CHECKOUT_SESSION_ID}',
-            cancel_url='http://localhost:3000/admin_plans',
+            success_url=f'{FRONTEND_URL}/admin_thank_you?session_id={{CHECKOUT_SESSION_ID}}',
+            cancel_url=f'{FRONTEND_URL}/admin_plans',
         )
 
         resp = {'url': session.url}
