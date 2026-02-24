@@ -13,6 +13,32 @@ function portalLabel(settings) {
   return settings.sale_channel === 'admin_white_label' ? 'Coach Portal' : 'DTA Direct Portal';
 }
 
+function isPremiumOffer(offerCode) {
+  return String(offerCode || '').includes('_premium');
+}
+
+function QuoteSummary({ quote }) {
+  if (!quote) return null;
+  const amounts = quote.amounts || {};
+  const entitlements = quote.entitlements_preview || {};
+  return (
+    <div style={{ border: '1px solid rgba(20,40,74,0.1)', borderRadius: 10, padding: '0.75rem', marginTop: '0.65rem' }}>
+      <div className="client-dash-chips">
+        <span>{quote.offer_display_name || quote.offer_code}</span>
+        <span>{quote.billing_cycle}</span>
+        <span>Total: ${((amounts.total_cents || 0) / 100).toFixed(2)}</span>
+        {quote.trial_days ? <span>{quote.trial_days}-day trial</span> : null}
+      </div>
+      <ul style={{ marginTop: '0.5rem' }}>
+        <li>Plan amount: ${((amounts.plan_final_cents || 0) / 100).toFixed(2)}</li>
+        <li>Coaching add-on: ${((amounts.coaching_addon_final_cents || 0) / 100).toFixed(2)}</li>
+        <li>Discount: -${((amounts.discount_cents || 0) / 100).toFixed(2)} {quote.discount?.code ? `(${quote.discount.code})` : ''}</li>
+        <li>Premium dashboard: {entitlements.has_premium_dashboard ? 'Included' : 'Not included'}</li>
+      </ul>
+    </div>
+  );
+}
+
 function ClientSettingsPage() {
   const { logout } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -24,9 +50,15 @@ function ClientSettingsPage() {
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutOfferCode, setCheckoutOfferCode] = useState('food_plan_weekly');
   const [checkoutCoachingTerm, setCheckoutCoachingTerm] = useState('none');
+  const [checkoutDiscountCode, setCheckoutDiscountCode] = useState('');
+  const [checkoutQuoteBusy, setCheckoutQuoteBusy] = useState(false);
+  const [checkoutQuote, setCheckoutQuote] = useState(null);
   const [queuedCheckoutBusy, setQueuedCheckoutBusy] = useState(false);
   const [queuedCheckoutOfferCode, setQueuedCheckoutOfferCode] = useState('food_plan_monthly');
   const [queuedCheckoutCoachingTerm, setQueuedCheckoutCoachingTerm] = useState('none');
+  const [queuedCheckoutDiscountCode, setQueuedCheckoutDiscountCode] = useState('');
+  const [queuedCheckoutQuoteBusy, setQueuedCheckoutQuoteBusy] = useState(false);
+  const [queuedCheckoutQuote, setQueuedCheckoutQuote] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -124,6 +156,57 @@ function ClientSettingsPage() {
     }
   };
 
+  useEffect(() => {
+    if (isPremiumOffer(checkoutOfferCode) && checkoutCoachingTerm !== 'none') {
+      setCheckoutCoachingTerm('none');
+    }
+  }, [checkoutOfferCode, checkoutCoachingTerm]);
+
+  useEffect(() => {
+    if (isPremiumOffer(queuedCheckoutOfferCode) && queuedCheckoutCoachingTerm !== 'none') {
+      setQueuedCheckoutCoachingTerm('none');
+    }
+  }, [queuedCheckoutOfferCode, queuedCheckoutCoachingTerm]);
+
+  const fetchCheckoutQuote = async (purchaseMode) => {
+    const isQueued = purchaseMode === 'payment';
+    const offerCode = isQueued ? queuedCheckoutOfferCode : checkoutOfferCode;
+    const coachingTerm = isQueued ? queuedCheckoutCoachingTerm : checkoutCoachingTerm;
+    const discountCode = isQueued ? queuedCheckoutDiscountCode : checkoutDiscountCode;
+    const setBusy = isQueued ? setQueuedCheckoutQuoteBusy : setCheckoutQuoteBusy;
+    const setQuote = isQueued ? setQueuedCheckoutQuote : setCheckoutQuote;
+
+    setBusy(true);
+    setError('');
+    try {
+      const res = await apiRequest('/api/v1/users/client/app/settings/checkout-quote/', {
+        method: 'POST',
+        auth: true,
+        body: {
+          offer_code: offerCode,
+          coaching_term: coachingTerm,
+          discount_code: discountCode,
+          purchase_mode: purchaseMode,
+        },
+      });
+      if (!res.ok) {
+        setQuote(null);
+        setError(res.data?.error?.message || 'Unable to preview checkout price.');
+        return null;
+      }
+      const quotePayload = res.data?.quote || null;
+      setQuote(quotePayload);
+      return quotePayload;
+    } catch (err) {
+      console.error(err);
+      setQuote(null);
+      setError('Network error while previewing checkout price.');
+      return null;
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const startStripeCheckout = async () => {
     setCheckoutBusy(true);
     setError('');
@@ -135,6 +218,7 @@ function ClientSettingsPage() {
         body: {
           offer_code: checkoutOfferCode,
           coaching_term: checkoutCoachingTerm,
+          discount_code: checkoutDiscountCode.trim(),
         },
       });
       if (!res.ok) {
@@ -165,6 +249,7 @@ function ClientSettingsPage() {
         body: {
           offer_code: queuedCheckoutOfferCode,
           coaching_term: queuedCheckoutCoachingTerm,
+          discount_code: queuedCheckoutDiscountCode.trim(),
         },
       });
       if (!res.ok) {
@@ -246,23 +331,44 @@ function ClientSettingsPage() {
               Food Plan
               <select value={checkoutOfferCode} onChange={(e) => setCheckoutOfferCode(e.target.value)} disabled={checkoutBusy}>
                 <option value="food_plan_weekly">Weekly ($5/week)</option>
+                <option value="food_plan_weekly_premium">Weekly Premium Coaching ($12/week)</option>
                 <option value="food_plan_monthly">Monthly ($15/month)</option>
+                <option value="food_plan_monthly_premium">Monthly Premium Coaching ($35/month)</option>
               </select>
             </label>
             <label>
               Coaching Add-On (Optional)
-              <select value={checkoutCoachingTerm} onChange={(e) => setCheckoutCoachingTerm(e.target.value)} disabled={checkoutBusy}>
+              <select value={checkoutCoachingTerm} onChange={(e) => setCheckoutCoachingTerm(e.target.value)} disabled={checkoutBusy || isPremiumOffer(checkoutOfferCode)}>
                 <option value="none">No Coaching</option>
                 <option value="1_month">Add Coaching (1 Month - $30)</option>
                 <option value="3_months">Add Coaching (3 Months - $50)</option>
               </select>
             </label>
+            <label>
+              Discount Code
+              <input
+                type="text"
+                value={checkoutDiscountCode}
+                onChange={(e) => setCheckoutDiscountCode(e.target.value.toUpperCase())}
+                placeholder="Optional code"
+                disabled={checkoutBusy}
+              />
+            </label>
           </div>
           <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+            <button type="button" className="client-q-btn secondary" onClick={() => fetchCheckoutQuote('subscription')} disabled={checkoutQuoteBusy || checkoutBusy}>
+              {checkoutQuoteBusy ? 'Previewing…' : 'Preview Price'}
+            </button>
             <button type="button" className="client-q-btn" onClick={startStripeCheckout} disabled={checkoutBusy}>
               {checkoutBusy ? 'Redirecting…' : 'Go To Secure Checkout'}
             </button>
           </div>
+          {isPremiumOffer(checkoutOfferCode) ? (
+            <p className="client-dash-muted" style={{ marginTop: '0.5rem' }}>
+              Premium plans include coaching features and the premium dashboard. Coaching add-on is disabled for premium plans.
+            </p>
+          ) : null}
+          <QuoteSummary quote={checkoutQuote} />
         </section>
       ) : (
         <section className="client-dashboard-card">
@@ -275,23 +381,44 @@ function ClientSettingsPage() {
               Next Food Plan
               <select value={queuedCheckoutOfferCode} onChange={(e) => setQueuedCheckoutOfferCode(e.target.value)} disabled={queuedCheckoutBusy}>
                 <option value="food_plan_weekly">Weekly ($5/week)</option>
+                <option value="food_plan_weekly_premium">Weekly Premium Coaching ($12/week)</option>
                 <option value="food_plan_monthly">Monthly ($15/month)</option>
+                <option value="food_plan_monthly_premium">Monthly Premium Coaching ($35/month)</option>
               </select>
             </label>
             <label>
               Next Coaching Add-On (Optional)
-              <select value={queuedCheckoutCoachingTerm} onChange={(e) => setQueuedCheckoutCoachingTerm(e.target.value)} disabled={queuedCheckoutBusy}>
+              <select value={queuedCheckoutCoachingTerm} onChange={(e) => setQueuedCheckoutCoachingTerm(e.target.value)} disabled={queuedCheckoutBusy || isPremiumOffer(queuedCheckoutOfferCode)}>
                 <option value="none">No Coaching</option>
                 <option value="1_month">Add Coaching (1 Month - $30)</option>
                 <option value="3_months">Add Coaching (3 Months - $50)</option>
               </select>
             </label>
+            <label>
+              Discount Code
+              <input
+                type="text"
+                value={queuedCheckoutDiscountCode}
+                onChange={(e) => setQueuedCheckoutDiscountCode(e.target.value.toUpperCase())}
+                placeholder="Optional code"
+                disabled={queuedCheckoutBusy}
+              />
+            </label>
           </div>
           <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+            <button type="button" className="client-q-btn secondary" onClick={() => fetchCheckoutQuote('payment')} disabled={queuedCheckoutQuoteBusy || queuedCheckoutBusy}>
+              {queuedCheckoutQuoteBusy ? 'Previewing…' : 'Preview Queued Price'}
+            </button>
             <button type="button" className="client-q-btn" onClick={startQueuedStripeCheckout} disabled={queuedCheckoutBusy}>
               {queuedCheckoutBusy ? 'Redirecting…' : 'Queue Next Plan (Secure Checkout)'}
             </button>
           </div>
+          {isPremiumOffer(queuedCheckoutOfferCode) ? (
+            <p className="client-dash-muted" style={{ marginTop: '0.5rem' }}>
+              Premium plans already include coaching access. Optional coaching add-on is disabled for premium plans.
+            </p>
+          ) : null}
+          <QuoteSummary quote={queuedCheckoutQuote} />
           {(settings?.queued_changes || []).length ? (
             <div style={{ marginTop: '0.75rem' }}>
               <h3 style={{ marginBottom: '0.5rem' }}>Queued Purchases</h3>

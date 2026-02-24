@@ -22,6 +22,7 @@ from users.admin_area.utils import (
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 endpoint_secret = settings.STRIPE_WEBHOOK_SECRET
+FRONTEND_URL = getattr(settings, "FRONTEND_URL", None) or "https://localhost:3000"
 
 
 def _ts_to_aware(ts: int | None):
@@ -124,7 +125,7 @@ def stripe_webhook(request):
             created_at=timezone.now()
         )
 
-        registration_link = f"http://localhost:3000/admin_register?token={token}"
+        registration_link = f"{FRONTEND_URL}/admin_register?token={token}"
         print("\n" + "=" * 60)
         print("📩 Registration email (simulated):")
         print(f"To: {email}")

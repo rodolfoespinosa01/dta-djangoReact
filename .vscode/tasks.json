@@ -4,7 +4,7 @@
     {
       "label": "Run Django Server",
       "type": "shell",
-      "command": "source venv/bin/activate && python manage.py runserver",
+      "command": "zsh -lc 'source venv/bin/activate && if [ -f \"../.certs/localhost.pem\" ] && [ -f \"../.certs/localhost-key.pem\" ] && command -v uvicorn >/dev/null 2>&1; then uvicorn core.asgi:application --host 0.0.0.0 --port 8000 --ssl-keyfile ../.certs/localhost-key.pem --ssl-certfile ../.certs/localhost.pem; else python manage.py runserver; fi'",
       "options": {
         "cwd": "${workspaceFolder}/backend"
       },
@@ -13,7 +13,7 @@
     {
       "label": "Run React App",
       "type": "shell",
-      "command": "zsh -c 'source ~/.nvm/nvm.sh && nvm install && nvm use && npm start'",
+      "command": "zsh -lc 'source ~/.nvm/nvm.sh && nvm install && nvm use && if [ -f \"${workspaceFolder}/.certs/localhost.pem\" ] && [ -f \"${workspaceFolder}/.certs/localhost-key.pem\" ]; then HTTPS=true SSL_CRT_FILE=\"${workspaceFolder}/.certs/localhost.pem\" SSL_KEY_FILE=\"${workspaceFolder}/.certs/localhost-key.pem\" npm start; else HTTPS=true npm start; fi'",
       "options": {
         "cwd": "${workspaceFolder}/frontend"
       }
@@ -21,7 +21,7 @@
     {
       "label": "Run Redis Server",
       "type": "shell",
-      "command": "redis-server",
+      "command": "zsh -lc 'redis-cli ping >/dev/null 2>&1 && echo \"Redis already running on :6379\" || redis-server'",
       "options": {
         "cwd": "${workspaceFolder}"
       },
@@ -52,6 +52,20 @@
         "Run Stripe Webhook"
       ],
       "dependsOrder": "parallel"
+    },
+    {
+      "label": "Kill All Services",
+      "type": "shell",
+      "command": "zsh -lc 'pkill -f \"python manage.py runserver\" >/dev/null 2>&1 || true; pkill -f \"celery -A core worker\" >/dev/null 2>&1 || true; pkill -f \"react-scripts start\" >/dev/null 2>&1 || true; pkill -f \"stripe listen --forward-to\" >/dev/null 2>&1 || true; for p in $(lsof -tiTCP:8000 -sTCP:LISTEN 2>/dev/null); do kill \"$p\" >/dev/null 2>&1 || true; done; for p in $(lsof -tiTCP:3000 -sTCP:LISTEN 2>/dev/null); do kill \"$p\" >/dev/null 2>&1 || true; done; for p in $(lsof -tiTCP:6379 -sTCP:LISTEN 2>/dev/null); do kill \"$p\" >/dev/null 2>&1 || true; done; echo \"Stopped local dev services (if running).\"'",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "close": true
+      },
+      "problemMatcher": []
     },
     {
       "label": "Run Machine Update Script",
