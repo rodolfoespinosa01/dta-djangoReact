@@ -1,5 +1,6 @@
 # --- Admin Password Reset Serializers ---
 from rest_framework import serializers
+from django.conf import settings
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
@@ -29,7 +30,8 @@ class AdminForgotPasswordSerializer(serializers.Serializer):
         AdminPasswordResetToken.objects.create(user=user, token=token)
 
         # 📬 Simulated reset email (can later be replaced by real email service)
-        reset_link = f"http://localhost:3000/admin_reset_password?uid={uid}&token={token}"
+        frontend_url = getattr(settings, "FRONTEND_URL", None) or "https://localhost:3000"
+        reset_link = f"{frontend_url}/admin_reset_password?uid={uid}&token={token}"
 
         print("\n=================== 📩 Admin Password Reset Email ===================")
         print(f"To: {email}")
@@ -65,4 +67,5 @@ class AdminResetPasswordSerializer(serializers.Serializer):
         return data
 
     def save(self):
-        # Securely
+        # Placeholder to keep the module importable; this serializer path appears incomplete.
+        raise NotImplementedError("AdminResetPasswordSerializer.save is not implemented in this module.")
