@@ -65,6 +65,9 @@ def _stripe_once_discount_from_quote(quote):
 def _validate_checkout_choice(offer_code: str, coaching_term: str):
     if offer_code not in PAID_OFFER_CODES:
         return "INVALID_OFFER"
+    # Client checkout now uses fixed plan variants (monthly / monthly+coaching).
+    if coaching_term != "none":
+        return "INVALID_COACHING_TERM"
     if coaching_term not in COACHING_ADDON_CENTS:
         return "INVALID_COACHING_TERM"
     return None
@@ -176,7 +179,7 @@ def client_start_checkout_session(request):
     if validation_error == "INVALID_OFFER":
         return error("INVALID_OFFER", "Select a valid paid plan.", http_status=400)
     if validation_error == "INVALID_COACHING_TERM":
-        return error("INVALID_COACHING_TERM", "Select a valid coaching option.", http_status=400)
+        return error("INVALID_COACHING_TERM", "Choose a monthly plan variant. Coaching is included only in the coaching plan.", http_status=400)
 
     try:
         quote = _build_client_quote(
@@ -220,23 +223,11 @@ def client_start_checkout_session(request):
 
     stripe_discount = _stripe_once_discount_from_quote(quote)
     allow_promotion_codes = not bool(stripe_discount)
-    discount_code_label = str(((quote.get("discount") or {}).get("code")) or "").strip()
-    offer_product_name = quote.get("offer_display_name") or ("DTA Meal Plan With Foods (Weekly)" if offer_code == "food_plan_weekly" else "DTA Meal Plan With Foods (Monthly)")
-    if discount_code_label and int((quote.get("amounts") or {}).get("discount_cents") or 0) > 0:
-        offer_product_name = f"{offer_product_name} (Special Applied: {discount_code_label})"
+    stripe_price_id = str(offer.get("stripe_price_id") or "").strip()
+    if not stripe_price_id:
+        return error("STRIPE_PRICE_NOT_CONFIGURED", "Stripe price is not configured for this plan.", http_status=500)
 
-    line_items = [
-        {
-            "price_data": {
-                "currency": "usd",
-                "product_data": {"name": offer_product_name},
-                # Keep recurring price at the base amount; app discount is applied as a Stripe one-time coupon.
-                "unit_amount": int(offer["amount_cents"]),
-                "recurring": {"interval": "week" if offer["billing_cycle"] == "weekly" else "month"},
-            },
-            "quantity": 1,
-        }
-    ]
+    line_items = [{"price": stripe_price_id, "quantity": 1}]
     coaching_line_amount = int((quote.get("amounts") or {}).get("coaching_addon_final_cents") or 0)
     if coaching_term != "none" and coaching_line_amount > 0:
         line_items.append(
@@ -405,7 +396,7 @@ def client_start_queued_checkout_session(request):
     if validation_error == "INVALID_OFFER":
         return error("INVALID_OFFER", "Select a valid paid plan.", http_status=400)
     if validation_error == "INVALID_COACHING_TERM":
-        return error("INVALID_COACHING_TERM", "Select a valid coaching option.", http_status=400)
+        return error("INVALID_COACHING_TERM", "Choose a monthly plan variant. Coaching is included only in the coaching plan.", http_status=400)
 
     offer = OFFER_CATALOG[offer_code]
     try:
