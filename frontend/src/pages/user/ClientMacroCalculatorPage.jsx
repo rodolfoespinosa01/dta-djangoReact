@@ -36,6 +36,7 @@ function summarizeAnswers(answers = {}) {
     trainingBeforeMeal: training?.[day] || null,
   }));
 }
+
 function ClientMacroCalculatorPage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') || '';
@@ -545,7 +546,12 @@ function ClientMacroCalculatorPage() {
               </section>
 
               <section className="client-dashboard-card">
-                <h2>Daily Macro Results</h2>
+                <div className="client-dashboard-header" style={{ marginBottom: '0.5rem' }}>
+                  <h2 style={{ margin: 0 }}>Daily Macro Results</h2>
+                </div>
+                <p className="client-dash-muted" style={{ marginTop: 0 }}>
+                  PDF exports are available on paid monthly plans.
+                </p>
                 <div className="client-q-stack">
                   {(results.weekly_days || []).map((day) => (
                     <div key={`macro-results-${day.day}`} style={{ border: '1px solid rgba(20,40,74,0.1)', borderRadius: 12, padding: '0.8rem' }}>

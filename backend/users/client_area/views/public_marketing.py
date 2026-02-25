@@ -82,10 +82,8 @@ def admin_public_marketing_page(request, slug):
 
     offers = [
         _offer_card_payload("macro_calculator_free"),
-        _offer_card_payload("food_plan_weekly", featured=True),
-        _offer_card_payload("food_plan_weekly_premium"),
         _offer_card_payload("food_plan_monthly"),
-        _offer_card_payload("food_plan_monthly_premium"),
+        _offer_card_payload("food_plan_monthly_premium", featured=True),
     ]
 
     return _ok(

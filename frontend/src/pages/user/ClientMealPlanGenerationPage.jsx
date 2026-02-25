@@ -1,8 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { apiRequest } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { getFoodImageUrl } from '../../utils/foodImageLookup';
+import { escapeHtml, openPrintPdfWindow, renderPrintTable } from '../../utils/printPdf';
 import aiLogo from '../../assets/misc/ailogo.png';
 import './ClientDashboardPage.css';
 
@@ -22,6 +23,150 @@ function amountLabel(slot, unitMode) {
   if (!slot) return '-';
   if (unitMode === 'g') return `${Number(slot.amount_g || 0).toFixed(2)} g`;
   return `${Number(slot.amount_oz || 0).toFixed(2)} oz`;
+}
+
+function printableAmountLabel(slot, unitMode) {
+  if (!slot) return '-';
+  return unitMode === 'g'
+    ? `${Number(slot.amount_g || 0).toFixed(2)} g`
+    : `${Number(slot.amount_oz || 0).toFixed(2)} oz`;
+}
+
+function renderPrintSection(title, innerHtml) {
+  return `<section class="section"><h2>${escapeHtml(title)}</h2>${innerHtml}</section>`;
+}
+
+function renderChipList(items = []) {
+  const rows = items.filter(Boolean);
+  if (!rows.length) return '';
+  return `<div class="chips">${rows.map((item) => `<span class="chip">${escapeHtml(item)}</span>`).join('')}</div>`;
+}
+
+function buildMacrosSectionHtml(jobSnapshot, detail) {
+  const snapshot = jobSnapshot?.input_snapshot || {};
+  const dayPayload = snapshot?.day_payload || null;
+  if (!dayPayload) {
+    return renderPrintSection(
+      'Macros',
+      '<p class="muted">Macro snapshot is not loaded yet. Load the job snapshot for this day first.</p>'
+    );
+  }
+
+  const macroRows = (dayPayload.meal_macro_splits || []).map((meal) => ([
+    `Meal ${meal.meal_number ?? '-'}`,
+    `${meal.grams?.protein_g ?? '-'} g (${meal.percentages?.protein ?? '-'}%)`,
+    `${meal.grams?.carbs_g ?? '-'} g (${meal.percentages?.carbs ?? '-'}%)`,
+    `${meal.grams?.fats_g ?? '-'} g (${meal.percentages?.fats ?? '-'}%)`,
+  ]));
+
+  return renderPrintSection(
+    'Macros',
+    [
+      renderChipList([
+        `Day: ${prettyDay(dayPayload.day || detail?.day_of_week || 'day')}`,
+        `${dayPayload.is_workout_day ? 'Workout Day' : 'Off Day'}`,
+        `Meals: ${dayPayload.meals_per_day ?? detail?.meals_per_day ?? '-'}`,
+        `Training: ${formatTrainingLabel(dayPayload.training_before_meal || detail?.training_time || 'none')}`,
+        dayPayload.tdee_calories != null ? `TDEE: ${dayPayload.tdee_calories} kcal` : null,
+        dayPayload.calories_target != null ? `Target: ${dayPayload.calories_target} kcal` : null,
+      ]),
+      renderChipList([
+        `Protein: ${dayPayload.daily_macros?.protein_g ?? '-'} g`,
+        `Carbs: ${dayPayload.daily_macros?.carbs_g ?? '-'} g`,
+        `Fats: ${dayPayload.daily_macros?.fats_g ?? '-'} g`,
+        dayPayload.carb_cycling_mode
+          ? `Mode: ${dayPayload.carb_cycling_mode === 'high_carbs' ? 'High Carb Day' : 'Low Carb Day'}`
+          : null,
+      ]),
+      renderPrintTable(['Meal', 'Protein', 'Carbs', 'Fats'], macroRows),
+    ].join('')
+  );
+}
+
+function buildFoodPlanSectionHtml(detail, unitMode) {
+  const meals = Array.isArray(detail?.meals) ? detail.meals : [];
+  const rows = meals.map((meal) => ([
+    `Meal ${meal.meal_number ?? '-'}`,
+    String(meal.combo_id ?? '-'),
+    `${meal.slots?.protein_1?.name || '-'} (${printableAmountLabel(meal.slots?.protein_1, unitMode)})`,
+    `${meal.slots?.protein_2?.name || '-'} (${printableAmountLabel(meal.slots?.protein_2, unitMode)})`,
+    `${meal.slots?.carbs_1?.name || '-'} (${printableAmountLabel(meal.slots?.carbs_1, unitMode)})`,
+    `${meal.slots?.carbs_2?.name || '-'} (${printableAmountLabel(meal.slots?.carbs_2, unitMode)})`,
+    `${meal.slots?.fats_1?.name || '-'} (${printableAmountLabel(meal.slots?.fats_1, unitMode)})`,
+    `${meal.slots?.fats_2?.name || '-'} (${printableAmountLabel(meal.slots?.fats_2, unitMode)})`,
+  ]));
+
+  return renderPrintSection(
+    'Food Plan',
+    [
+      renderChipList([
+        `Day: ${prettyDay(detail?.day_of_week || 'day')}`,
+        `Job: #${detail?.job_id ?? '-'}`,
+        `Status: ${detail?.job_status || '-'}`,
+        `Meals: ${detail?.meals_per_day || meals.length || 0}`,
+        `Training: ${formatTrainingLabel(detail?.training_time || 'none')}`,
+        `Units: ${unitMode === 'g' ? 'grams' : 'ounces'}`,
+      ]),
+      renderPrintTable(
+        ['Meal', 'Combo', 'Protein 1', 'Protein 2', 'Carbs 1', 'Carbs 2', 'Fats 1', 'Fats 2'],
+        rows
+      ),
+    ].join('')
+  );
+}
+
+function buildRecipesSectionHtml(detail, recipeIdeasResult) {
+  const providerLine = recipeIdeasResult?.provider_used
+    ? `<p class="muted">Provider: ${escapeHtml(String(recipeIdeasResult.provider_used))} (${escapeHtml(String(recipeIdeasResult.model || 'n/a'))})</p>`
+    : '';
+  const meals = Array.isArray(detail?.meals) ? detail.meals : [];
+  const recipeMeals = Array.isArray(recipeIdeasResult?.meals) ? recipeIdeasResult.meals : [];
+
+  const cards = meals.map((meal) => {
+    const recipeMeal = recipeMeals.find((row) => row.meal_number === meal.meal_number);
+    const ideas = Array.isArray(recipeMeal?.ideas) ? recipeMeal.ideas : [];
+    const ideasHtml = ideas.length
+      ? ideas.map((idea, idx) => {
+        const steps = Array.isArray(idea.steps) ? idea.steps : [];
+        const seasoning = Array.isArray(idea.seasoning) ? idea.seasoning.join(', ') : '';
+        const variations = Array.isArray(idea.variation_options) ? idea.variation_options : [];
+        return `
+          <div class="section" style="margin:8px 0 0; padding:10px;">
+            <h3>Idea ${idx + 1}: ${escapeHtml(idea.title || 'Recipe Idea')}</h3>
+            ${renderChipList([
+              idea.prep_style ? `Style: ${idea.prep_style}` : null,
+              idea.cook_time_minutes != null ? `Cook Time: ${idea.cook_time_minutes} min` : null,
+            ])}
+            ${seasoning ? `<p><strong>Seasoning:</strong> ${escapeHtml(seasoning)}</p>` : ''}
+            ${steps.length ? `<ol>${steps.map((step) => `<li>${escapeHtml(step)}</li>`).join('')}</ol>` : ''}
+            ${idea.meal_prep_tip ? `<p><strong>Prep Tip:</strong> ${escapeHtml(idea.meal_prep_tip)}</p>` : ''}
+            ${variations.length ? `<p><strong>Variations:</strong> ${escapeHtml(variations.join(' | '))}</p>` : ''}
+          </div>
+        `;
+      }).join('')
+      : '<p class="muted">No recipe ideas available for this meal.</p>';
+
+    return `
+      <div class="section">
+        <h3>Meal ${escapeHtml(String(meal.meal_number ?? '-'))} (Combo ${escapeHtml(String(meal.combo_id ?? '-'))})</h3>
+        ${recipeMeal?.fallback_reason ? '<p class="muted">Mock recipe ideas used because the AI provider was unavailable.</p>' : ''}
+        ${ideasHtml}
+      </div>
+    `;
+  }).join('');
+
+  return renderPrintSection(
+    'Recipes',
+    [
+      renderChipList([
+        `Day: ${prettyDay(detail?.day_of_week || 'day')}`,
+        `Meals: ${meals.length}`,
+        recipeIdeasResult?.provider_requested ? `Requested: ${recipeIdeasResult.provider_requested}` : null,
+      ]),
+      providerLine,
+      cards || '<p class="muted">No recipe ideas generated yet.</p>',
+    ].join('')
+  );
 }
 
 function FoodSlotCell({ slot, unitMode }) {
@@ -205,7 +350,7 @@ function ClientMealPlanGenerationPage() {
   const [recipeIdeasResult, setRecipeIdeasResult] = useState(null);
   const weekPollTimeoutRef = useRef(null);
 
-  const loadLatestDetail = async (day, jobId = null) => {
+  const loadLatestDetail = useCallback(async (day, jobId = null) => {
     setLoadingDetail(true);
     setError('');
     try {
@@ -235,23 +380,26 @@ function ClientMealPlanGenerationPage() {
     } finally {
       setLoadingDetail(false);
     }
-  };
+  }, [navigate]);
 
-  const loadJobSnapshot = async (jobId) => {
+  const loadJobSnapshot = useCallback(async (jobId) => {
     if (!jobId) return;
     try {
       const res = await apiRequest(`/api/v1/users/client/app/meal-plan-generation/jobs/${jobId}/`, { auth: true });
       if (res.ok) {
-        setJobSnapshot(res.data?.generation || null);
+        const payload = res.data?.generation || null;
+        setJobSnapshot(payload);
+        return payload;
       }
     } catch (err) {
       console.error(err);
     }
-  };
+    return null;
+  }, []);
 
   useEffect(() => {
     loadLatestDetail(dayOfWeek).catch((err) => console.error(err));
-  }, [dayOfWeek]);
+  }, [dayOfWeek, loadLatestDetail]);
 
   useEffect(() => () => {
     if (weekPollTimeoutRef.current) {
@@ -424,6 +572,84 @@ function ClientMealPlanGenerationPage() {
     }
   };
 
+  const openPdfOrSetError = (config) => {
+    const opened = openPrintPdfWindow(config);
+    if (!opened) {
+      setError('Unable to open the print window. Allow pop-ups, then try again to save as PDF.');
+    }
+  };
+
+  const getCurrentMacroSnapshot = async () => {
+    if (jobSnapshot?.job?.id === detail?.job_id && jobSnapshot?.input_snapshot?.day_payload) {
+      return jobSnapshot;
+    }
+    if (!detail?.job_id) return jobSnapshot;
+    const fresh = await loadJobSnapshot(detail.job_id);
+    return fresh || jobSnapshot;
+  };
+
+  const handleExportMacrosPdf = async () => {
+    if (!detail) {
+      setError('Load a generated meal plan first.');
+      return;
+    }
+    const snapshot = await getCurrentMacroSnapshot();
+    openPdfOrSetError({
+      title: `${prettyDay(detail.day_of_week)} Macros`,
+      subtitle: 'Use your browser print dialog and choose "Save as PDF".',
+      sections: [buildMacrosSectionHtml(snapshot, detail)],
+    });
+  };
+
+  const handleExportFoodPlanPdf = () => {
+    if (!detail?.meals?.length) {
+      setError('Load a generated meal plan first.');
+      return;
+    }
+    openPdfOrSetError({
+      title: `${prettyDay(detail.day_of_week)} Food Plan`,
+      subtitle: 'Use your browser print dialog and choose "Save as PDF".',
+      sections: [buildFoodPlanSectionHtml(detail, unitMode)],
+    });
+  };
+
+  const handleExportRecipesPdf = () => {
+    if (!detail?.meals?.length) {
+      setError('Load a generated meal plan first.');
+      return;
+    }
+    if (!recipeIdeasResult?.meals?.length) {
+      setRecipeIdeasError('Generate recipe ideas first to save the recipes PDF.');
+      return;
+    }
+    openPdfOrSetError({
+      title: `${prettyDay(detail.day_of_week)} Recipes`,
+      subtitle: 'Use your browser print dialog and choose "Save as PDF".',
+      sections: [buildRecipesSectionHtml(detail, recipeIdeasResult)],
+    });
+  };
+
+  const handleExportCombinedPdf = async () => {
+    if (!detail?.meals?.length) {
+      setError('Load a generated meal plan first.');
+      return;
+    }
+    if (!recipeIdeasResult?.meals?.length) {
+      setRecipeIdeasError('Generate recipe ideas first to save the combined PDF.');
+      return;
+    }
+    const snapshot = await getCurrentMacroSnapshot();
+    openPdfOrSetError({
+      title: `${prettyDay(detail.day_of_week)} Macros + Food Plan + Recipes`,
+      subtitle: 'Use your browser print dialog and choose "Save as PDF".',
+      sections: [
+        buildMacrosSectionHtml(snapshot, detail),
+        buildFoodPlanSectionHtml(detail, unitMode),
+        buildRecipesSectionHtml(detail, recipeIdeasResult),
+      ],
+    });
+  };
+
   return (
     <div className="client-dashboard-page">
       <header className="client-dashboard-header">
@@ -441,6 +667,32 @@ function ClientMealPlanGenerationPage() {
           </button>
         </div>
       </header>
+
+      <section
+        className="client-dashboard-card"
+        style={{
+          background: 'linear-gradient(135deg, rgba(20,40,74,0.98), rgba(28,103,160,0.92))',
+          color: '#fff',
+          border: '1px solid rgba(20,40,74,0.15)',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div>
+            <h2 style={{ margin: 0, color: '#fff' }}>Your Food Plan Engine</h2>
+            <p style={{ margin: '0.45rem 0 0', color: 'rgba(255,255,255,0.85)' }}>
+              Generate the day plan, review foods, create recipe ideas, and export your PDFs from this workflow.
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button type="button" className="client-q-btn" onClick={() => navigate('/client_exports')}>
+              Open Export Center
+            </button>
+            <button type="button" className="client-q-btn secondary" onClick={() => loadLatestDetail(dayOfWeek)}>
+              Load Latest {prettyDay(dayOfWeek)}
+            </button>
+          </div>
+        </div>
+      </section>
 
       <section className="client-dashboard-card">
         <h2>Run Generation</h2>
@@ -589,6 +841,28 @@ function ClientMealPlanGenerationPage() {
               </label>
               <button type="button" className="client-q-btn secondary" onClick={handleGenerateRecipeIdeas} disabled={recipeIdeasLoading}>
                 {recipeIdeasLoading ? 'Generating Recipe Ideas…' : 'Get Recipe Ideas'}
+              </button>
+              <button type="button" className="client-q-btn secondary" onClick={handleExportMacrosPdf} disabled={!detail}>
+                Save Macros PDF
+              </button>
+              <button type="button" className="client-q-btn secondary" onClick={handleExportFoodPlanPdf} disabled={!detail?.meals?.length}>
+                Save Food Plan PDF
+              </button>
+              <button
+                type="button"
+                className="client-q-btn secondary"
+                onClick={handleExportRecipesPdf}
+                disabled={!detail?.meals?.length || !recipeIdeasResult?.meals?.length}
+              >
+                Save Recipes PDF
+              </button>
+              <button
+                type="button"
+                className="client-q-btn"
+                onClick={handleExportCombinedPdf}
+                disabled={!detail?.meals?.length || !recipeIdeasResult?.meals?.length}
+              >
+                Save Combined PDF
               </button>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                 <img

@@ -34,6 +34,53 @@ def _ts_to_aware(ts):
     from django.utils import timezone
     return timezone.make_aware(datetime.utcfromtimestamp(ts))
 
+
+def _normalize_admin_plan_name(value):
+    raw = str(value or '').strip()
+    if not raw:
+        return ''
+    aliases = {
+        'adminTrial': 'adminTrial',
+        'admin_trial': 'adminTrial',
+        'adminMonthly': 'adminMonthly',
+        'admin_monthly': 'adminMonthly',
+        'adminQuarterly': 'adminQuarterly',
+        'admin_quarterly': 'adminQuarterly',
+        'adminAnnual': 'adminAnnual',
+        'admin_annual': 'adminAnnual',
+    }
+    return aliases.get(raw, raw)
+
+
+def _plan_name_from_session_or_subscription(checkout_session):
+    # Fallback resolver when metadata/pending signup plan is missing.
+    try:
+        line_items = stripe.checkout.Session.list_line_items(checkout_session.get('id'), limit=3)
+        for item in list((line_items or {}).get('data', []) or []):
+            price_field = (item or {}).get('price')
+            price_id = (price_field if isinstance(price_field, str) else ((price_field or {}).get('id') or '')).strip()
+            if price_id:
+                plan = Plan.objects.filter(stripe_price_id=price_id).first()
+                if plan:
+                    return plan.name
+    except Exception as exc:
+        print("STRIPE LINE ITEM PLAN RESOLVE ERROR:", exc)
+
+    sub_id = checkout_session.get('subscription')
+    if sub_id:
+        try:
+            sub = stripe.Subscription.retrieve(sub_id)
+            for sub_item in list(((sub or {}).get('items') or {}).get('data', []) or []):
+                price_id = ((((sub_item or {}).get('price')) or {}).get('id') or '').strip()
+                if price_id:
+                    plan = Plan.objects.filter(stripe_price_id=price_id).first()
+                    if plan:
+                        return plan.name
+        except Exception as exc:
+            print("STRIPE SUB PLAN RESOLVE ERROR:", exc)
+
+    return ''
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register(request):
@@ -80,6 +127,10 @@ def register(request):
     # Stripe / metadata
     metadata = checkout_session.get('metadata', {}) or {}
     raw_plan_name = metadata.get('plan_name')
+    if not raw_plan_name:
+        raw_plan_name = getattr(pending, 'plan', None)
+    if not raw_plan_name:
+        raw_plan_name = _plan_name_from_session_or_subscription(checkout_session)
     meta_is_trial = _truthy(metadata.get('is_trial')) if 'is_trial' in metadata else None
 
     # Decide trial flag
@@ -91,9 +142,14 @@ def register(request):
         is_trial = (raw_plan_name == 'adminTrial')
 
     # Normalize plan
-    actual_plan_name = 'adminMonthly' if raw_plan_name == 'adminTrial' else raw_plan_name
+    normalized_plan_name = _normalize_admin_plan_name(raw_plan_name)
+    actual_plan_name = 'adminMonthly' if normalized_plan_name == 'adminTrial' else normalized_plan_name
     if not actual_plan_name:
-        return error(code='PLAN_NOT_FOUND', message='Plan not found in session metadata', http_status=status.HTTP_400_BAD_REQUEST)
+        return error(
+            code='PLAN_NOT_FOUND',
+            message='Plan not found in checkout metadata, pending signup record, or Stripe line items',
+            http_status=status.HTTP_400_BAD_REQUEST,
+        )
 
     try:
         plan = Plan.objects.get(name=actual_plan_name)

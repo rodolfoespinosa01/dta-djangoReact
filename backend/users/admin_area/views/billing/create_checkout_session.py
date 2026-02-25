@@ -204,6 +204,7 @@ def create_checkout_session(request):
             payment_method_types=['card'],
             allow_promotion_codes=True,
             customer=customer.id,
+            client_reference_id=admin_id,
             line_items=[{
                 'price': plan.stripe_price_id,
                 'quantity': 1,
