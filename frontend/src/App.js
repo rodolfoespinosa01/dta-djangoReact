@@ -8,6 +8,7 @@ import './App.css';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import LanguageToggle from './components/language/LanguageToggle';
+import AppErrorBoundary from './components/AppErrorBoundary';
 
 // public pages
 import MainWelcomeScreen from './pages/MainWelcomeScreen/MainWelcomeScreen';
@@ -34,6 +35,7 @@ import ClientMacroCalculatorPage from './pages/user/ClientMacroCalculatorPage';
 import ClientSettingsPage from './pages/user/ClientSettingsPage';
 import ClientFoodPreferencesPage from './pages/user/ClientFoodPreferencesPage';
 import ClientMealPlanGenerationPage from './pages/user/ClientMealPlanGenerationPage';
+import ClientExportsPage from './pages/user/ClientExportsPage';
 
 // protected pages
 import AdminDashboard from './pages/admin/AdminDashboard/AdminDashboard';
@@ -111,6 +113,14 @@ function AppLayout() {
               </ClientProtectedRoute>
             }
           />
+          <Route
+            path="/client_exports"
+            element={
+              <ClientProtectedRoute>
+                <ClientExportsPage />
+              </ClientProtectedRoute>
+            }
+          />
 
           {/* Protected Admin Routes */}
           <Route
@@ -171,6 +181,7 @@ function AppLayout() {
               </SuperAdminProtectedRoute>
             }
           />
+          <Route path="*" element={<Navigate to="/welcome" replace />} />
         </Routes>
       </main>
       <Footer />
@@ -183,7 +194,9 @@ function App() {
     <Router>
       <LanguageProvider>
         <AuthProvider>
-          <AppLayout />
+          <AppErrorBoundary>
+            <AppLayout />
+          </AppErrorBoundary>
         </AuthProvider>
       </LanguageProvider>
     </Router>

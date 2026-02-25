@@ -39,6 +39,9 @@ DEBUG = os.getenv("DJANGO_DEBUG") == "true"
 raw_hosts = os.getenv("DJANGO_ALLOWED_HOSTS", "")
 ALLOWED_HOSTS = raw_hosts.split(",") if raw_hosts else []
 # 👆 List of domains allowed to serve this app when DEBUG is False. Required for production security.
+if DEBUG and not ALLOWED_HOSTS:
+    ALLOWED_HOSTS = ["localhost", "127.0.0.1", "[::1]", ".lvh.me"]
+    # 👆 dev-friendly default so local subdomain previews like coach.lvh.me work without DisallowedHost.
 
 INSTALLED_APPS = [
     'django.contrib.admin', # 👉 built-in Django admin interface
@@ -172,6 +175,8 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:3000",
     "https://localhost:3000",
     "https://127.0.0.1:3000",
+    "http://*.lvh.me:3000",
+    "https://*.lvh.me:3000",
 ]
 # 👆 allows frontend origins to send csrf-protected requests (needed when using react in development)
 
@@ -182,6 +187,10 @@ CORS_ALLOWED_ORIGINS = [
     "https://127.0.0.1:3000",
 ]
 # 👆 allows the frontend to make cross-origin api calls to the backend (used by axios or fetch)
+
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https?://([a-z0-9-]+\.)?lvh\.me:3000$",
+]
 
 CORS_ALLOW_CREDENTIALS = True
 

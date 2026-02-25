@@ -17,12 +17,15 @@ def log_PreCheckout(email, plan_name, is_trial=False):
     # ✅ Fetch or create AdminIdentity for this email
     admin, _ = AdminIdentity.objects.get_or_create(admin_email=email)
 
-    # ✅ Prevent duplicate PreCheckout entries
-    if PreCheckout.objects.filter(admin=admin).exists():
-        print(f"⚠️ PreCheckout already exists for: {email}")
-        return None
+    # ✅ Upsert latest pre-checkout state so retries don't keep stale/empty plan values.
+    record = PreCheckout.objects.filter(admin=admin).order_by('-created_at').first()
+    if record:
+        record.plan_name = plan_name
+        record.is_trial = is_trial
+        record.save(update_fields=['plan_name', 'is_trial'])
+        print(f"♻️ Updated PreCheckout for: {email} | plan: {plan_name} | trial: {is_trial}")
+        return record
 
-    # ✅ Log new pre-checkout event
     record = PreCheckout.objects.create(
         admin=admin,
         plan_name=plan_name,

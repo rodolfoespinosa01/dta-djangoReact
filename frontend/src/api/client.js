@@ -2,12 +2,31 @@ import { buildApiUrl } from '../config/api';
 
 let refreshPromise = null;
 
+function safeStorageGet(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch (err) {
+    console.error('[apiRequest] localStorage get failed:', err);
+    return null;
+  }
+}
+
+function safeStorageSet(key, value) {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch (err) {
+    console.error('[apiRequest] localStorage set failed:', err);
+    return false;
+  }
+}
+
 function getAccessToken() {
-  return localStorage.getItem('access_token');
+  return safeStorageGet('access_token');
 }
 
 function getRefreshToken() {
-  return localStorage.getItem('refresh_token');
+  return safeStorageGet('refresh_token');
 }
 
 async function refreshAccessToken() {
@@ -24,7 +43,7 @@ async function refreshAccessToken() {
     .then(async (res) => {
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data?.access) return null;
-      localStorage.setItem('access_token', data.access);
+      safeStorageSet('access_token', data.access);
       return data.access;
     })
     .catch(() => null)

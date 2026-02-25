@@ -14,6 +14,7 @@ from users.admin_area.models import (
     EventTracker,
     AdminIdentity,
     TransactionLog,
+    Plan,
 )
 from users.admin_area.utils import (
     log_TransactionLog,
@@ -30,6 +31,42 @@ def _ts_to_aware(ts: int | None):
         return None
     # Stripe timestamps are seconds since epoch (UTC)
     return timezone.make_aware(datetime.utcfromtimestamp(ts))
+
+
+def _resolve_plan_name_from_stripe_session(session):
+    session_id = session.get("id")
+    if not session_id:
+        return ""
+
+    try:
+        line_items = stripe.checkout.Session.list_line_items(session_id, limit=3)
+        for item in list((line_items or {}).get("data", []) or []):
+            price_field = (item or {}).get("price")
+            price_id = (price_field if isinstance(price_field, str) else ((price_field or {}).get("id") or "")).strip()
+            if not price_id:
+                continue
+            plan = Plan.objects.filter(stripe_price_id=price_id).first()
+            if plan:
+                return plan.name
+    except Exception as exc:
+        print(f"⚠️ Could not resolve plan from checkout line items for {session_id}: {exc}")
+
+    sub_id = session.get("subscription")
+    if sub_id:
+        try:
+            sub = stripe.Subscription.retrieve(sub_id)
+            for sub_item in list((((sub or {}).get("items")) or {}).get("data", []) or []):
+                price_field = (sub_item or {}).get("price")
+                price_id = (price_field if isinstance(price_field, str) else ((price_field or {}).get("id") or "")).strip()
+                if not price_id:
+                    continue
+                plan = Plan.objects.filter(stripe_price_id=price_id).first()
+                if plan:
+                    return plan.name
+        except Exception as exc:
+            print(f"⚠️ Could not resolve plan from subscription items for {session_id}: {exc}")
+
+    return ""
 
 
 @csrf_exempt
@@ -69,22 +106,40 @@ def stripe_webhook(request):
             print("❌ Email could not be determined — aborting")
             return HttpResponse(status=200)
 
-        session_id = session.get('id')
-        stripe_transaction_id = session.get('invoice')  # may be None until first charge
-        raw_plan_name = metadata.get('plan_name') or ''
-        is_trial = str(metadata.get('is_trial', '')).strip().lower() in ('true', '1', 'yes', 'y', 't')
-
-        # normalize if you had an older alias
-        plan_name = 'adminMonthly' if raw_plan_name == 'adminTrial' else raw_plan_name
-
-        User = get_user_model()
-        is_existing_user = User.objects.filter(email=email).exists()
-
-        # Ensure AdminIdentity exists for this email (per your model rules)
+        # Ensure AdminIdentity exists as early as possible so all later event logging is safe.
         try:
             admin_identity = AdminIdentity.objects.get(admin_email=email)
         except AdminIdentity.DoesNotExist:
             admin_identity = AdminIdentity.objects.create(admin_email=email)
+
+        session_id = session.get('id')
+        stripe_transaction_id = session.get('invoice')  # may be None until first charge
+        raw_plan_name = metadata.get('plan_name') or ''
+        if not raw_plan_name:
+            raw_plan_name = _resolve_plan_name_from_stripe_session(session)
+        if not raw_plan_name:
+            raw_plan_name = (
+                PreCheckout.objects.filter(admin__admin_email__iexact=email)
+                .order_by('-created_at')
+                .values_list('plan_name', flat=True)
+                .first()
+                or ''
+            )
+        is_trial = str(metadata.get('is_trial', '')).strip().lower() in ('true', '1', 'yes', 'y', 't')
+
+        # normalize if you had an older alias
+        plan_name = 'adminMonthly' if raw_plan_name == 'adminTrial' else raw_plan_name
+        if not plan_name:
+            print(f"❌ Could not determine plan_name for checkout session {session_id}; skipping PendingSignup creation")
+            EventTracker.objects.create(
+                admin=admin_identity,
+                event_type='pending_signup_plan_missing',
+                details=f"Session: {session_id} | metadata plan missing and line-item lookup failed"
+            )
+            return HttpResponse(status=200)
+
+        User = get_user_model()
+        is_existing_user = User.objects.filter(email=email).exists()
 
         # Track the purchase intent
         EventTracker.objects.create(

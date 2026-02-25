@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -43,6 +43,35 @@ const isPublicRoute = (pathname) =>
 const ACCESS_KEY = 'access_token';
 const REFRESH_KEY = 'refresh_token';
 
+const safeStorage = {
+  get(key) {
+    try {
+      return localStorage.getItem(key);
+    } catch (err) {
+      console.error('[Auth] localStorage get failed:', err);
+      return null;
+    }
+  },
+  set(key, value) {
+    try {
+      localStorage.setItem(key, value);
+      return true;
+    } catch (err) {
+      console.error('[Auth] localStorage set failed:', err);
+      return false;
+    }
+  },
+  remove(key) {
+    try {
+      localStorage.removeItem(key);
+      return true;
+    } catch (err) {
+      console.error('[Auth] localStorage remove failed:', err);
+      return false;
+    }
+  },
+};
+
 const isExpired = (token) => {
   try {
     const { exp } = jwtDecode(token) || {};
@@ -63,11 +92,11 @@ export const AuthProvider = ({ children }) => {
     loading: true,
   });
 
-  const login = (loginData) => {
+  const login = useCallback((loginData) => {
     try {
       const decoded = jwtDecode(loginData.access);
-      localStorage.setItem(ACCESS_KEY, loginData.access);
-      localStorage.setItem(REFRESH_KEY, loginData.refresh);
+      safeStorage.set(ACCESS_KEY, loginData.access);
+      safeStorage.set(REFRESH_KEY, loginData.refresh);
       setAuth({
         user: decoded,
         accessToken: loginData.access,
@@ -77,19 +106,19 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       console.error('❌ Failed to decode access token in login()', err);
     }
-  };
+  }, []);
 
-  const logout = (redirectTo = '/admin_login') => {
-    localStorage.removeItem(ACCESS_KEY);
-    localStorage.removeItem(REFRESH_KEY);
+  const logout = useCallback((redirectTo = '/admin_login') => {
+    safeStorage.remove(ACCESS_KEY);
+    safeStorage.remove(REFRESH_KEY);
     setAuth({ user: null, accessToken: null, isAuthenticated: false, loading: false });
     if (location.pathname !== redirectTo) navigate(redirectTo, { replace: true });
-  };
+  }, [location.pathname, navigate]);
 
   // Rehydrate & guard routes
   useEffect(() => {
-    const access = localStorage.getItem(ACCESS_KEY);
-    const refresh = localStorage.getItem(REFRESH_KEY);
+    const access = safeStorage.get(ACCESS_KEY);
+    const refresh = safeStorage.get(REFRESH_KEY);
 
     // Unauthenticated: allow public routes; otherwise redirect
     if (!access || !refresh) {
@@ -137,7 +166,7 @@ export const AuthProvider = ({ children }) => {
       login,
       logout,
     }),
-    [auth]
+    [auth, login, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

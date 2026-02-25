@@ -21,27 +21,6 @@ const DTA_DIRECT_PAGE = {
       featured: false,
     },
     {
-      code: 'food_plan_weekly',
-      name: 'Meal Plan With Foods (Weekly)',
-      price_label: '$5/week',
-      trial_days: 5,
-      description: 'Includes food-based meal planning, food preferences, and weekly meal customization.',
-      includes_food_plan: true,
-      billing: 'weekly',
-      featured: true,
-    },
-    {
-      code: 'food_plan_weekly_premium',
-      name: 'Meal Plan + Coaching (Weekly Premium)',
-      price_label: '$12/week',
-      trial_days: 5,
-      description: 'Includes meal planning plus premium coaching access and coaching dashboard features.',
-      includes_food_plan: true,
-      includes_coaching: true,
-      billing: 'weekly',
-      featured: false,
-    },
-    {
       code: 'food_plan_monthly',
       name: 'Meal Plan With Foods (Monthly)',
       price_label: '$15/month',
@@ -60,10 +39,27 @@ const DTA_DIRECT_PAGE = {
       includes_food_plan: true,
       includes_coaching: true,
       billing: 'monthly',
-      featured: false,
+      featured: true,
     },
   ],
 };
+
+function getAdminSlugFromHostname() {
+  if (typeof window === 'undefined') return '';
+  const hostname = (window.location?.hostname || '').toLowerCase();
+  if (!hostname) return '';
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === 'lvh.me') return '';
+  if (hostname.endsWith('.lvh.me')) {
+    const slug = hostname.slice(0, -'.lvh.me'.length);
+    return slug && slug !== 'www' ? slug : '';
+  }
+  const parts = hostname.split('.').filter(Boolean);
+  if (parts.length >= 3) {
+    const sub = parts[0];
+    if (sub && sub !== 'www') return sub;
+  }
+  return '';
+}
 
 function QuoteChip({ quote }) {
   if (!quote) return null;
@@ -104,6 +100,8 @@ function UserPlanSelectionPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { adminSlug } = useParams();
+  const hostAdminSlug = useMemo(() => getAdminSlugFromHostname(), []);
+  const effectiveAdminSlug = adminSlug || hostAdminSlug || '';
   const [status, setStatus] = useState('loading');
   const [pageData, setPageData] = useState(null);
   const [error, setError] = useState('');
@@ -113,13 +111,12 @@ function UserPlanSelectionPage() {
   const [discountCode, setDiscountCode] = useState('');
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [paidQuote, setPaidQuote] = useState(null);
-  const [paidBilling, setPaidBilling] = useState('weekly');
   const [includeCoaching, setIncludeCoaching] = useState(false);
 
   useEffect(() => {
     let ignore = false;
     const load = async () => {
-      if (!adminSlug) {
+      if (!effectiveAdminSlug) {
         setPageData(DTA_DIRECT_PAGE);
         setStatus('ready');
         return;
@@ -127,7 +124,7 @@ function UserPlanSelectionPage() {
       try {
         setStatus('loading');
         setError('');
-        const res = await apiRequest(`/api/v1/users/client/public/admin-page/${adminSlug}/`);
+        const res = await apiRequest(`/api/v1/users/client/public/admin-page/${effectiveAdminSlug}/`);
         if (ignore) return;
         if (!res.ok) {
           setStatus('error');
@@ -146,7 +143,7 @@ function UserPlanSelectionPage() {
     };
     load();
     return () => { ignore = true; };
-  }, [adminSlug]);
+  }, [effectiveAdminSlug]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search || '');
@@ -162,10 +159,9 @@ function UserPlanSelectionPage() {
   const freeOffer = useMemo(() => offers.find((o) => o.billing === 'free') || null, [offers]);
   const paidOffers = useMemo(() => offers.filter((o) => o.billing !== 'free'), [offers]);
   const selectedPaidOffer = useMemo(() => {
-    const targetBilling = paidBilling;
     const targetCoaching = includeCoaching;
-    return paidOffers.find((o) => o.billing === targetBilling && Boolean(o.includes_coaching) === targetCoaching) || null;
-  }, [paidOffers, paidBilling, includeCoaching]);
+    return paidOffers.find((o) => o.billing === 'monthly' && Boolean(o.includes_coaching) === targetCoaching) || null;
+  }, [paidOffers, includeCoaching]);
 
   useEffect(() => {
     if (!selectedPaidOffer) {
@@ -179,7 +175,7 @@ function UserPlanSelectionPage() {
       body: {
         email: signupEmail.trim(),
         offer_code: selectedPaidOffer.code,
-        admin_slug: adminSlug,
+        admin_slug: effectiveAdminSlug || null,
         discount_code: discountCode.trim(),
       },
     })
@@ -209,14 +205,14 @@ function UserPlanSelectionPage() {
     return () => { ignore = true; };
   // Intentionally re-run on plan toggles/admin page changes; discount code is applied on field blur.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPaidOffer, adminSlug, paidBilling, includeCoaching]);
+  }, [selectedPaidOffer, effectiveAdminSlug, includeCoaching]);
 
   const handleHomeCTA = () => {
-    if (adminSlug) navigate(`/start/${adminSlug}`);
+    if (effectiveAdminSlug) navigate(`/start/${effectiveAdminSlug}`);
     else navigate('/user_homepage');
   };
   const handleLoginCTA = () => {
-    if (adminSlug) navigate(`/start/${adminSlug}/login`);
+    if (effectiveAdminSlug) navigate(`/start/${effectiveAdminSlug}/login`);
     else navigate('/user_login');
   };
 
@@ -232,7 +228,7 @@ function UserPlanSelectionPage() {
       body: {
         email: signupEmail.trim(),
         offer_code: offer.code,
-        admin_slug: adminSlug,
+        admin_slug: effectiveAdminSlug || null,
         discount_code: discountCode.trim(),
       },
     })
@@ -269,7 +265,7 @@ function UserPlanSelectionPage() {
 
   const brandName = pageData?.admin_page?.brand_name || 'DTA';
   const signupCheckoutState = new URLSearchParams(location.search || '').get('signup_checkout');
-  const paidOfferLabel = includeCoaching ? 'Premium Coaching' : 'Standard Meal Plan';
+  const paidOfferLabel = includeCoaching ? '1 Month + Coaching' : '1 Month (No Coaching)';
 
   return (
     <div className="user-plan-page">
@@ -294,7 +290,7 @@ function UserPlanSelectionPage() {
         <p className="user-plan-brand">{brandName}</p>
         <h2>Choose Your Access</h2>
         <p>
-          Free macro calculator for everyone. Paid meal-plan options include a free 5-day trial for first-time users, then continue weekly or monthly.
+          Free macro calculator for everyone. Paid options are monthly only and include the food meal-plan generator.
         </p>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <button type="button" className="user-plan-button user-plan-button-secondary" onClick={handleLoginCTA}>
@@ -325,7 +321,7 @@ function UserPlanSelectionPage() {
                 body: {
                   email: signupEmail.trim(),
                   offer_code: selectedPaidOffer.code,
-                  admin_slug: adminSlug,
+                  admin_slug: effectiveAdminSlug || null,
                   discount_code: discountCode.trim(),
                 },
               })
@@ -372,7 +368,7 @@ function UserPlanSelectionPage() {
 
         <article className="user-plan-card is-featured">
           <div className="user-plan-card-top">
-            <h3>Paid Plan Builder</h3>
+            <h3>1 Month Paid Plan</h3>
             <span className="user-plan-price">
               {quoteLoading ? 'Updating…' : (paidQuote ? `$${((paidQuote.amounts?.total_cents || 0) / 100).toFixed(2)}` : (selectedPaidOffer?.price_label || '-'))}
             </span>
@@ -381,34 +377,12 @@ function UserPlanSelectionPage() {
             {paidQuote?.trial_days ? `${paidQuote.trial_days}-day free trial for first-time users` : 'Card required to begin paid access'}
           </p>
           <p className="user-plan-description">
-            Choose a billing cadence and whether coaching is included. Paid plans go to secure Stripe checkout.
+            Choose whether coaching is included. Both paid options include food-plan generation and go to secure Stripe checkout.
           </p>
 
           <div style={{ display: 'grid', gap: '0.55rem', marginTop: '0.4rem' }}>
             <div>
-              <p style={{ margin: '0 0 0.3rem', fontWeight: 600 }}>Billing</p>
-              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  className="user-plan-button user-plan-button-secondary"
-                  onClick={() => setPaidBilling('weekly')}
-                  style={{ opacity: paidBilling === 'weekly' ? 1 : 0.8 }}
-                >
-                  Weekly
-                </button>
-                <button
-                  type="button"
-                  className="user-plan-button user-plan-button-secondary"
-                  onClick={() => setPaidBilling('monthly')}
-                  style={{ opacity: paidBilling === 'monthly' ? 1 : 0.8 }}
-                >
-                  Monthly
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <p style={{ margin: '0 0 0.3rem', fontWeight: 600 }}>Coaching</p>
+              <p style={{ margin: '0 0 0.3rem', fontWeight: 600 }}>Select One of the 2 Paid Options</p>
               <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                 <button
                   type="button"
@@ -431,9 +405,9 @@ function UserPlanSelectionPage() {
           </div>
 
           <ul className="user-plan-features">
-            <li>{includeCoaching ? 'Premium coaching dashboard and coaching features included' : 'Standard meal-planning dashboard'}</li>
+            <li>{includeCoaching ? 'Food meal-plan generator + coaching features included' : 'Food meal-plan generator included (no coaching)'}</li>
             <li>Questionnaire required before dashboard access</li>
-            <li>Billing cadence: {paidBilling}</li>
+            <li>Billing cadence: monthly</li>
             <li>Selection: {paidOfferLabel}</li>
           </ul>
 
@@ -451,7 +425,7 @@ function UserPlanSelectionPage() {
       </div>
 
       <button onClick={handleHomeCTA} className="user-plan-button user-plan-button-secondary">
-        {adminSlug ? 'Back to Coach Page' : 'Back to DTA'}
+        {effectiveAdminSlug ? 'Back to Coach Page' : 'Back to DTA'}
       </button>
     </div>
   );
