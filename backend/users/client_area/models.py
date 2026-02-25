@@ -7,8 +7,8 @@ from users.admin_area.models import AdminIdentity
 class ClientPendingSignup(models.Model):
     OFFER_CHOICES = [
         ("macro_calculator_free", "Macro Calculator (Free)"),
-        ("food_plan_weekly", "Food Plan Weekly"),
         ("food_plan_monthly", "Food Plan Monthly"),
+        ("food_plan_monthly_premium", "Food Plan Monthly Premium"),
     ]
     SALE_CHANNEL_CHOICES = [
         ("dta_direct", "DTA Direct"),

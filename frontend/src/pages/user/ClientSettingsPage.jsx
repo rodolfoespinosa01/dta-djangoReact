@@ -31,7 +31,9 @@ function QuoteSummary({ quote }) {
       </div>
       <ul style={{ marginTop: '0.5rem' }}>
         <li>Plan amount: ${((amounts.plan_final_cents || 0) / 100).toFixed(2)}</li>
-        <li>Coaching add-on: ${((amounts.coaching_addon_final_cents || 0) / 100).toFixed(2)}</li>
+        {(amounts.coaching_addon_final_cents || 0) > 0 ? (
+          <li>Coaching add-on: ${((amounts.coaching_addon_final_cents || 0) / 100).toFixed(2)}</li>
+        ) : null}
         <li>Discount: -${((amounts.discount_cents || 0) / 100).toFixed(2)} {quote.discount?.code ? `(${quote.discount.code})` : ''}</li>
         <li>Premium dashboard: {entitlements.has_premium_dashboard ? 'Included' : 'Not included'}</li>
       </ul>
@@ -48,7 +50,7 @@ function ClientSettingsPage() {
   const [message, setMessage] = useState('');
   const [busyAction, setBusyAction] = useState('');
   const [checkoutBusy, setCheckoutBusy] = useState(false);
-  const [checkoutOfferCode, setCheckoutOfferCode] = useState('food_plan_weekly');
+  const [checkoutOfferCode, setCheckoutOfferCode] = useState('food_plan_monthly');
   const [checkoutCoachingTerm, setCheckoutCoachingTerm] = useState('none');
   const [checkoutDiscountCode, setCheckoutDiscountCode] = useState('');
   const [checkoutQuoteBusy, setCheckoutQuoteBusy] = useState(false);
@@ -324,24 +326,14 @@ function ClientSettingsPage() {
         <section className="client-dashboard-card">
           <h2>Secure Checkout (Stripe)</h2>
           <p className="client-dash-muted">
-            Start your 5-day free trial by entering a card in Stripe. You can cancel within the first 5 days.
+            Start your 3-day free trial by entering a card in Stripe. Trial access includes 1 meal plan generation per day.
           </p>
           <div className="client-q-inline-grid">
             <label>
-              Food Plan
+              1-Month Plan
               <select value={checkoutOfferCode} onChange={(e) => setCheckoutOfferCode(e.target.value)} disabled={checkoutBusy}>
-                <option value="food_plan_weekly">Weekly ($5/week)</option>
-                <option value="food_plan_weekly_premium">Weekly Premium Coaching ($12/week)</option>
                 <option value="food_plan_monthly">Monthly ($15/month)</option>
                 <option value="food_plan_monthly_premium">Monthly Premium Coaching ($35/month)</option>
-              </select>
-            </label>
-            <label>
-              Coaching Add-On (Optional)
-              <select value={checkoutCoachingTerm} onChange={(e) => setCheckoutCoachingTerm(e.target.value)} disabled={checkoutBusy || isPremiumOffer(checkoutOfferCode)}>
-                <option value="none">No Coaching</option>
-                <option value="1_month">Add Coaching (1 Month - $30)</option>
-                <option value="3_months">Add Coaching (3 Months - $50)</option>
               </select>
             </label>
             <label>
@@ -365,7 +357,7 @@ function ClientSettingsPage() {
           </div>
           {isPremiumOffer(checkoutOfferCode) ? (
             <p className="client-dash-muted" style={{ marginTop: '0.5rem' }}>
-              Premium plans include coaching features and the premium dashboard. Coaching add-on is disabled for premium plans.
+              This plan includes coaching and premium dashboard access.
             </p>
           ) : null}
           <QuoteSummary quote={checkoutQuote} />
@@ -374,24 +366,14 @@ function ClientSettingsPage() {
         <section className="client-dashboard-card">
           <h2>Queue a Paid Plan Change (No Proration)</h2>
           <p className="client-dash-muted">
-            Your paid access stays active. Use secure checkout to pay now and queue the next plan/coaching combination for your next billing period.
+            Your paid access stays active. Use secure checkout to pay now and queue the next 1-month plan for your next billing period.
           </p>
           <div className="client-q-inline-grid">
             <label>
-              Next Food Plan
+              Next 1-Month Plan
               <select value={queuedCheckoutOfferCode} onChange={(e) => setQueuedCheckoutOfferCode(e.target.value)} disabled={queuedCheckoutBusy}>
-                <option value="food_plan_weekly">Weekly ($5/week)</option>
-                <option value="food_plan_weekly_premium">Weekly Premium Coaching ($12/week)</option>
                 <option value="food_plan_monthly">Monthly ($15/month)</option>
                 <option value="food_plan_monthly_premium">Monthly Premium Coaching ($35/month)</option>
-              </select>
-            </label>
-            <label>
-              Next Coaching Add-On (Optional)
-              <select value={queuedCheckoutCoachingTerm} onChange={(e) => setQueuedCheckoutCoachingTerm(e.target.value)} disabled={queuedCheckoutBusy || isPremiumOffer(queuedCheckoutOfferCode)}>
-                <option value="none">No Coaching</option>
-                <option value="1_month">Add Coaching (1 Month - $30)</option>
-                <option value="3_months">Add Coaching (3 Months - $50)</option>
               </select>
             </label>
             <label>
@@ -415,7 +397,7 @@ function ClientSettingsPage() {
           </div>
           {isPremiumOffer(queuedCheckoutOfferCode) ? (
             <p className="client-dash-muted" style={{ marginTop: '0.5rem' }}>
-              Premium plans already include coaching access. Optional coaching add-on is disabled for premium plans.
+              This queued plan includes coaching and premium dashboard access.
             </p>
           ) : null}
           <QuoteSummary quote={queuedCheckoutQuote} />

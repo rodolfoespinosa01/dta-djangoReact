@@ -461,11 +461,10 @@ def start_signup(request):
 
         discount = quote_payload.get("discount") or {}
         discount_code_clean = str(discount.get("code") or "").strip()
-        product_name = quote_payload.get("offer_display_name") or offer_code
-        if discount_code_clean and int((amounts or {}).get("discount_cents") or 0) > 0:
-            product_name = f"{product_name} (Special Applied: {discount_code_clean})"
+        stripe_price_id = str(offer.get("stripe_price_id") or "").strip()
+        if not stripe_price_id:
+            return error("STRIPE_PRICE_NOT_CONFIGURED", "Stripe price is not configured for this plan.", http_status=500)
 
-        recurring_interval = "week" if offer["billing_cycle"] == "weekly" else "month"
         success_path = f"/start/{admin_slug}/plans" if admin_slug else "/user_plans"
         cancel_path = success_path
 
@@ -489,8 +488,6 @@ def start_signup(request):
 
         stripe_discount = _stripe_once_discount_from_quote(quote_payload)
         allow_promotion_codes = not bool(stripe_discount)
-        line_unit_amount = int(offer.get("amount_cents") or pending_amount_cents)
-
         session_kwargs = dict(
             mode="subscription",
             payment_method_types=["card"],
@@ -498,12 +495,7 @@ def start_signup(request):
             allow_promotion_codes=allow_promotion_codes,
             line_items=[
                 {
-                    "price_data": {
-                        "currency": "usd",
-                        "product_data": {"name": product_name},
-                        "unit_amount": line_unit_amount,
-                        "recurring": {"interval": recurring_interval},
-                    },
+                    "price": stripe_price_id,
                     "quantity": 1,
                 }
             ],

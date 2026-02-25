@@ -43,7 +43,7 @@ def _offer_card_payload(code: str, *, featured: bool = False):
     elif includes_coaching:
         description = (
             f"Free {int(offer.get('trial_days') or 0)}-day trial for first-time users, then {price_label.lower()}. "
-            "Includes food planning plus premium coaching dashboard features."
+            "Includes food planning plus premium coaching dashboard features. Trial includes 1 meal plan generation per day."
         )
         name = "Meal Plan + Coaching (Premium)"
         if billing == "weekly":
@@ -53,7 +53,7 @@ def _offer_card_payload(code: str, *, featured: bool = False):
     else:
         description = (
             f"Free {int(offer.get('trial_days') or 0)}-day trial for first-time users, then {price_label.lower()}. "
-            "Includes calculated foods and meal structure."
+            "Includes calculated foods and meal structure. Trial includes 1 meal plan generation per day."
         )
         name = "Meal Plan With Foods (Weekly)" if billing == "weekly" else "Meal Plan With Foods (Monthly)"
 
@@ -92,7 +92,7 @@ def admin_public_marketing_page(request, slug):
                 "slug": slug,
                 "brand_name": _display_name_from_identity(identity),
                 "headline": "Personalized Nutrition, Built From Real Food",
-                "subheadline": "Use the macro calculator free, or start a food-based meal plan with a free 5-day trial if you have never tried it before.",
+                "subheadline": "Use the macro calculator free, or start a 1-month food-based meal plan with a free 3-day trial (1 meal plan generation per day) if you have never tried it before.",
                 "dev_url": f"{slug}.lvh.me:3000",
                 "public_url": f"{slug}.dtameals.com",
             },
