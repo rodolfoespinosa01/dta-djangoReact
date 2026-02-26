@@ -2,10 +2,17 @@ import stripe
 from datetime import datetime, timezone as dt_timezone
 from django.conf import settings
 from django.utils.timezone import now
+from django.db.models import Prefetch
 from rest_framework.views import APIView
 from rest_framework import permissions, status
 
 from users.admin_area.models import Profile, AdminIdentity, Plan
+from users.client_area.models import (
+    ClientMealPlanGenerationJob,
+    ClientPendingSignup,
+    ClientProfile,
+    ClientQuestionnaireProgress,
+)
 from users.admin_area.serializers.contracts import AdminDashboardPayloadSerializer
 from users.admin_area.views.api_contract import error, ok, require_admin
 
@@ -16,10 +23,16 @@ PLAN_NAME_TO_STATUS = {
     "adminQuarterly": "admin_quarterly",
     "adminAnnual": "admin_annual",
 }
+DAY_ORDER = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
+DAY_INDEX = {day: idx for idx, day in enumerate(DAY_ORDER)}
 
 
 def _ts(ts):
     return datetime.fromtimestamp(ts, tz=dt_timezone.utc) if ts else None
+
+
+def _iso(value):
+    return value.isoformat() if value else None
 
 
 def _stripe_customer_for_email(email: str):
@@ -74,6 +87,129 @@ def _stripe_current_subscription(email: str):
     }
 
 
+def _sorted_days(days):
+    return sorted(set(days), key=lambda value: DAY_INDEX.get(value, 99))
+
+
+def _questionnaire_snapshot(user):
+    try:
+        progress = user.questionnaire_progress
+    except ClientQuestionnaireProgress.DoesNotExist:
+        progress = None
+    return {
+        "status": getattr(progress, "status", "not_started"),
+        "completed_at": _iso(getattr(progress, "completed_at", None)),
+    }
+
+
+def _build_client_funnel_payload(admin_identity):
+    if not admin_identity:
+        return {
+            "summary": {
+                "precheckout_tracked": False,
+                "precheckout_count": None,
+                "paid_not_registered_count": 0,
+                "registered_count": 0,
+            },
+            "precheckout_visits": [],
+            "paid_not_registered": [],
+            "registered_clients": [],
+            "notes": [
+                "Client pre-checkout visits are not currently persisted in a client-specific table, so this section is not available yet.",
+            ],
+        }
+
+    completed_jobs_prefetch = Prefetch(
+        "user__meal_plan_generation_jobs",
+        queryset=ClientMealPlanGenerationJob.objects.filter(status="completed").only(
+            "user_id", "day_of_week", "completed_at", "created_at", "status"
+        ),
+    )
+    profiles = list(
+        ClientProfile.objects
+        .filter(associated_admin=admin_identity)
+        .select_related("user")
+        .prefetch_related(completed_jobs_prefetch)
+        .order_by("-created_at")
+    )
+
+    registered_rows = []
+    registered_email_set = set()
+    for profile in profiles:
+        user = profile.user
+        email = (getattr(user, "email", "") or "").strip()
+        if email:
+            registered_email_set.add(email.lower())
+        jobs = list(user.meal_plan_generation_jobs.all())
+        generator_days = _sorted_days([job.day_of_week for job in jobs if job.day_of_week])
+        latest_job_dt = None
+        for job in jobs:
+            ts = job.completed_at or job.created_at
+            if ts and (latest_job_dt is None or ts > latest_job_dt):
+                latest_job_dt = ts
+        questionnaire = _questionnaire_snapshot(user)
+        registered_rows.append(
+            {
+                "email": email,
+                "offer_code": profile.offer_code,
+                "billing_cycle": profile.billing_cycle or "",
+                "sale_channel": profile.sale_channel or "",
+                "includes_food_plan": bool(profile.includes_food_plan),
+                "includes_coaching": bool(profile.includes_coaching),
+                "is_active": bool(profile.is_active),
+                "created_at": _iso(profile.created_at),
+                "questionnaire_status": questionnaire["status"],
+                "questionnaire_completed_at": questionnaire["completed_at"],
+                "food_generator_used": bool(generator_days),
+                "food_generator_days": generator_days,
+                "food_generator_last_used_at": _iso(latest_job_dt),
+            }
+        )
+
+    paid_pending_qs = (
+        ClientPendingSignup.objects
+        .filter(admin=admin_identity)
+        .order_by("-created_at")
+    )
+    paid_pending_rows = []
+    for pending in paid_pending_qs:
+        email = (pending.email or "").strip()
+        if email and email.lower() in registered_email_set:
+            continue
+        paid_pending_rows.append(
+            {
+                "email": email,
+                "offer_code": pending.offer_code,
+                "billing_cycle": pending.billing_cycle or "",
+                "sale_channel": pending.sale_channel or "",
+                "trial_days": int(pending.trial_days or 0),
+                "amount_cents": int(pending.amount_cents or 0),
+                "includes_food_plan": bool(pending.includes_food_plan),
+                "includes_coaching": bool(pending.includes_coaching),
+                "registration_link_printed_at": _iso(pending.registration_link_printed_at),
+                "created_at": _iso(pending.created_at),
+                "questionnaire_status": "not_registered",
+                "food_generator_used": False,
+                "food_generator_days": [],
+            }
+        )
+
+    return {
+        "summary": {
+            "precheckout_tracked": False,
+            "precheckout_count": None,
+            "paid_not_registered_count": len(paid_pending_rows),
+            "registered_count": len(registered_rows),
+        },
+        "precheckout_visits": [],
+        "paid_not_registered": paid_pending_rows,
+        "registered_clients": registered_rows,
+        "notes": [
+            "Client pre-checkout visits are not currently persisted yet. Paid/not-registered and registered client activity is shown from existing records.",
+        ],
+    }
+
+
 class DashboardView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -85,6 +221,7 @@ class DashboardView(APIView):
 
         now_ts = now()
         stripe_sub = _stripe_current_subscription(user.email)
+        admin_identity = AdminIdentity.objects.filter(admin_email=user.email).first()
 
         # DB fallback profile
         active_profiles = user.profiles.filter(is_active=True).order_by("-created_at")
@@ -186,6 +323,7 @@ class DashboardView(APIView):
             "next_plan_status": next_plan_status,
             "next_plan_price_cents": next_plan_price_cents,
             "next_plan_effective_on": next_plan_effective_on,
+            "client_funnel": _build_client_funnel_payload(admin_identity),
         }
 
         if settings.DEBUG:

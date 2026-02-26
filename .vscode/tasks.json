@@ -13,7 +13,7 @@
     {
       "label": "Run React App",
       "type": "shell",
-      "command": "zsh -lc 'source ~/.nvm/nvm.sh && nvm use && if [ -f \"${workspaceFolder}/.certs/localhost.pem\" ] && [ -f \"${workspaceFolder}/.certs/localhost-key.pem\" ]; then HTTPS=true SSL_CRT_FILE=\"${workspaceFolder}/.certs/localhost.pem\" SSL_KEY_FILE=\"${workspaceFolder}/.certs/localhost-key.pem\" npm start; else HTTPS=true npm start; fi'",
+      "command": "zsh -lc 'export NVM_DIR=\"$HOME/.nvm\"; if [ -s \"$NVM_DIR/nvm.sh\" ]; then . \"$NVM_DIR/nvm.sh\"; elif [ -s \"/opt/homebrew/opt/nvm/nvm.sh\" ]; then . \"/opt/homebrew/opt/nvm/nvm.sh\"; else echo \"nvm not found\"; exit 1; fi; nvm install && nvm use && if [ -f \"${workspaceFolder}/.certs/localhost.pem\" ] && [ -f \"${workspaceFolder}/.certs/localhost-key.pem\" ]; then HTTPS=true SSL_CRT_FILE=\"${workspaceFolder}/.certs/localhost.pem\" SSL_KEY_FILE=\"${workspaceFolder}/.certs/localhost-key.pem\" npm start; else HTTPS=true npm start; fi'",
       "options": {
         "cwd": "${workspaceFolder}/frontend"
       }
