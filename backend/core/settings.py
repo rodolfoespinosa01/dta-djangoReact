@@ -162,7 +162,7 @@ USE_I18N = True  # 👉 enables django's internationalization system (for transl
 
 USE_TZ = True  # 👉 stores all datetime objects in utc and converts to local time on display
 
-STATIC_URL = 'static/' # 👉 url prefix for serving static files like css, js, and images
+STATIC_URL = '/static/' # 👉 url prefix for serving static files like css, js, and images
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # 👆 sets the default primary key type for new models to bigautofield (large auto-incrementing integer)

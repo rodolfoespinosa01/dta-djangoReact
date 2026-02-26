@@ -33,6 +33,126 @@
   backdrop-filter: blur(8px);
 }
 
+.admin-client-funnel-card {
+  margin-top: 1.2rem;
+}
+
+.admin-client-funnel-header h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #eff7ff;
+}
+
+.admin-client-funnel-header p {
+  margin: 0.35rem 0 0;
+  color: #a7bfdc;
+  font-size: 0.92rem;
+}
+
+.admin-client-funnel-summary {
+  margin-top: 0.85rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.admin-client-funnel-stat {
+  border: 1px solid rgba(117, 161, 255, 0.16);
+  background: rgba(12, 25, 43, 0.5);
+  border-radius: 10px;
+  padding: 0.7rem 0.75rem;
+}
+
+.admin-client-funnel-stat .label {
+  display: block;
+  color: #9ec7f3;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.admin-client-funnel-stat strong {
+  display: block;
+  margin-top: 0.25rem;
+  color: #f4f8ff;
+  font-size: 0.98rem;
+  line-height: 1.2;
+}
+
+.admin-client-section {
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(117, 161, 255, 0.14);
+}
+
+.admin-client-section-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.admin-client-section-title-row h3 {
+  margin: 0;
+  color: #eaf3ff;
+  font-size: 0.98rem;
+}
+
+.admin-client-section-title-row span {
+  color: #9ff3d7;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.admin-client-empty {
+  margin: 0.55rem 0 0;
+  color: #b0c6e2;
+}
+
+.admin-client-table-wrap {
+  margin-top: 0.55rem;
+  overflow-x: auto;
+  border: 1px solid rgba(117, 161, 255, 0.14);
+  border-radius: 10px;
+  background: rgba(10, 19, 33, 0.42);
+}
+
+.admin-client-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 760px;
+}
+
+.admin-client-table th,
+.admin-client-table td {
+  padding: 0.6rem 0.7rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid rgba(117, 161, 255, 0.1);
+  color: #edf4ff;
+  font-size: 0.9rem;
+}
+
+.admin-client-table th {
+  color: #a8cbf4;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: rgba(11, 22, 39, 0.78);
+  position: sticky;
+  top: 0;
+}
+
+.admin-client-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.admin-client-cell-subtle {
+  margin-top: 0.2rem;
+  color: #98b5d8;
+  font-size: 0.78rem;
+}
+
 .badge {
   margin: 0;
   padding: 0.9rem 1rem;
@@ -315,5 +435,9 @@
 
   .admin-setup-modal-actions {
     flex-direction: column;
+  }
+
+  .admin-client-funnel-summary {
+    grid-template-columns: 1fr;
   }
 }

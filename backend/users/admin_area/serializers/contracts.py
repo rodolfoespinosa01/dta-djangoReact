@@ -23,6 +23,7 @@ class AdminDashboardPayloadSerializer(serializers.Serializer):
     next_plan_status = serializers.CharField(allow_null=True, required=False)
     next_plan_price_cents = serializers.IntegerField(allow_null=True, required=False)
     next_plan_effective_on = serializers.DateTimeField(allow_null=True, required=False)
+    client_funnel = serializers.JSONField(required=False)
 
     # debug fields (optional)
     debug_data_source = serializers.CharField(required=False)
