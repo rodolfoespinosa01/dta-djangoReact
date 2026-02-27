@@ -37,9 +37,21 @@
       "problemMatcher": []
     },
     {
-      "label": "Run Stripe Webhook",
+      "label": "Run Stripe Webhook (Client)",
+      "type": "shell",
+      "command": "stripe listen --skip-verify --forward-to https://localhost:8000/api/v1/users/client/stripe_webhook/",
+      "options": { "cwd": "${workspaceFolder}" }
+    },
+    {
+      "label": "Run Stripe Webhook (Admin)",
       "type": "shell",
       "command": "stripe listen --skip-verify --forward-to https://localhost:8000/api/v1/users/admin/stripe_webhook/",
+      "options": { "cwd": "${workspaceFolder}" }
+    },
+    {
+      "label": "Run Stripe Webhook",
+      "type": "shell",
+      "command": "stripe listen --skip-verify --forward-to https://localhost:8000/api/v1/users/stripe_webhook/",
       "options": { "cwd": "${workspaceFolder}" }
     },
     {

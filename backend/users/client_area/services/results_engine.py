@@ -183,7 +183,11 @@ def _get_distribution_table(params, meal_plan_type, meals_per_day, training_sche
     else:
         scenario_tables = (distributions.get(f"meals_{meals_per_day}") or {})
 
-    scenario_key = training_schedule_value or "no_training"
+    scenario_key = str(training_schedule_value or "no_training").strip()
+    # Questionnaire stores `before_meal_X`, while distribution tables use `train_before_meal_X`.
+    # Normalize so both shapes resolve to the intended scenario bucket.
+    if scenario_key.startswith("before_meal_"):
+        scenario_key = f"train_{scenario_key}"
     return scenario_tables.get(scenario_key) or scenario_tables.get("no_training") or {}
 
 
