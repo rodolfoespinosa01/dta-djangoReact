@@ -114,6 +114,7 @@ def stripe_webhook(request):
 
         session_id = session.get('id')
         stripe_transaction_id = session.get('invoice')  # may be None until first charge
+        flow = str(metadata.get("flow") or "").strip()
         raw_plan_name = metadata.get('plan_name') or ''
         if not raw_plan_name:
             raw_plan_name = _resolve_plan_name_from_stripe_session(session)
@@ -130,6 +131,12 @@ def stripe_webhook(request):
         # normalize if you had an older alias
         plan_name = 'adminMonthly' if raw_plan_name == 'adminTrial' else raw_plan_name
         if not plan_name:
+            if flow.startswith("public_client_") or flow.startswith("client_"):
+                print(
+                    f"⚠️ Admin webhook received client checkout flow `{flow}` for session {session_id}. "
+                    "Forward Stripe events to /api/v1/users/client/stripe_webhook/ for end-user signup."
+                )
+                return HttpResponse(status=200)
             print(f"❌ Could not determine plan_name for checkout session {session_id}; skipping PendingSignup creation")
             EventTracker.objects.create(
                 admin=admin_identity,
