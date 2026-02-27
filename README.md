@@ -118,9 +118,9 @@ source venv/bin/activate
 celery -A core worker -l info
 ```
 
-Stripe webhook listener (client flow example):
+Stripe webhook listener (unified admin + client flow):
 ```bash
-stripe listen --forward-to https://localhost:8000/api/v1/users/client/stripe_webhook/
+stripe listen --forward-to https://localhost:8000/api/v1/users/stripe_webhook/
 ```
 
 ## Stripe + Signup Flow Notes (Current Behavior)
@@ -196,4 +196,3 @@ npm run build
 - Discount redemption tracking / audit trail
 - Production-grade AI recipe suggestion quality + controls
 - Coaching features (chat, progress photos, stats journal, check-ins)
-
