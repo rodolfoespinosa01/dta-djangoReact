@@ -17,6 +17,16 @@ const QUESTION_STEPS = [
   'meal_schedule',
   'training_schedule',
 ];
+const EDITABLE_QUESTION_STEPS = [
+  'weight',
+  'date_of_birth',
+  'goal',
+  'lifestyle',
+  'meal_plan_type',
+  'workout_days',
+  'meal_schedule',
+  'training_schedule',
+];
 
 const WEEK_DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 function normalizeSubdomainLabel(slug) {
@@ -71,8 +81,10 @@ function ClientDashboardPage() {
   const [savingDraft, setSavingDraft] = useState(false);
   const [submitState, setSubmitState] = useState('idle');
   const [wizardMessage, setWizardMessage] = useState('');
+  const [isEditingQuestionnaire, setIsEditingQuestionnaire] = useState(false);
   const [planActionBusy] = useState(false);
   const [planActionMessage, setPlanActionMessage] = useState('');
+  const [showDetailedAnalytics, setShowDetailedAnalytics] = useState(false);
   const [activeDashboardPanel, setActiveDashboardPanel] = useState('daily_macros');
   const [selectedMacroDay, setSelectedMacroDay] = useState(getTodayWeekdayKey());
   const [selectedOverviewDay, setSelectedOverviewDay] = useState(getTodayWeekdayKey());
@@ -80,6 +92,10 @@ function ClientDashboardPage() {
   const questionnaire = dashboard?.questionnaire;
   const isQuestionnaireComplete = questionnaire?.status === 'completed';
   const isBlocked = !isQuestionnaireComplete;
+  const showQuestionnaireModal = isBlocked || isEditingQuestionnaire;
+  const activeQuestionSteps = showQuestionnaireModal && isQuestionnaireComplete
+    ? EDITABLE_QUESTION_STEPS
+    : QUESTION_STEPS;
 
   useEffect(() => {
     let ignore = false;
@@ -113,11 +129,15 @@ function ClientDashboardPage() {
     return () => { ignore = true; };
   }, [navigate]);
 
-  const activeAnswer = answers[wizardStep];
+  useEffect(() => {
+    if (activeQuestionSteps.includes(wizardStep)) return;
+    setWizardStep(activeQuestionSteps[0] || QUESTION_STEPS[0]);
+  }, [activeQuestionSteps, wizardStep]);
 
-  const stepIndex = Math.max(0, QUESTION_STEPS.indexOf(wizardStep));
+  const activeAnswer = answers[wizardStep];
+  const stepIndex = Math.max(0, activeQuestionSteps.indexOf(wizardStep));
   const canGoBack = stepIndex > 0;
-  const isLastStep = stepIndex === QUESTION_STEPS.length - 1;
+  const isLastStep = stepIndex === activeQuestionSteps.length - 1;
 
   const activeStepValid = useMemo(() => {
     const value = activeAnswer;
@@ -181,9 +201,20 @@ function ClientDashboardPage() {
         return false;
       }
       const q = res.data?.questionnaire || {};
-      setDashboard((prev) => (prev ? { ...prev, questionnaire: q } : prev));
+      setDashboard((prev) => (
+        prev
+          ? {
+              ...prev,
+              questionnaire: q,
+              ...(res.data?.results ? { results: res.data.results } : {}),
+            }
+          : prev
+      ));
       setAnswers(q.answers || answers);
       if (nextStep) setWizardStep(nextStep);
+      if (res.data?.updates?.food_preferences_reset) {
+        setWizardMessage('Schedule/plan changes cleared previous food preferences. Rebuild meal combos before generation.');
+      }
       return true;
     } catch (err) {
       console.error(err);
@@ -196,13 +227,13 @@ function ClientDashboardPage() {
 
   const handleNext = async () => {
     if (!activeStepValid) return;
-    const nextStep = isLastStep ? wizardStep : QUESTION_STEPS[stepIndex + 1];
+    const nextStep = isLastStep ? wizardStep : activeQuestionSteps[stepIndex + 1];
     await saveDraft(wizardStep, answers[wizardStep], nextStep);
   };
 
   const handleBack = async () => {
     if (!canGoBack) return;
-    const prevStep = QUESTION_STEPS[stepIndex - 1];
+    const prevStep = activeQuestionSteps[stepIndex - 1];
     await saveDraft(wizardStep, answers[wizardStep], prevStep);
   };
 
@@ -233,7 +264,10 @@ function ClientDashboardPage() {
       }
       const q = res.data?.questionnaire || {};
       setDashboard((prev) => (prev ? { ...prev, questionnaire: q, results: res.data?.results || prev.results } : prev));
-      setWizardMessage('Questionnaire submitted successfully.');
+      setWizardMessage(isEditingQuestionnaire ? 'Questionnaire updates saved successfully.' : 'Questionnaire submitted successfully.');
+      if (isEditingQuestionnaire) {
+        setIsEditingQuestionnaire(false);
+      }
       setSubmitState('success');
     } catch (err) {
       console.error(err);
@@ -616,6 +650,13 @@ function ClientDashboardPage() {
     navigate('/client_settings');
   };
 
+  const handleOpenQuestionnaireEdit = () => {
+    setWizardMessage('');
+    setSubmitState('idle');
+    setIsEditingQuestionnaire(true);
+    setWizardStep(EDITABLE_QUESTION_STEPS[0]);
+  };
+
   if (loading) return <div className="client-dashboard-page"><p>Loading dashboard…</p></div>;
   if (error) return <div className="client-dashboard-page"><p className="client-dash-error">{error}</p></div>;
 
@@ -674,6 +715,39 @@ function ClientDashboardPage() {
       </section>
 
       <section className="client-dashboard-card">
+        <h2>Client Workflow</h2>
+        <p className="client-dash-muted">
+          Start here. Open only the section you need for this session.
+        </p>
+        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+          <button type="button" className="client-q-btn" onClick={() => navigate('/client_meal_generation')} disabled={isBlocked}>
+            Meal Plan Generation
+          </button>
+          <button type="button" className="client-q-btn secondary" onClick={() => navigate('/client_meal_generation')} disabled={isBlocked}>
+            Recipe Generation
+          </button>
+          <button type="button" className="client-q-btn secondary" onClick={handleOpenQuestionnaireEdit} disabled={isBlocked}>
+            Edit Questionnaire
+          </button>
+          <button type="button" className="client-q-btn secondary" onClick={() => navigate('/client_tracking')}>
+            Tracking
+          </button>
+          <button type="button" className="client-q-btn secondary" onClick={() => navigate('/client_coaching')}>
+            Coaching
+          </button>
+          <button
+            type="button"
+            className="client-q-btn secondary"
+            onClick={() => setShowDetailedAnalytics((prev) => !prev)}
+            disabled={isBlocked}
+          >
+            {showDetailedAnalytics ? 'Hide Detailed Analytics' : 'Show Detailed Analytics'}
+          </button>
+        </div>
+      </section>
+
+      {showDetailedAnalytics && (
+      <section className="client-dashboard-card">
         <h2>{isQuestionnaireComplete ? 'Dashboard Analytics' : 'Dashboard Preview'}</h2>
         {!isQuestionnaireComplete ? (
           <p className="client-dash-muted">
@@ -703,6 +777,9 @@ function ClientDashboardPage() {
                   Open Export Center
                 </button>
               ) : null}
+              <button type="button" className="client-q-btn secondary" onClick={handleOpenQuestionnaireEdit}>
+                Edit Questionnaire Inputs
+              </button>
             </div>
 
             {activeDashboardPanel === 'weekly_overview' && (
@@ -874,6 +951,7 @@ function ClientDashboardPage() {
           </div>
         )}
       </section>
+      )}
 
       {isQuestionnaireComplete && dashboard?.client?.includes_food_plan && (
         <section className="client-dashboard-card">
@@ -887,17 +965,21 @@ function ClientDashboardPage() {
         </section>
       )}
 
-      {isBlocked && (
+      {showQuestionnaireModal && (
         <div className="client-q-backdrop">
           <div className="client-q-modal" role="dialog" aria-modal="true" aria-labelledby="client-q-title">
             <div className="client-q-progress">
-              <span>Question {stepIndex + 1} of {QUESTION_STEPS.length}</span>
+              <span>Question {stepIndex + 1} of {activeQuestionSteps.length}</span>
               <div className="client-q-progress-bar">
-                <div className="client-q-progress-fill" style={{ width: `${((stepIndex + 1) / QUESTION_STEPS.length) * 100}%` }} />
+                <div className="client-q-progress-fill" style={{ width: `${((stepIndex + 1) / activeQuestionSteps.length) * 100}%` }} />
               </div>
             </div>
             <h2 id="client-q-title">{stepMeta[wizardStep]?.[0]}</h2>
-            <p className="client-q-subtitle">{stepMeta[wizardStep]?.[1]}</p>
+            <p className="client-q-subtitle">
+              {isBlocked
+                ? stepMeta[wizardStep]?.[1]
+                : 'Update your weekly inputs. Height and gender stay fixed after onboarding.'}
+            </p>
 
             <div className="client-q-body">
               {renderQuestionStep()}
@@ -916,12 +998,23 @@ function ClientDashboardPage() {
               )}
               {isLastStep && (
                 <button type="button" className="client-q-btn" onClick={handleSubmitQuestionnaire} disabled={!activeStepValid || savingDraft || submitState === 'submitting'}>
-                  {submitState === 'submitting' ? 'Submitting…' : 'Submit Questionnaire'}
+                  {submitState === 'submitting' ? 'Submitting…' : isBlocked ? 'Submit Questionnaire' : 'Save Updates'}
                 </button>
               )}
-              <button type="button" className="client-q-btn danger" onClick={() => logout('/client_login')} disabled={savingDraft || submitState === 'submitting'}>
-                Log Out
-              </button>
+              {isBlocked ? (
+                <button type="button" className="client-q-btn danger" onClick={() => logout('/client_login')} disabled={savingDraft || submitState === 'submitting'}>
+                  Log Out
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="client-q-btn danger"
+                  onClick={() => setIsEditingQuestionnaire(false)}
+                  disabled={savingDraft || submitState === 'submitting'}
+                >
+                  Close
+                </button>
+              )}
             </div>
           </div>
         </div>
