@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.db.models import Q
 
 from users.admin_area.models import AdminIdentity
 
@@ -238,6 +239,70 @@ class ClientQueuedPlanChange(models.Model):
 
     def __str__(self):
         return f"{self.user.email} | queued {self.target_offer_code} ({self.target_coaching_term})"
+
+
+class ClientProgressPhoto(models.Model):
+    """
+    Client body progress photo uploads.
+    Rules enforced in API layer:
+    - max 1 photo per user per day
+    - max 30 photos per user per calendar month
+    """
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="progress_photos")
+    file = models.FileField(upload_to="client_progress_photos/%Y/%m/")
+    captured_for_date = models.DateField(db_index=True)
+    same_position = models.BooleanField(default=True)
+    same_lighting = models.BooleanField(default=True)
+    same_time_of_day = models.BooleanField(default=True)
+    notes = models.CharField(max_length=300, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ("-captured_for_date", "-created_at")
+        verbose_name = "Client Progress Photo"
+        verbose_name_plural = "Client Progress Photos"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "captured_for_date"],
+                name="client_unique_progress_photo_per_day",
+            ),
+            models.CheckConstraint(
+                check=Q(notes__isnull=False),
+                name="client_progress_photo_notes_not_null",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.user.email} | {self.captured_for_date}"
+
+
+class ClientWeightEntry(models.Model):
+    UNIT_CHOICES = [
+        ("lbs", "LBS"),
+        ("kg", "KG"),
+    ]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="weight_entries")
+    measured_at = models.DateTimeField(db_index=True)
+    weight_value = models.DecimalField(max_digits=6, decimal_places=2)
+    unit = models.CharField(max_length=8, choices=UNIT_CHOICES, default="lbs")
+    notes = models.CharField(max_length=160, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ("-measured_at", "-created_at")
+        verbose_name = "Client Weight Entry"
+        verbose_name_plural = "Client Weight Entries"
+        constraints = [
+            models.CheckConstraint(
+                check=Q(weight_value__gt=0),
+                name="client_weight_entry_value_positive",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.user.email} | {self.weight_value} {self.unit} @ {self.measured_at}"
 
 
 class DiscountCode(models.Model):

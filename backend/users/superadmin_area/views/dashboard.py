@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from core.models import CustomUser
 from users.admin_area.models import Plan
+from users.client_area.models import ClientPendingSignup, ClientProfile, ClientQuestionnaireProgress
 from users.superadmin_area.serializers.contracts import (
     SuperAdminDashboardItemSerializer,
     SuperAdminPaginationSerializer,
@@ -32,6 +33,75 @@ def _sum_admin_spend_dollars(admin):
         total_cents += profile.plan.price_cents
 
     return float(Decimal(total_cents) / Decimal("100"))
+
+
+def _build_dta_direct_clients_payload():
+    direct_profiles = list(
+        ClientProfile.objects
+        .filter(sale_channel="dta_direct")
+        .select_related("user")
+        .order_by("-created_at")
+    )
+    profile_user_ids = [profile.user_id for profile in direct_profiles]
+    questionnaire_map = {}
+    if profile_user_ids:
+        questionnaire_rows = ClientQuestionnaireProgress.objects.filter(user_id__in=profile_user_ids)
+        questionnaire_map = {row.user_id: row for row in questionnaire_rows}
+
+    registered_rows = []
+    registered_emails = set()
+    for profile in direct_profiles:
+        user = profile.user
+        email = (getattr(user, "email", "") or "").strip()
+        if email:
+            registered_emails.add(email.lower())
+        questionnaire = questionnaire_map.get(user.id)
+        registered_rows.append(
+            {
+                "client_user_id": user.id,
+                "email": email,
+                "offer_code": profile.offer_code,
+                "billing_cycle": profile.billing_cycle or "",
+                "is_active": bool(profile.is_active),
+                "includes_food_plan": bool(profile.includes_food_plan),
+                "includes_coaching": bool(profile.includes_coaching),
+                "questionnaire_status": getattr(questionnaire, "status", "not_started"),
+                "created_at": profile.created_at.isoformat() if profile.created_at else None,
+            }
+        )
+
+    direct_pending_rows = []
+    pending_qs = (
+        ClientPendingSignup.objects
+        .filter(sale_channel="dta_direct")
+        .order_by("-created_at")
+    )
+    for pending in pending_qs:
+        email = (pending.email or "").strip()
+        if email and email.lower() in registered_emails:
+            continue
+        direct_pending_rows.append(
+            {
+                "email": email,
+                "offer_code": pending.offer_code,
+                "billing_cycle": pending.billing_cycle or "",
+                "amount_cents": int(pending.amount_cents or 0),
+                "registration_link_printed_at": (
+                    pending.registration_link_printed_at.isoformat()
+                    if pending.registration_link_printed_at else None
+                ),
+                "created_at": pending.created_at.isoformat() if pending.created_at else None,
+            }
+        )
+
+    return {
+        "summary": {
+            "registered_count": len(registered_rows),
+            "paid_not_registered_count": len(direct_pending_rows),
+        },
+        "registered_clients": registered_rows,
+        "paid_not_registered": direct_pending_rows,
+    }
 
 
 @api_view(["GET"])
@@ -124,5 +194,6 @@ def dashboard(request):
         {
             "admins": admins_serializer.validated_data,
             "pagination": pagination_serializer.validated_data,
+            "dta_direct_clients": _build_dta_direct_clients_payload(),
         }
     )

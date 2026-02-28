@@ -3,6 +3,7 @@ from pathlib import Path
 
 import os
 # 👆 provides access to environment variables and OS-level operations like os.getenv().
+import socket
 
 from dotenv import load_dotenv
 # 👆 Loads environment variables from the .env file into the app’s environment.
@@ -36,12 +37,37 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 DEBUG = os.getenv("DJANGO_DEBUG") == "true"
 # 👆 Enables debug mode (shows detailed error pages). WARNING: Never use this in production!
 
+
+def _detect_local_ipv4():
+    """
+    Best-effort local LAN IP detection for phone/tablet testing in DEBUG.
+    """
+    sock = None
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # No packet is sent; this resolves the outbound local interface.
+        sock.connect(("8.8.8.8", 80))
+        ip = sock.getsockname()[0]
+        return ip if ip and ip != "127.0.0.1" else None
+    except Exception:
+        return None
+    finally:
+        if sock is not None:
+            try:
+                sock.close()
+            except Exception:
+                pass
+
 raw_hosts = os.getenv("DJANGO_ALLOWED_HOSTS", "")
 ALLOWED_HOSTS = raw_hosts.split(",") if raw_hosts else []
 # 👆 List of domains allowed to serve this app when DEBUG is False. Required for production security.
 if DEBUG and not ALLOWED_HOSTS:
     ALLOWED_HOSTS = ["localhost", "127.0.0.1", "[::1]", ".lvh.me"]
     # 👆 dev-friendly default so local subdomain previews like coach.lvh.me work without DisallowedHost.
+if DEBUG:
+    _local_ipv4 = _detect_local_ipv4()
+    if _local_ipv4 and _local_ipv4 not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(_local_ipv4)
 
 INSTALLED_APPS = [
     'django.contrib.admin', # 👉 built-in Django admin interface
@@ -163,6 +189,8 @@ USE_I18N = True  # 👉 enables django's internationalization system (for transl
 USE_TZ = True  # 👉 stores all datetime objects in utc and converts to local time on display
 
 STATIC_URL = '/static/' # 👉 url prefix for serving static files like css, js, and images
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # 👆 sets the default primary key type for new models to bigautofield (large auto-incrementing integer)
@@ -187,14 +215,32 @@ CORS_ALLOWED_ORIGINS = [
     "https://127.0.0.1:3000",
 ]
 # 👆 allows the frontend to make cross-origin api calls to the backend (used by axios or fetch)
+if DEBUG:
+    _local_ipv4 = _detect_local_ipv4()
+    if _local_ipv4:
+        CORS_ALLOWED_ORIGINS.extend(
+            [
+                f"http://{_local_ipv4}:3000",
+                f"https://{_local_ipv4}:3000",
+            ]
+        )
 
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https?://([a-z0-9-]+\.)?lvh\.me:3000$",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
+if DEBUG:
+    _local_ipv4 = _detect_local_ipv4()
+    if _local_ipv4:
+        CSRF_TRUSTED_ORIGINS.extend(
+            [
+                f"http://{_local_ipv4}:3000",
+                f"https://{_local_ipv4}:3000",
+            ]
+        )
 
-FRONTEND_URL = os.getenv("FRONTEND_URL") or "https://localhost:3000"
+FRONTEND_URL = os.getenv("FRONTEND_URL") or "http://localhost:3000"
 
 
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL") or os.getenv("REDIS_URL") or "redis://127.0.0.1:6379/0"

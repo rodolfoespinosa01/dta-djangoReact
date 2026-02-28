@@ -12,6 +12,7 @@ from users.admin_area.views.password.admin_forgot_password import AdminForgotPas
 
 # 📊 Dashboard
 from users.admin_area.views.dashboard.DashboardView import DashboardView
+from users.admin_area.views.dashboard.direct_client_tracking import admin_client_tracking
 
 # 💳 Billing
 from users.admin_area.views.billing.create_checkout_session import create_checkout_session
@@ -45,6 +46,7 @@ urlpatterns = [
 
     # 📊 Dashboard
     path('dashboard/', DashboardView.as_view(), name='dashboard'),
+    path('clients/<int:user_id>/tracking/', admin_client_tracking, name='admin_client_tracking'),
     path('parameter_settings/status/', parameter_settings_status, name='parameter_settings_status'),
     path('parameter_settings/use_defaults/', parameter_settings_use_defaults, name='parameter_settings_use_defaults'),
     path('parameter_settings/', parameter_settings_detail, name='parameter_settings_detail'),

@@ -32,7 +32,7 @@ function AdminRegisterPage() {
 
     const fetchPendingEmail = async () => {
       try {
-        const res = await fetch(buildApiUrl(`/api/v1/users/admin/pending_signup/${tokenFromURL}`));
+        const res = await fetch(buildApiUrl(`/api/v1/users/admin/pending_signup/${tokenFromURL}/`));
 
         if (!res.ok) {
           const text = await res.text();
@@ -43,7 +43,8 @@ function AdminRegisterPage() {
         }
 
         const data = await res.json();
-        setEmail(data.email);
+        const pending = data?.pending_signup || data;
+        setEmail(pending?.email || '');
       } catch (err) {
         console.error('error fetching pending signup:', err);
         alert(t('admin_register.something_wrong'));

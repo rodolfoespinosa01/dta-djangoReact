@@ -23,6 +23,11 @@ function AdminClientLandingPage() {
           setError(res.data?.error?.message || 'Unable to load this coach page.');
           return;
         }
+        if (!res.data || !res.data.admin_page) {
+          setStatus('error');
+          setError('This coach page is unavailable right now.');
+          return;
+        }
         setData(res.data);
         setStatus('ready');
       } catch (err) {

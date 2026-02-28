@@ -1,8 +1,8 @@
 import stripe
-from datetime import datetime, timezone as dt_timezone
+from datetime import datetime, timedelta, timezone as dt_timezone
 from django.conf import settings
 from django.utils.timezone import now
-from django.db.models import Prefetch
+from django.db.models import Count, Prefetch
 from rest_framework.views import APIView
 from rest_framework import permissions, status
 
@@ -11,7 +11,9 @@ from users.client_area.models import (
     ClientMealPlanGenerationJob,
     ClientPendingSignup,
     ClientProfile,
+    ClientProgressPhoto,
     ClientQuestionnaireProgress,
+    ClientWeightEntry,
 )
 from users.admin_area.serializers.contracts import AdminDashboardPayloadSerializer
 from users.admin_area.views.api_contract import error, ok, require_admin
@@ -132,11 +134,57 @@ def _build_client_funnel_payload(admin_identity):
         .prefetch_related(completed_jobs_prefetch)
         .order_by("-created_at")
     )
+    user_ids = [profile.user_id for profile in profiles]
+    latest_weight_by_user = {}
+    latest_photo_by_user = {}
+    weight_30d_counts = {}
+    photo_30d_counts = {}
+    window_start = now() - timedelta(days=30)
+
+    if user_ids:
+        # NOTE: avoid distinct("field") so this works across SQLite/Postgres.
+        latest_weight_rows = (
+            ClientWeightEntry.objects
+            .filter(user_id__in=user_ids)
+            .order_by("user_id", "-measured_at", "-created_at")
+        )
+        for row in latest_weight_rows:
+            if row.user_id not in latest_weight_by_user:
+                latest_weight_by_user[row.user_id] = row
+
+        latest_photo_rows = (
+            ClientProgressPhoto.objects
+            .filter(user_id__in=user_ids)
+            .order_by("user_id", "-captured_for_date", "-created_at")
+        )
+        for row in latest_photo_rows:
+            if row.user_id not in latest_photo_by_user:
+                latest_photo_by_user[row.user_id] = row
+
+        weight_30d_counts = {
+            row["user_id"]: int(row["total"])
+            for row in (
+                ClientWeightEntry.objects
+                .filter(user_id__in=user_ids, measured_at__gte=window_start)
+                .values("user_id")
+                .annotate(total=Count("id"))
+            )
+        }
+        photo_30d_counts = {
+            row["user_id"]: int(row["total"])
+            for row in (
+                ClientProgressPhoto.objects
+                .filter(user_id__in=user_ids, created_at__gte=window_start)
+                .values("user_id")
+                .annotate(total=Count("id"))
+            )
+        }
 
     registered_rows = []
     registered_email_set = set()
     for profile in profiles:
         user = profile.user
+        user_id = user.id
         email = (getattr(user, "email", "") or "").strip()
         if email:
             registered_email_set.add(email.lower())
@@ -148,8 +196,11 @@ def _build_client_funnel_payload(admin_identity):
             if ts and (latest_job_dt is None or ts > latest_job_dt):
                 latest_job_dt = ts
         questionnaire = _questionnaire_snapshot(user)
+        latest_weight = latest_weight_by_user.get(user_id)
+        latest_photo = latest_photo_by_user.get(user_id)
         registered_rows.append(
             {
+                "client_user_id": user_id,
                 "email": email,
                 "offer_code": profile.offer_code,
                 "billing_cycle": profile.billing_cycle or "",
@@ -163,6 +214,15 @@ def _build_client_funnel_payload(admin_identity):
                 "food_generator_used": bool(generator_days),
                 "food_generator_days": generator_days,
                 "food_generator_last_used_at": _iso(latest_job_dt),
+                "latest_weight_value": float(latest_weight.weight_value) if latest_weight else None,
+                "latest_weight_unit": latest_weight.unit if latest_weight else "",
+                "latest_weight_measured_at": _iso(latest_weight.measured_at) if latest_weight else None,
+                "latest_photo_captured_for_date": (
+                    latest_photo.captured_for_date.isoformat() if latest_photo else None
+                ),
+                "latest_photo_uploaded_at": _iso(latest_photo.created_at) if latest_photo else None,
+                "weight_entries_last_30_days": int(weight_30d_counts.get(user_id, 0)),
+                "photo_uploads_last_30_days": int(photo_30d_counts.get(user_id, 0)),
             }
         )
 
@@ -301,6 +361,25 @@ class DashboardView(APIView):
         if is_trial and is_canceled:
             trial_converts_to = None
 
+        try:
+            client_funnel = _build_client_funnel_payload(admin_identity)
+        except Exception as exc:
+            client_funnel = {
+                "summary": {
+                    "precheckout_tracked": False,
+                    "precheckout_count": None,
+                    "paid_not_registered_count": 0,
+                    "registered_count": 0,
+                },
+                "precheckout_visits": [],
+                "paid_not_registered": [],
+                "registered_clients": [],
+                "notes": [
+                    "Client activity is temporarily unavailable.",
+                    f"Dashboard fallback activated: {exc}" if settings.DEBUG else "Please retry in a moment.",
+                ],
+            }
+
         payload = {
             "subscription_status": "admin_trial" if is_trial else subscription_status,
             "subscription_active": is_active,
@@ -323,7 +402,7 @@ class DashboardView(APIView):
             "next_plan_status": next_plan_status,
             "next_plan_price_cents": next_plan_price_cents,
             "next_plan_effective_on": next_plan_effective_on,
-            "client_funnel": _build_client_funnel_payload(admin_identity),
+            "client_funnel": client_funnel,
         }
 
         if settings.DEBUG:

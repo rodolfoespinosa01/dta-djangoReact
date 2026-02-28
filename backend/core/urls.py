@@ -1,6 +1,8 @@
 from django.contrib import admin  # 👉 imports the built-in django admin interface
 from django.urls import path, include  # 👉 used to define url routes and include other app-specific urls
 from django.http import HttpResponse
+from django.conf import settings
+from django.conf.urls.static import static
 from rest_framework.permissions import AllowAny
 from rest_framework.schemas import get_schema_view
 from core.api_meta import error_codes
@@ -30,6 +32,9 @@ urlpatterns = [
     path('api/v1/docs/', api_docs_view, name='api_docs'),
     path('api/v1/meta/error-codes/', error_codes, name='api_error_codes'),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 
 # 👉 summary:

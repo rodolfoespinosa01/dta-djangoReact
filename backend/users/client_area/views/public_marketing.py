@@ -26,7 +26,9 @@ def _display_name_from_identity(identity):
 
 
 def _offer_card_payload(code: str, *, featured: bool = False):
-    offer = OFFER_CATALOG[code]
+    offer = OFFER_CATALOG.get(code)
+    if not offer:
+        return None
     billing = offer.get("billing") or offer.get("billing_cycle")
     amount_cents = int(offer.get("amount_cents") or 0)
     if billing == "free":
@@ -80,11 +82,14 @@ def admin_public_marketing_page(request, slug):
     if not identity:
         return _error("ADMIN_PAGE_NOT_FOUND", "This admin page could not be found.", status=404)
 
-    offers = [
+    offer_rows = [
         _offer_card_payload("macro_calculator_free"),
         _offer_card_payload("food_plan_monthly"),
         _offer_card_payload("food_plan_monthly_premium", featured=True),
     ]
+    offers = [row for row in offer_rows if row]
+    if not offers:
+        return _error("OFFERS_NOT_CONFIGURED", "No offers are configured right now.", status=503)
 
     return _ok(
         {
