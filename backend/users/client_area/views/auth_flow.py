@@ -49,6 +49,17 @@ QUESTIONNAIRE_STEPS = [
     "training_schedule",
 ]
 WEEK_DAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
+QUESTIONNAIRE_IMMUTABLE_AFTER_COMPLETION = {"gender", "height"}
+QUESTIONNAIRE_REQUIRES_REGEN_FIELDS = {
+    "weight",
+    "date_of_birth",
+    "goal",
+    "lifestyle",
+    "meal_plan_type",
+    "workout_days",
+    "meal_schedule",
+    "training_schedule",
+}
 
 
 def _stripe_once_discount_from_quote(quote_payload):
@@ -272,6 +283,86 @@ def _extract_weekly_combo_selection_rows(answers):
             rows.append({"day_of_week": day, "meal_number": idx, "combo_id": combo_id})
 
     return rows, missing, invalid
+
+
+def _normalize_questionnaire_answer(step_key, answer, current_answers):
+    if step_key == "workout_days":
+        if not isinstance(answer, list):
+            return None, {"reason": "workout_days_must_be_array"}
+        selected = []
+        seen = set()
+        for day in answer:
+            normalized = str(day or "").strip().lower()
+            if normalized in WEEK_DAYS and normalized not in seen:
+                selected.append(normalized)
+                seen.add(normalized)
+        return selected, None
+
+    if step_key == "meal_schedule":
+        if not isinstance(answer, dict):
+            return None, {"reason": "meal_schedule_must_be_object"}
+        existing_days = (answer.get("days") or {}) if isinstance(answer.get("days"), dict) else {}
+        normalized_days = {}
+        for day in WEEK_DAYS:
+            try:
+                value = int(existing_days.get(day))
+            except (TypeError, ValueError):
+                value = 3
+            if value not in (3, 4, 5, 6):
+                value = 3
+            normalized_days[day] = value
+
+        default_meals = answer.get("default_meals")
+        try:
+            default_meals = int(default_meals)
+        except (TypeError, ValueError):
+            default_meals = normalized_days[WEEK_DAYS[0]]
+        if default_meals not in (3, 4, 5, 6):
+            default_meals = normalized_days[WEEK_DAYS[0]]
+
+        mode = str(answer.get("mode") or "").strip().lower()
+        if mode not in {"same", "custom"}:
+            mode = "same" if len({normalized_days[d] for d in WEEK_DAYS}) == 1 else "custom"
+
+        return {
+            "mode": mode,
+            "default_meals": default_meals,
+            "days": normalized_days,
+        }, None
+
+    if step_key == "training_schedule":
+        if not isinstance(answer, dict):
+            return None, {"reason": "training_schedule_must_be_object"}
+        workout_days = current_answers.get("workout_days") or []
+        if not isinstance(workout_days, list):
+            workout_days = []
+        workout_days = [str(d or "").strip().lower() for d in workout_days if str(d or "").strip().lower() in WEEK_DAYS]
+        meal_days = ((current_answers.get("meal_schedule") or {}).get("days") or {})
+        normalized = {}
+        for day in workout_days:
+            raw_value = str(answer.get(day) or "").strip().lower()
+            if not raw_value.startswith("before_meal_"):
+                continue
+            try:
+                meal_num = int(raw_value.split("_")[-1])
+            except (TypeError, ValueError):
+                continue
+            try:
+                meal_count = int(meal_days.get(day) or 0)
+            except (TypeError, ValueError):
+                meal_count = 0
+            if meal_num < 1 or meal_num > meal_count:
+                continue
+            normalized[day] = f"before_meal_{meal_num}"
+        return normalized, None
+
+    if step_key in {"goal", "lifestyle", "meal_plan_type", "gender"} and isinstance(answer, str):
+        return answer.strip().lower(), None
+
+    if step_key == "date_of_birth" and answer is not None:
+        return str(answer).strip(), None
+
+    return answer, None
 
 
 def _persist_client_meal_combo_selections(user, answers):
@@ -996,14 +1087,65 @@ def questionnaire_status_or_draft(request):
     if step_key not in QUESTIONNAIRE_STEPS:
         return error("INVALID_STEP", "Unknown questionnaire step.", http_status=400)
 
+    was_completed = progress.status == "completed"
+    if was_completed and step_key in QUESTIONNAIRE_IMMUTABLE_AFTER_COMPLETION:
+        return error(
+            "IMMUTABLE_QUESTIONNAIRE_FIELD",
+            f"`{step_key}` cannot be edited after onboarding is complete.",
+            http_status=400,
+        )
+
     answers = dict(progress.answers_json or {})
-    answers[step_key] = answer
+    normalized_answer, normalize_error = _normalize_questionnaire_answer(step_key, answer, answers)
+    if normalize_error:
+        return error(
+            "INVALID_STEP_ANSWER",
+            "The provided answer is invalid for this questionnaire step.",
+            http_status=400,
+            details={"step_key": step_key, **normalize_error},
+        )
+    previous_value = answers.get(step_key)
+    answers[step_key] = normalized_answer
+    inputs_changed = previous_value != normalized_answer
+
+    food_preferences_removed = False
+    if (
+        was_completed
+        and inputs_changed
+        and step_key in {"meal_plan_type", "workout_days", "meal_schedule", "training_schedule"}
+    ):
+        previous_food_preferences = answers.get("food_preferences")
+        if isinstance(previous_food_preferences, dict) and previous_food_preferences:
+            del answers["food_preferences"]
+            food_preferences_removed = True
+        deleted_count, _ = ClientMealComboSelection.objects.filter(user=request.user).delete()
+        if deleted_count > 0:
+            food_preferences_removed = True
+
     progress.answers_json = answers
-    progress.status = "in_progress"
+    progress.status = "completed" if was_completed else "in_progress"
     progress.current_step = next_step if next_step in QUESTIONNAIRE_STEPS else step_key
     progress.save(update_fields=["answers_json", "status", "current_step", "updated_at"])
-
-    return ok({"message": "Draft saved.", "questionnaire": _questionnaire_payload(progress)})
+    profile = ClientProfile.objects.filter(user=request.user).select_related("associated_admin").first()
+    requires_regen = bool(was_completed and inputs_changed and step_key in QUESTIONNAIRE_REQUIRES_REGEN_FIELDS)
+    payload = {
+        "message": "Draft saved." if not was_completed else "Questionnaire update saved.",
+        "questionnaire": _questionnaire_payload(progress),
+        "updates": {
+            "was_completed": was_completed,
+            "inputs_changed": inputs_changed,
+            "requires_meal_plan_regeneration": requires_regen,
+            "food_preferences_reset": food_preferences_removed,
+        },
+    }
+    if progress.status == "completed":
+        payload["results"] = build_questionnaire_results(
+            BuildResultsContext(
+                answers=progress.answers_json or {},
+                admin_identity=profile.associated_admin if profile else None,
+            )
+        )
+    return ok(payload)
 
 
 @api_view(["POST"])
@@ -1028,14 +1170,15 @@ def questionnaire_submit(request):
             details={"missing_steps": missing},
         )
 
+    already_completed = progress.status == "completed"
     progress.status = "completed"
     progress.current_step = QUESTIONNAIRE_STEPS[-1]
-    progress.completed_at = timezone.now()
+    progress.completed_at = progress.completed_at or timezone.now()
     progress.save(update_fields=["status", "current_step", "completed_at", "updated_at"])
     profile = ClientProfile.objects.filter(user=request.user).select_related("associated_admin").first()
     return ok(
         {
-            "message": "Questionnaire submitted.",
+            "message": "Questionnaire submitted." if not already_completed else "Questionnaire updates saved.",
             "questionnaire": _questionnaire_payload(progress),
             "results": build_questionnaire_results(
                 BuildResultsContext(

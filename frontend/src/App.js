@@ -36,6 +36,8 @@ import ClientSettingsPage from './pages/user/ClientSettingsPage';
 import ClientFoodPreferencesPage from './pages/user/ClientFoodPreferencesPage';
 import ClientMealPlanGenerationPage from './pages/user/ClientMealPlanGenerationPage';
 import ClientExportsPage from './pages/user/ClientExportsPage';
+import ClientTrackingPage from './pages/user/ClientTrackingPage';
+import ClientCoachingPage from './pages/user/ClientCoachingPage';
 
 // protected pages
 import AdminDashboard from './pages/admin/AdminDashboard/AdminDashboard';
@@ -118,6 +120,22 @@ function AppLayout() {
             element={
               <ClientProtectedRoute>
                 <ClientExportsPage />
+              </ClientProtectedRoute>
+            }
+          />
+          <Route
+            path="/client_tracking"
+            element={
+              <ClientProtectedRoute>
+                <ClientTrackingPage />
+              </ClientProtectedRoute>
+            }
+          />
+          <Route
+            path="/client_coaching"
+            element={
+              <ClientProtectedRoute>
+                <ClientCoachingPage />
               </ClientProtectedRoute>
             }
           />
