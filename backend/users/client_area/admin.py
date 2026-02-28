@@ -13,6 +13,8 @@ from .models import (
     DiscountCode,
     ClientPendingSignup,
     ClientProfile,
+    ClientProgressPhoto,
+    ClientWeightEntry,
     ClientQuestionnaireProgress,
     ClientQueuedPlanChange,
 )
@@ -285,6 +287,29 @@ class ClientMealComboSelectionAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+@admin.register(ClientProgressPhoto)
+class ClientProgressPhotoAdmin(admin.ModelAdmin):
+    list_display = (
+        "user",
+        "captured_for_date",
+        "same_position",
+        "same_lighting",
+        "same_time_of_day",
+        "created_at",
+    )
+    list_filter = ("captured_for_date", "same_position", "same_lighting", "same_time_of_day")
+    search_fields = ("user__email", "notes")
+    readonly_fields = ("created_at",)
+
+
+@admin.register(ClientWeightEntry)
+class ClientWeightEntryAdmin(admin.ModelAdmin):
+    list_display = ("user", "measured_at", "weight_value", "unit", "created_at")
+    list_filter = ("unit", "measured_at")
+    search_fields = ("user__email", "notes")
+    readonly_fields = ("created_at",)
 
 
 @admin.register(ClientFoodPreferenceChangeLog)

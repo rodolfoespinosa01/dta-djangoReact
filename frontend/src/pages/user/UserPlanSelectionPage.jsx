@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { apiRequest } from '../../api/client';
+import { getAdminSlugFromHostname } from '../../utils/branding';
 import './UserPlanSelectionPage.css';
 
 const DTA_DIRECT_PAGE = {
@@ -43,23 +44,6 @@ const DTA_DIRECT_PAGE = {
     },
   ],
 };
-
-function getAdminSlugFromHostname() {
-  if (typeof window === 'undefined') return '';
-  const hostname = (window.location?.hostname || '').toLowerCase();
-  if (!hostname) return '';
-  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === 'lvh.me') return '';
-  if (hostname.endsWith('.lvh.me')) {
-    const slug = hostname.slice(0, -'.lvh.me'.length);
-    return slug && slug !== 'www' ? slug : '';
-  }
-  const parts = hostname.split('.').filter(Boolean);
-  if (parts.length >= 3) {
-    const sub = parts[0];
-    if (sub && sub !== 'www') return sub;
-  }
-  return '';
-}
 
 function QuoteChip({ quote }) {
   if (!quote) return null;
@@ -127,8 +111,10 @@ function UserPlanSelectionPage() {
         const res = await apiRequest(`/api/v1/users/client/public/admin-page/${effectiveAdminSlug}/`);
         if (ignore) return;
         if (!res.ok) {
-          setStatus('error');
-          setError(res.data?.error?.message || 'Unable to load plan options.');
+          // If branded page lookup fails, fallback to direct DTA page instead of crashing UX.
+          setPageData(DTA_DIRECT_PAGE);
+          setStatus('ready');
+          setError('');
           return;
         }
         setPageData(res.data);

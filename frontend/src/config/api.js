@@ -1,7 +1,16 @@
-const defaultApiBase =
-  (typeof window !== 'undefined' && window.location?.protocol === 'https:')
-    ? 'https://localhost:8000'
-    : 'http://localhost:8000';
+const resolveDefaultApiBase = () => {
+  if (typeof window === 'undefined' || !window.location?.hostname) {
+    return 'http://localhost:8000';
+  }
+  const hostname = window.location.hostname;
+  // lvh.me subdomains are frontend-only branding in local dev; always target local backend host.
+  if (hostname.endsWith('.lvh.me')) {
+    return `${window.location.protocol}//localhost:8000`;
+  }
+  return `${window.location.protocol}//${hostname}:8000`;
+};
+
+const defaultApiBase = resolveDefaultApiBase();
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || defaultApiBase;
 

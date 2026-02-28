@@ -40,6 +40,11 @@ function formatMoney(cents) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100);
 }
 
+function formatWeight(value, unit) {
+  if (typeof value !== 'number' || Number.isNaN(value)) return '—';
+  return `${value.toFixed(1)} ${String(unit || '').toUpperCase() || 'LBS'}`;
+}
+
 function questionnaireLabel(status) {
   switch (status) {
     case 'completed':
@@ -60,6 +65,11 @@ function dayBadges(days) {
   return days.map((day) => DAY_LABELS[day] || day).join(', ');
 }
 
+function currentHost() {
+  if (typeof window === 'undefined') return 'localhost';
+  return window.location?.hostname || 'localhost';
+}
+
 function AdminDashboard() {
   const { isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
@@ -78,6 +88,10 @@ function AdminDashboard() {
   const [paramMessage, setParamMessage] = useState('');
   const [subdomainInput, setSubdomainInput] = useState('');
   const [subdomainError, setSubdomainError] = useState('');
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [clientTracking, setClientTracking] = useState(null);
+  const [clientTrackingLoading, setClientTrackingLoading] = useState(false);
+  const [clientTrackingError, setClientTrackingError] = useState('');
   const isParamSetupRequired = status === 'ok' && !paramStatus.loading && !paramStatus.setupCompleted;
   const normalizedSubdomain = normalizeSubdomain(subdomainInput);
 
@@ -181,11 +195,32 @@ function AdminDashboard() {
   const currentSubdomainLocked = Boolean(paramStatus.subdomain?.locked);
   const effectiveSubdomainError = currentSubdomainLocked ? '' : (subdomainError || validateSubdomainSlug(subdomainInput));
   const canProceedWithSetup = currentSubdomainLocked || !effectiveSubdomainError;
+  const host = currentHost();
   const clientFunnel = dashboardData?.client_funnel;
   const clientSummary = clientFunnel?.summary || {};
   const paidPendingClients = Array.isArray(clientFunnel?.paid_not_registered) ? clientFunnel.paid_not_registered : [];
   const registeredClients = Array.isArray(clientFunnel?.registered_clients) ? clientFunnel.registered_clients : [];
   const precheckoutNotes = Array.isArray(clientFunnel?.notes) ? clientFunnel.notes : [];
+
+  const loadClientTracking = async (client) => {
+    if (!client?.client_user_id) return;
+    setSelectedClient(client);
+    setClientTrackingLoading(true);
+    setClientTrackingError('');
+    try {
+      const { ok, data } = await apiRequest(`/api/v1/users/admin/clients/${client.client_user_id}/tracking/`, { auth: true });
+      if (!ok || data?.ok === false) {
+        throw new Error(data?.error?.message || 'Unable to load client tracking.');
+      }
+      setClientTracking(data);
+    } catch (err) {
+      console.error('Error loading client tracking:', err);
+      setClientTracking(null);
+      setClientTrackingError(err.message || 'Unable to load client tracking.');
+    } finally {
+      setClientTrackingLoading(false);
+    }
+  };
 
   return (
     <div className="admin-dashboard-wrapper">
@@ -238,6 +273,9 @@ function AdminDashboard() {
               </p>
               <p className="admin-subdomain-summary-dev">
                 Dev: {paramStatus.subdomain.slug}.lvh.me:3000
+              </p>
+              <p className="admin-subdomain-summary-dev">
+                Phone Dev: http://{host}:3000/start/{paramStatus.subdomain.slug}
               </p>
             </div>
           )}
@@ -328,6 +366,10 @@ function AdminDashboard() {
                       <th>Food Generator</th>
                       <th>Days Used</th>
                       <th>Last Generator Use</th>
+                      <th>Latest Weight</th>
+                      <th>Latest Photo</th>
+                      <th>30d Activity</th>
+                      <th>Tracking</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -346,6 +388,27 @@ function AdminDashboard() {
                         <td>{row.food_generator_used ? 'Used' : 'Not Yet'}</td>
                         <td>{dayBadges(row.food_generator_days)}</td>
                         <td>{formatDateTime(row.food_generator_last_used_at)}</td>
+                        <td>
+                          <div>{formatWeight(row.latest_weight_value, row.latest_weight_unit)}</div>
+                          <div className="admin-client-cell-subtle">{formatDateTime(row.latest_weight_measured_at)}</div>
+                        </td>
+                        <td>
+                          <div>{row.latest_photo_captured_for_date || '—'}</div>
+                          <div className="admin-client-cell-subtle">{formatDateTime(row.latest_photo_uploaded_at)}</div>
+                        </td>
+                        <td>
+                          <div>Weights: {row.weight_entries_last_30_days ?? 0}</div>
+                          <div className="admin-client-cell-subtle">Photos: {row.photo_uploads_last_30_days ?? 0}</div>
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            className="btn btn-outline"
+                            onClick={() => loadClientTracking(row)}
+                          >
+                            View Tracking
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -353,6 +416,82 @@ function AdminDashboard() {
               </div>
             )}
           </div>
+
+          {(selectedClient || clientTrackingLoading || clientTrackingError || clientTracking) && (
+            <div className="admin-client-section">
+              <div className="admin-client-section-title-row">
+                <h3>Client Tracking Detail{selectedClient?.email ? `: ${selectedClient.email}` : ''}</h3>
+              </div>
+              {clientTrackingLoading && <p className="admin-client-empty">Loading tracking data…</p>}
+              {!!clientTrackingError && <p className="error">{clientTrackingError}</p>}
+
+              {!clientTrackingLoading && !clientTrackingError && clientTracking && (
+                <>
+                  <p className="admin-client-cell-subtle" style={{ marginBottom: '0.75rem' }}>
+                    Photos: {clientTracking?.tracking?.summary?.photo_count ?? 0} | Weights: {clientTracking?.tracking?.summary?.weight_count ?? 0}
+                  </p>
+
+                  <div className="admin-client-table-wrap">
+                    <table className="admin-client-table">
+                      <thead>
+                        <tr>
+                          <th>Photo Date</th>
+                          <th>Uploaded</th>
+                          <th>Notes</th>
+                          <th>File</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(clientTracking?.tracking?.photos || []).map((photo) => (
+                          <tr key={`tracking-photo-${photo.id}`}>
+                            <td>{photo.captured_for_date || '—'}</td>
+                            <td>{formatDateTime(photo.created_at)}</td>
+                            <td>{photo.notes || '—'}</td>
+                            <td>
+                              {photo.file_url ? (
+                                <a href={photo.file_url} target="_blank" rel="noreferrer">Open</a>
+                              ) : '—'}
+                            </td>
+                          </tr>
+                        ))}
+                        {!(clientTracking?.tracking?.photos || []).length && (
+                          <tr>
+                            <td colSpan="4">No photos uploaded yet.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="admin-client-table-wrap" style={{ marginTop: '0.75rem' }}>
+                    <table className="admin-client-table">
+                      <thead>
+                        <tr>
+                          <th>Date/Time</th>
+                          <th>Weight</th>
+                          <th>Notes</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(clientTracking?.tracking?.weights || []).map((weight) => (
+                          <tr key={`tracking-weight-${weight.id}`}>
+                            <td>{formatDateTime(weight.measured_at)}</td>
+                            <td>{formatWeight(weight.weight_value, weight.unit)}</td>
+                            <td>{weight.notes || '—'}</td>
+                          </tr>
+                        ))}
+                        {!(clientTracking?.tracking?.weights || []).length && (
+                          <tr>
+                            <td colSpan="3">No weight entries yet.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </section>
       )}
 
@@ -409,6 +548,9 @@ function AdminDashboard() {
               </div>
               <p className="admin-setup-modal-preview">
                 Dev preview: {normalizedSubdomain ? `${normalizedSubdomain}.lvh.me:3000` : '—'}
+              </p>
+              <p className="admin-setup-modal-preview">
+                Phone dev: {normalizedSubdomain ? `http://${host}:3000/start/${normalizedSubdomain}` : '—'}
               </p>
               <p className="admin-setup-modal-preview">
                 Production: {normalizedSubdomain ? `${normalizedSubdomain}.dtameals.com` : '—'}

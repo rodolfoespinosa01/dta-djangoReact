@@ -1,6 +1,6 @@
 // AdminLoginPage.jsx (minimal diff)
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { useLanguage } from '../../../context/LanguageContext';
 import { buildApiUrl } from '../../../config/api';
@@ -8,7 +8,9 @@ import GoogleSignInButton from '../../../components/auth/GoogleSignInButton';
 import './AdminLoginPage.css';
 
 function AdminLoginPage() {
-  const [email, setEmail] = useState('');
+  const [searchParams] = useSearchParams();
+  const initialEmail = (searchParams.get('email') || '').trim();
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
   const { login } = useAuth();
