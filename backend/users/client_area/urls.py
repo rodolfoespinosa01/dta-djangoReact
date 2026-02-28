@@ -39,6 +39,7 @@ from users.client_area.views.meal_plan_generation import (
     client_meal_plan_generation_step1_run,
 )
 from users.client_area.views.meal_recipe_suggestions import client_meal_plan_day_recipe_ideas
+from users.client_area.views.tracking import client_progress_photos, client_weight_entries
 
 urlpatterns = [
     path('dashboard/', dashboard_view, name='dashboard'),
@@ -73,4 +74,6 @@ urlpatterns = [
     path('app/meal-plan-days/<str:day_of_week>/recipe-ideas/', client_meal_plan_day_recipe_ideas, name='client_meal_plan_day_recipe_ideas'),
     path('app/questionnaire/', questionnaire_status_or_draft, name='client_questionnaire_status_or_draft'),
     path('app/questionnaire/submit/', questionnaire_submit, name='client_questionnaire_submit'),
+    path('app/tracking/photos/', client_progress_photos, name='client_progress_photos'),
+    path('app/tracking/weights/', client_weight_entries, name='client_weight_entries'),
 ]

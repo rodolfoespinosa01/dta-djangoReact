@@ -9,6 +9,7 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import LanguageToggle from './components/language/LanguageToggle';
 import AppErrorBoundary from './components/AppErrorBoundary';
+import { getAdminSlugFromHostname } from './utils/branding';
 
 // public pages
 import MainWelcomeScreen from './pages/MainWelcomeScreen/MainWelcomeScreen';
@@ -54,7 +55,10 @@ import ClientProtectedRoute from './routes/ClientProtectedRoute';
 
 function AppLayout() {
   const location = useLocation();
-  const showNavbar = location.pathname.startsWith('/admin') || location.pathname.startsWith('/superadmin');
+  const hostAdminSlug = getAdminSlugFromHostname();
+  const showNavbar =
+    location.pathname.startsWith('/admin') ||
+    location.pathname.startsWith('/superadmin');
 
   return (
     <div className="app-shell">
@@ -63,7 +67,7 @@ function AppLayout() {
       <main className="app-content">
         <Routes>
           {/* Public Routes */}
-          <Route path="/" element={<Navigate to="/welcome" replace />} />
+          <Route path="/" element={<Navigate to={hostAdminSlug ? `/start/${hostAdminSlug}` : '/welcome'} replace />} />
           <Route path="/welcome" element={<MainWelcomeScreen />} />
           <Route path="/admin_homepage" element={<AdminHomePage />} />
           <Route path="/admin_plans" element={<AdminPlanSelectionPage />} />

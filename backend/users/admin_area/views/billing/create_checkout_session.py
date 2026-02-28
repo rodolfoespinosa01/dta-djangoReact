@@ -20,7 +20,7 @@ from users.admin_area.views.api_contract import error, ok
 from users.admin_area.views.idempotency import begin_idempotent_request
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
-FRONTEND_URL = getattr(settings, "FRONTEND_URL", None) or "https://localhost:3000"
+FRONTEND_URL = getattr(settings, "FRONTEND_URL", None) or "http://localhost:3000"
 
 # Alias map so callers can use snake_case or your canonical names
 PLAN_NAME_ALIASES = {
