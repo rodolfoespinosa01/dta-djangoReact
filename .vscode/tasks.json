@@ -89,6 +89,19 @@
       "problemMatcher": []
     },
     {
+      "label": "Setup Dev",
+      "type": "shell",
+      "command": "zsh -lc './setup_dev.sh'",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Run Django Tests",
       "type": "shell",
       "command": "source venv/bin/activate && python manage.py test",
@@ -100,9 +113,13 @@
     {
       "label": "Reset All",
       "type": "shell",
-      "command": "source venv/bin/activate && python manage.py reset_all",
+      "command": "zsh -lc './reset_dev.sh'",
       "options": {
-        "cwd": "${workspaceFolder}/backend"
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
       },
       "problemMatcher": []
     },

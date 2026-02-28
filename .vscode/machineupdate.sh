@@ -2,7 +2,7 @@ echo "🔄 Pulling latest from origin/main..."
 git pull origin main
 
 echo "🐍 Activating virtual environment..."
-source backend/venv/bin/activate
+source venv/bin/activate
 
 echo "📦 Installing backend Python dependencies..."
 pip install -r backend/requirements.txt
