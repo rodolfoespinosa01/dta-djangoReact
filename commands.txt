@@ -1,0 +1,36 @@
+Create admin and client
+
+cd /Users/rodolfoespinosa-nunez/Desktop/dta-djangoReact/backend
+source venv/bin/activate           # or however you activate your venv
+python manage.py simulate_create_admin_with_client \
+    test@admin.com client2@example.com \
+    --admin_password test1234 \
+    --client_password TestClient123! \
+    --plan_name adminMonthly \
+    --admin_slug rodolfo \
+    --initialize_parameters \
+    --offer_code macro_calculator_free
+
+# other useful commands:
+
+# wipe admin/user tables only
+python backend/manage.py reset_all
+
+# drop+recreate database
+python backend/manage.py full_reset_db
+
+# simulate a DTA client signup (no Stripe)
+python backend/manage.py simulate_dtaclient_signup user@example.com macro_calculator_free \
+    --admin_slug rodolfo
+
+# create just an admin (no client)
+python backend/manage.py simulate_create_admin admin@example.com \
+    --password TestAdmin123! --plan_name adminMonthly \
+    --initialize_parameters --admin_slug rodolfo
+
+# create a client linked to an existing admin
+python backend/manage.py simulate_create_admin_client rodolfo client1@example.com \
+    --password TestClient123! --offer_code macro_calculator_free
+
+# show help for any command
+python backend/manage.py simulate_create_admin_with_client --help
