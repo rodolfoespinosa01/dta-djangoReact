@@ -2,9 +2,9 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Run Django Server",
+      "label": "Run Django Server (Stable)",
       "type": "shell",
-      "command": "zsh -lc 'source venv/bin/activate && python manage.py runserver 0.0.0.0:8000'",
+      "command": "zsh -lc 'source venv/bin/activate && python manage.py runserver 0.0.0.0:8000 --noreload --nothreading'",
       "options": {
         "cwd": "${workspaceFolder}/backend"
       },
@@ -60,7 +60,7 @@
       "dependsOn": [
         "Run Redis Server",
         "Run Celery Worker",
-        "Run Django Server",
+        "Run Django Server (Stable)",
         "Run React App",
         "Run Stripe Webhook"
       ],

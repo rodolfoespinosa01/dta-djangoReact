@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { apiRequest } from '../../api/client';
 import { getAdminSlugFromHostname } from '../../utils/branding';
@@ -106,6 +106,7 @@ function UserPlanSelectionPage() {
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [paidQuote, setPaidQuote] = useState(null);
   const [includeCoaching, setIncludeCoaching] = useState(false);
+  const emailInputRef = useRef(null);
 
   useEffect(() => {
     // Dynamically load custom CSS if present in pageData
@@ -181,6 +182,10 @@ function UserPlanSelectionPage() {
     const targetCoaching = includeCoaching;
     return paidOffers.find((o) => o.billing === 'monthly' && Boolean(o.includes_coaching) === targetCoaching) || null;
   }, [paidOffers, includeCoaching]);
+  const premiumOffer = useMemo(
+    () => paidOffers.find((o) => o.billing === 'monthly' && Boolean(o.includes_coaching)) || null,
+    [paidOffers],
+  );
 
   useEffect(() => {
     if (!selectedPaidOffer) {
@@ -239,6 +244,10 @@ function UserPlanSelectionPage() {
     setCtaMessage('');
     if (!signupEmail.trim()) {
       setCtaMessage('Enter your email first so we can create your registration link.');
+      if (emailInputRef.current) {
+        emailInputRef.current.focus();
+        emailInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
       return;
     }
     setStartingOfferCode(offer.code);
@@ -333,6 +342,7 @@ function UserPlanSelectionPage() {
             value={signupEmail}
             onChange={(e) => setSignupEmail(e.target.value)}
             placeholder="you@example.com"
+            ref={emailInputRef}
           />
         </label>
         <label className="user-plan-email-field">
@@ -455,12 +465,15 @@ function UserPlanSelectionPage() {
             className="user-plan-button"
             onClick={() => {
               setIncludeCoaching(true);
-              // Find the premium offer (with includes_coaching true)
-              const premiumOffer = paidOffers.find((o) => o.includes_coaching);
-              if (premiumOffer) handleOfferSelect(premiumOffer);
+              if (!premiumOffer) {
+                setCtaMessage('Premium coaching option is not available right now.');
+                return;
+              }
+              handleOfferSelect(premiumOffer);
             }}
+            disabled={!premiumOffer}
           >
-            Choose Premium + Coaching
+            {startingOfferCode === premiumOffer?.code ? 'Starting…' : 'Choose Premium + Coaching'}
           </button>
         </article>
       </div>
