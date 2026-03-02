@@ -6,6 +6,20 @@ import { buildApiUrl } from '../../../config/api';
 import GoogleSignInButton from '../../../components/auth/GoogleSignInButton';
 import './AdminRegisterPage.css';
 
+const SUBDOMAIN_RE = /^[a-z]+(?:-[a-z]+)*$/;
+
+function normalizeSubdomain(value) {
+  return String(value || '').trim().toLowerCase().replace(/\s+/g, '');
+}
+
+function validateSubdomainSlug(value) {
+  const slug = normalizeSubdomain(value);
+  if (!slug) return 'Subdomain is required.';
+  if (slug.length < 3 || slug.length > 40) return 'Subdomain must be between 3 and 40 characters.';
+  if (!SUBDOMAIN_RE.test(slug)) return 'Use only letters and hyphens (no spaces, numbers, or underscores).';
+  return '';
+}
+
 function AdminRegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -13,7 +27,10 @@ function AdminRegisterPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [inlineError, setInlineError] = useState('');
+  const [subdomainInput, setSubdomainInput] = useState('');
   const isGmailEmail = /@gmail\.com$|@googlemail\.com$/i.test((email || '').trim());
+  const isDTAHouseAdmin = (email || '').trim().toLowerCase() === 'admin@dta.com';
+  const effectiveSubdomainError = isDTAHouseAdmin ? '' : validateSubdomainSlug(subdomainInput);
 
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -63,6 +80,10 @@ function AdminRegisterPage() {
       setInlineError('Gmail accounts must continue with Google.');
       return;
     }
+    if (effectiveSubdomainError) {
+      setInlineError(effectiveSubdomainError);
+      return;
+    }
     setSubmitting(true);
     setInlineError('');
 
@@ -71,7 +92,12 @@ function AdminRegisterPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email, password, token }),
+        body: JSON.stringify({
+          email,
+          password,
+          token,
+          subdomain_slug: isDTAHouseAdmin ? undefined : normalizeSubdomain(subdomainInput),
+        }),
       });
 
       let data;
@@ -99,6 +125,10 @@ function AdminRegisterPage() {
   };
 
   const handleGoogleCredential = async (credential) => {
+    if (effectiveSubdomainError) {
+      setInlineError(effectiveSubdomainError);
+      return;
+    }
     setSubmitting(true);
     setInlineError('');
     try {
@@ -106,7 +136,12 @@ function AdminRegisterPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email, token, credential }),
+        body: JSON.stringify({
+          email,
+          token,
+          credential,
+          subdomain_slug: isDTAHouseAdmin ? undefined : normalizeSubdomain(subdomainInput),
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -140,6 +175,24 @@ function AdminRegisterPage() {
           <p className="admin-register-subtitle">Gmail account detected. Google signup is required to create this account.</p>
         ) : (
           <p className="admin-register-subtitle">Create a password to register. Google is also available if you want to use it now.</p>
+        )}
+        {!isDTAHouseAdmin && (
+          <>
+            <label>Business Subdomain</label>
+            <div className="admin-register-subdomain-row">
+              <input
+                type="text"
+                value={subdomainInput}
+                onChange={(e) => setSubdomainInput(normalizeSubdomain(e.target.value))}
+                placeholder="your-business"
+                className="admin-register-input"
+                autoComplete="off"
+                required
+              />
+              <span className="admin-register-subdomain-suffix">.dtameals.com</span>
+            </div>
+            {!!effectiveSubdomainError && <p className="admin-register-error" role="alert">{effectiveSubdomainError}</p>}
+          </>
         )}
         <form onSubmit={handleSubmit}>
           <label>{t('admin_register.email')}</label>
