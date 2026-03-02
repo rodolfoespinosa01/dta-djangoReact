@@ -1,4 +1,9 @@
 const resolveDefaultApiBase = () => {
+  // In local development, use same-origin requests so CRA dev server can proxy /api to Django.
+  // This avoids direct phone->:8000 LAN calls that can be flaky on some networks/firewalls.
+  if (process.env.NODE_ENV !== 'production') {
+    return '';
+  }
   if (typeof window === 'undefined' || !window.location?.hostname) {
     return 'http://localhost:8000';
   }
