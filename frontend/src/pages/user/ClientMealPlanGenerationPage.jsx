@@ -923,18 +923,20 @@ function ClientMealPlanGenerationPage() {
             </div>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 980 }}>
-                <thead>
-                  <tr>
-                    <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.12)' }}>Meal</th>
-                    <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.12)' }}>Combo ID</th>
-                    <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.12)' }}>Protein 1</th>
-                    <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.12)' }}>Protein 2</th>
-                    <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.12)' }}>Carbs 1</th>
-                    <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.12)' }}>Carbs 2</th>
-                    <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.12)' }}>Fats 1</th>
-                    <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.12)' }}>Fats 2</th>
-                  </tr>
-                </thead>
+                {showAllMeals && (
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.12)' }}>Meal</th>
+                      <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.12)' }}>Combo ID</th>
+                      <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.12)' }}>Protein 1</th>
+                      <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.12)' }}>Protein 2</th>
+                      <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.12)' }}>Carbs 1</th>
+                      <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.12)' }}>Carbs 2</th>
+                      <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.12)' }}>Fats 1</th>
+                      <th style={{ textAlign: 'left', padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.12)' }}>Fats 2</th>
+                    </tr>
+                  </thead>
+                )}
                 <tbody>
                   {showAllMeals
                     ? (detail.meals || []).map((meal) => (
@@ -953,20 +955,53 @@ function ClientMealPlanGenerationPage() {
                       ))
                     : (() => {
                         const meal = (detail.meals || [])[currentMealIndex] || null;
-                        return meal ? (
+                        if (!meal) return null;
+                        // Gather foods and measurements for each macro
+                        const macroGroups = [
+                          {
+                            label: 'Protein',
+                            slots: [meal.slots?.protein_1, meal.slots?.protein_2],
+                          },
+                          {
+                            label: 'Carbs',
+                            slots: [meal.slots?.carbs_1, meal.slots?.carbs_2],
+                          },
+                          {
+                            label: 'Fats',
+                            slots: [meal.slots?.fats_1, meal.slots?.fats_2],
+                          },
+                        ];
+                        return (
                           <tr key={`detail-${meal.meal_number}`}>
-                            <td style={{ padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.08)' }}>Meal {meal.meal_number}</td>
-                            <td style={{ padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.08)' }}>{meal.combo_id}</td>
-                            {['protein_1', 'protein_2', 'carbs_1', 'carbs_2', 'fats_1', 'fats_2'].map((slotKey) => {
-                              const slot = meal.slots?.[slotKey];
-                              return (
-                                <td key={`${meal.meal_number}-${slotKey}`} style={{ padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.08)' }}>
-                                  <FoodSlotCell slot={slot} unitMode={unitMode} />
-                                </td>
-                              );
-                            })}
+                            <td colSpan={8} style={{ padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.08)' }}>
+                              <div style={{ display: 'flex', flexDirection: 'row', gap: '2.5rem', alignItems: 'flex-start' }}>
+                                {macroGroups.map((group) => {
+                                  // Only show sources that are not empty, not named 'None', and have a nonzero amount
+                                  const sources = group.slots.filter((slot) => {
+                                    if (!slot) return false;
+                                    if (!slot.name || slot.name.toLowerCase() === 'none') return false;
+                                    // Check for zero amount (oz or g)
+                                    const amount = slot.amount_oz ?? slot.amount_g ?? 0;
+                                    if (!amount || amount === 0) return false;
+                                    return true;
+                                  });
+                                  if (sources.length === 0) return null;
+                                  return (
+                                    <div key={group.label} style={{ minWidth: 120 }}>
+                                      <div style={{ fontWeight: 600, marginBottom: 4 }}>{group.label}</div>
+                                      {sources.map((slot, idx) => (
+                                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                                          <FoodSlotCell slot={slot} unitMode={unitMode} />
+                                          <span style={{ fontSize: '0.95em', color: '#444', marginLeft: 2 }}>{amountLabel(slot, unitMode)}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </td>
                           </tr>
-                        ) : null;
+                        );
                       })()
                   }
                   {(!detail.meals || detail.meals.length === 0) && (
