@@ -279,6 +279,44 @@ class DashboardView(APIView):
             return auth_error
         user = request.user
 
+        # Always treat admin@dta.com as active (bypass plan check)
+        if user.email.lower() == 'admin@dta.com':
+            admin_identity = AdminIdentity.objects.filter(admin_email=user.email).first()
+            payload = {
+                "subscription_status": "admin_active",
+                "subscription_active": True,
+                "is_active": True,
+                "is_canceled": False,
+                "cancel_at_period_end": False,
+                "subscription_end": None,
+                "next_billing": None,
+                "is_trial": False,
+                "days_remaining": None,
+                "trial_start": None,
+                "trial_ends_on": None,
+                "trial_converts_to": None,
+                "monthly_start": None,
+                "quarterly_start": None,
+                "annual_start": None,
+                "auto_renew": True,
+                "current_cycle_ends_on": None,
+                "days_left_in_cycle": None,
+                "next_plan_status": None,
+                "next_plan_price_cents": None,
+                "next_plan_effective_on": None,
+                "client_funnel": {},
+            }
+            payload_serializer = AdminDashboardPayloadSerializer(data=payload)
+            if not payload_serializer.is_valid():
+                return error(
+                    code="DASHBOARD_PAYLOAD_INVALID",
+                    message="Dashboard payload validation failed.",
+                    http_status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    details=payload_serializer.errors,
+                )
+            safe_payload = payload_serializer.validated_data
+            return ok(safe_payload, http_status=status.HTTP_200_OK)
+
         now_ts = now()
         stripe_sub = _stripe_current_subscription(user.email)
         admin_identity = AdminIdentity.objects.filter(admin_email=user.email).first()

@@ -14,13 +14,21 @@ class AdminForgotPasswordSerializer(serializers.Serializer):
 
     # ✅ Make sure the email belongs to an active admin
     def validate_email(self, value):
+        # Allow admin@dta.com even if inactive
+        if value.lower() == 'admin@dta.com':
+            if not CustomUser.objects.filter(email=value, role='admin').exists():
+                raise serializers.ValidationError("No admin account found with this email.")
+            return value
         if not CustomUser.objects.filter(email=value, role='admin', is_active=True).exists():
             raise serializers.ValidationError("No active admin account found with this email.")
         return value
 
     def save(self):
         email = self.validated_data['email']
-        user = CustomUser.objects.get(email=email, role='admin', is_active=True)
+        if email.lower() == 'admin@dta.com':
+            user = CustomUser.objects.get(email=email, role='admin')
+        else:
+            user = CustomUser.objects.get(email=email, role='admin', is_active=True)
 
         # 🔑 Generate token and UID for the reset URL
         token = default_token_generator.make_token(user)
@@ -51,9 +59,12 @@ class AdminResetPasswordSerializer(serializers.Serializer):
         # Decode UID and retrieve the user
         try:
             uid = force_str(urlsafe_base64_decode(data['uid']))
-            user = CustomUser.objects.get(pk=uid, role='admin', is_active=True)
+            user = CustomUser.objects.get(pk=uid, role='admin')
         except Exception:
             raise serializers.ValidationError("Invalid or expired UID.")
+        # Only allow inactive for admin@dta.com
+        if user.email.lower() != 'admin@dta.com' and not user.is_active:
+            raise serializers.ValidationError("Inactive admin account.")
 
         # Verify the token with Django's token generator
         if not default_token_generator.check_token(user, data['token']):

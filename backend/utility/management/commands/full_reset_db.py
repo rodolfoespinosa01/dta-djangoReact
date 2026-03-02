@@ -37,8 +37,9 @@ class Command(BaseCommand):
             # Run migrations fresh
             call_command('makemigrations')
             call_command('migrate')
+            call_command('reset_all')
 
-            print("\n✅ Migrations applied. Fresh DB ready.\n")
+            print("\n✅ Migrations applied. Fresh DB ready with test admin seeded.\n")
 
         except Exception as e:
             self.stderr.write(f"❌ Error during full DB reset: {e}")

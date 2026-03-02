@@ -42,17 +42,10 @@ def admin_client_tracking(request, user_id: int):
         return auth_error
 
     admin_identity = AdminIdentity.objects.filter(admin_email=request.user.email).first()
-    if not admin_identity:
-        return error(
-            code="ADMIN_IDENTITY_NOT_FOUND",
-            message="Admin identity not found.",
-            http_status=404,
-        )
-
     profile = (
         ClientProfile.objects
-        .filter(user_id=user_id, associated_admin=admin_identity)
-        .select_related("user")
+        .filter(user_id=user_id)
+        .select_related("user", "associated_admin")
         .first()
     )
     if not profile:
@@ -61,6 +54,23 @@ def admin_client_tracking(request, user_id: int):
             message="Client not found for this admin.",
             http_status=404,
         )
+
+    # Standard ownership: admin can only see clients explicitly assigned to them.
+    if profile.associated_admin_id:
+        if not admin_identity or profile.associated_admin_id != admin_identity.id:
+            return error(
+                code="CLIENT_NOT_FOUND",
+                message="Client not found for this admin.",
+                http_status=404,
+            )
+    else:
+        # DTA direct clients (no associated_admin) are visible only to the DTA house admin.
+        if not (profile.sale_channel == "dta_direct" and (request.user.email or "").strip().lower() == "admin@dta.com"):
+            return error(
+                code="CLIENT_NOT_FOUND",
+                message="Client not found for this admin.",
+                http_status=404,
+            )
 
     photos = list(
         ClientProgressPhoto.objects
