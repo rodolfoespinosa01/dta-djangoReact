@@ -413,6 +413,15 @@ function ClientMealPlanGenerationPage() {
     }
   }, []);
 
+  useEffect(() => {
+    const mealCount = detail?.meals?.length || 0;
+    if (mealCount === 0) {
+      if (currentMealIndex !== 0) setCurrentMealIndex(0);
+      return;
+    }
+    if (currentMealIndex >= mealCount) setCurrentMealIndex(0);
+  }, [detail?.meals?.length, currentMealIndex]);
+
   const handleRunGeneration = async () => {
     setRunning(true);
     setError('');
@@ -919,6 +928,17 @@ function ClientMealPlanGenerationPage() {
                     Next Meal
                   </button>
                 </>
+              )}
+              {!showAllMeals && (detail.meals?.length > 0) && (
+                <span
+                  className="client-dash-muted"
+                  style={{ marginLeft: 10, fontWeight: 600 }}
+                >
+                  Viewing Meal {currentMealIndex + 1} of {detail.meals.length}
+                  {detail.meals?.[currentMealIndex]?.meal_number != null
+                    ? ` (Meal ${detail.meals[currentMealIndex].meal_number})`
+                    : ''}
+                </span>
               )}
             </div>
             <div style={{ overflowX: 'auto' }}>
