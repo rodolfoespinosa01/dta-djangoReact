@@ -16,6 +16,7 @@ function AdminProtectedRoute({ children }) {
     path === '/admin_dashboard'
     || path === '/admin_parameter_settings'
     || path === '/admin_reactivate'
+    || path === '/admin_messaging'
   );
 
   useEffect(() => {

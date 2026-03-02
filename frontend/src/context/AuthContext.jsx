@@ -21,6 +21,7 @@ const PUBLIC_PATHS = new Set([
   '/user_login',
   '/client_login',
   '/client_register',
+  '/client_signup_success',
   '/macro_calculator',
   '/superadmin_login',
 ]);

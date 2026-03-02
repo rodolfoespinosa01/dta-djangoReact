@@ -31,6 +31,7 @@ urlpatterns = [
     path('api/v1/schema/', schema_view, name='api_schema'),
     path('api/v1/docs/', api_docs_view, name='api_docs'),
     path('api/v1/meta/error-codes/', error_codes, name='api_error_codes'),
+    path('api/v1/', include('core.message_api_urls')),
 ]
 
 if settings.DEBUG:

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { apiRequest } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { openPrintPdfWindow, renderPrintTable, escapeHtml } from '../../utils/printPdf';
+import MessagingPortal from '../../components/MessagingPortal';
 import './ClientDashboardPage.css';
 
 const QUESTION_STEPS = [
@@ -685,6 +686,7 @@ function ClientDashboardPage() {
         </div>
       </header>
 
+      {/* Messaging Portal Section */}
       <section className="client-dashboard-card">
         <h2>Your Plan Access</h2>
         <ul>
@@ -742,7 +744,11 @@ function ClientDashboardPage() {
             Tracking
           </button>
           {dashboard?.client?.includes_coaching && (
-            <button type="button" className="client-q-btn secondary" onClick={() => navigate('/client_coaching')}>
+            <button
+              type="button"
+              className="client-q-btn secondary"
+              onClick={() => navigate('/client_coaching')}
+            >
               Coaching
             </button>
           )}

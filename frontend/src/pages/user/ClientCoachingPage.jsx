@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { apiRequest } from '../../api/client';
 import './ClientDashboardPage.css';
+import MessagingPortal from '../../components/MessagingPortal';
 
 function ClientCoachingPage() {
   const navigate = useNavigate();
@@ -10,6 +11,21 @@ function ClientCoachingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [includesCoaching, setIncludesCoaching] = useState(false);
+  const [adminUserId, setAdminUserId] = useState(null);
+
+  const goToDashboard = () => navigate('/client_dashboard');
+  const handleLogout = () => logout('/client_login');
+
+  const actions = (
+    <div className="client-coaching-actions">
+      <button type="button" className="client-coaching-btn" onClick={goToDashboard}>
+        ← Back to Dashboard
+      </button>
+      <button type="button" className="client-coaching-btn danger" onClick={handleLogout}>
+        Log out
+      </button>
+    </div>
+  );
 
   useEffect(() => {
     let ignore = false;
@@ -28,6 +44,7 @@ function ClientCoachingPage() {
           return;
         }
         setIncludesCoaching(Boolean(res.data?.client?.includes_coaching));
+        setAdminUserId(res.data?.client?.associated_admin_user_id || null);
       } catch (err) {
         console.error(err);
         if (!ignore) setError('Network error while loading coaching dashboard.');
@@ -39,54 +56,16 @@ function ClientCoachingPage() {
     return () => { ignore = true; };
   }, [navigate]);
 
+  if (loading) return <div className="client-coaching-page">{actions}<p>Loading…</p></div>;
+  if (error) return <div className="client-coaching-page">{actions}<p className="client-dash-error">{error}</p></div>;
+  if (!includesCoaching) return <div className="client-coaching-page">{actions}<p>You do not have access to coaching messaging.</p></div>;
+  if (!adminUserId) return <div className="client-coaching-page">{actions}<p>No coach is assigned to your account.</p></div>;
+
   return (
-    <div className="client-dashboard-page">
-      <header className="client-dashboard-header">
-        <div>
-          <h1>Coaching Dashboard</h1>
-          <p className="client-dash-muted">
-            Stay in touch with your coach from one place.
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <Link className="client-q-btn secondary" to="/client_dashboard">Back to Dashboard</Link>
-          <button type="button" className="client-q-btn danger" onClick={() => logout('/client_login')}>
-            Log Out
-          </button>
-        </div>
-      </header>
-
-      <section className="client-dashboard-card">
-        <h2>Status</h2>
-        {loading ? <p className="client-dash-muted">Loading coaching status…</p> : null}
-        {!loading && error ? <p className="client-q-error">{error}</p> : null}
-        {!loading && !error ? (
-          includesCoaching ? (
-            <p className="client-dash-muted">
-              Coaching access is active. Messaging and coach workflow modules will appear here next.
-            </p>
-          ) : (
-            <p className="client-dash-muted">
-              Coaching is not enabled on your current plan yet.
-            </p>
-          )
-        ) : null}
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <button type="button" className="client-q-btn secondary" onClick={() => navigate('/client_settings')}>
-            Manage Plan
-          </button>
-        </div>
-      </section>
-
-      <section className="client-dashboard-card">
-        <h2>Coming Soon</h2>
-        <ul>
-          <li>Coach-client direct messaging</li>
-          <li>Shared weekly check-ins</li>
-          <li>Progress updates and feedback loops</li>
-          <li>Coach action history</li>
-        </ul>
-      </section>
+    <div className="client-coaching-page" style={{ padding: 32 }}>
+      {actions}
+      <h1>Coaching Messaging</h1>
+      <MessagingPortal adminUserId={adminUserId} />
     </div>
   );
 }

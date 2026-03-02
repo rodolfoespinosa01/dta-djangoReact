@@ -1,4 +1,5 @@
-import React from 'react';
+          import React from 'react';
+          import AdminMessagingPage from './pages/admin/AdminMessagingPage';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { LanguageProvider } from './context/LanguageContext';
@@ -30,6 +31,7 @@ import UserHomePage from './pages/user/UserHomePage';
 // ...existing code...
 import UserPlanSelectionPage from './pages/user/UserPlanSelectionPage';
 import ClientRegisterPage from './pages/user/ClientRegisterPage';
+import ClientSignupSuccessPage from './pages/user/ClientSignupSuccessPage';
 import ClientLoginPage from './pages/user/ClientLoginPage';
 import ClientDashboardPage from './pages/user/ClientDashboardPage';
 import ClientMacroCalculatorPage from './pages/user/ClientMacroCalculatorPage';
@@ -66,6 +68,14 @@ function AppLayout() {
       {showNavbar && <Navbar />}
       <main className="app-content">
         <Routes>
+          <Route
+            path="/admin_messaging"
+            element={
+              <AdminProtectedRoute>
+                <AdminMessagingPage />
+              </AdminProtectedRoute>
+            }
+          />
           {/* Public Routes */}
           <Route path="/" element={<Navigate to={hostAdminSlug ? `/start/${hostAdminSlug}` : '/welcome'} replace />} />
           <Route path="/welcome" element={<MainWelcomeScreen />} />
@@ -81,6 +91,7 @@ function AppLayout() {
           <Route path="/user_homepage" element={<UserHomePage />} />
           <Route path="/user_plans" element={<UserPlanSelectionPage />} />
           <Route path="/client_register" element={<ClientRegisterPage />} />
+          <Route path="/client_signup_success" element={<ClientSignupSuccessPage />} />
           <Route path="/client_login" element={<Navigate to="/user_login" replace />} />
           <Route path="/user_login" element={<ClientLoginPage />} />
           <Route path="/macro_calculator" element={<ClientMacroCalculatorPage />} />
