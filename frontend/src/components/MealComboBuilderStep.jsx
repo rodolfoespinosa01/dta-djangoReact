@@ -13,7 +13,7 @@ const SLOT_LABELS = {
 const WEEK_DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 const MAX_SAVED_TEMPLATES = 7;
 const SLOT_MIN_GRAMS_FOR_SECOND_SOURCE = {
-  protein_2: 40,
+  protein_2: 30,
   carbs_2: 35,
   fats_2: 20,
 };
@@ -278,11 +278,17 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
 
   const isSecondSlotDisabled = (slotKey, scopeLabel, mealIndex) => {
     const minRequired = SLOT_MIN_GRAMS_FOR_SECOND_SOURCE[slotKey];
-    if (!minRequired) return false;
     const mealSplit = getReferenceMealSplit(scopeLabel, mealIndex);
     if (!mealSplit) return false;
     const gramsKey = slotKey.startsWith('protein') ? 'protein_g' : slotKey.startsWith('carbs') ? 'carbs_g' : 'fats_g';
-    return Number(mealSplit?.grams?.[gramsKey] || 0) < minRequired;
+    const macroAmount = Number(mealSplit?.grams?.[gramsKey] || 0);
+    // Block second source if macro is below threshold, or if macro is zero (block all sources)
+    if (slotKey.endsWith('_2')) {
+      if (macroAmount < minRequired) return true;
+    }
+    // Block all sources if macro is zero
+    if (macroAmount === 0) return true;
+    return false;
   };
 
   const applyStarterTemplateToDefault = (template) => {
@@ -398,11 +404,29 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
                 <option key={`${slotKey}-${opt}`} value={opt}>{opt}</option>
               ))}
             </select>
-            {isSecondSlotDisabled(slotKey, scopeLabel, mealIndex) ? (
-              <small className="client-q-help">
-                Locked for this meal (macro amount too low for a second {slotKey.startsWith('protein') ? 'protein' : slotKey.startsWith('carbs') ? 'carb' : 'fat'} source).
-              </small>
-            ) : null}
+            {(() => {
+              const mealSplit = getReferenceMealSplit(scopeLabel, mealIndex);
+              const gramsKey = slotKey.startsWith('protein') ? 'protein_g' : slotKey.startsWith('carbs') ? 'carbs_g' : 'fats_g';
+              const macroAmount = Number(mealSplit?.grams?.[gramsKey] || 0);
+              if (macroAmount === 0) {
+                return (
+                  <small className="client-q-help">
+                    Locked for this meal (no {slotKey.startsWith('protein') ? 'protein' : slotKey.startsWith('carbs') ? 'carb' : 'fat'} assigned).
+                  </small>
+                );
+              }
+              if (slotKey.endsWith('_2')) {
+                const minRequired = SLOT_MIN_GRAMS_FOR_SECOND_SOURCE[slotKey];
+                if (macroAmount < minRequired) {
+                  return (
+                    <small className="client-q-help">
+                      Locked for this meal (macro amount too low for a second {slotKey.startsWith('protein') ? 'protein' : slotKey.startsWith('carbs') ? 'carb' : 'fat'} source).
+                    </small>
+                  );
+                }
+              }
+              return null;
+            })()}
           </label>
         ))}
       </div>
