@@ -20,15 +20,6 @@
       "problemMatcher": []
     },
     {
-      "label": "Run Ngrok Tunnel",
-      "type": "shell",
-      "command": "ngrok http 3000",
-      "options": {
-        "cwd": "${workspaceFolder}"
-      },
-      "problemMatcher": []
-    },
-    {
       "label": "Run Redis Server",
       "type": "shell",
       "command": "zsh -lc 'redis-cli ping >/dev/null 2>&1 && echo \"Redis already running on :6379\" || redis-server'",
@@ -71,8 +62,7 @@
         "Run Celery Worker",
         "Run Django Server",
         "Run React App",
-        "Run Stripe Webhook",
-        "Run Ngrok Tunnel"
+        "Run Stripe Webhook"
       ],
       "dependsOrder": "parallel"
     },
