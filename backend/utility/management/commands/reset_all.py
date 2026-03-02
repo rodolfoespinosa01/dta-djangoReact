@@ -19,6 +19,8 @@ from users.admin_area.models import (
 from users.client_area.models import DiscountCode as ClientDiscountCode
 
 SUPERADMIN_USERNAME = "dta_user"
+TEST_ADMIN_EMAIL = "admin@dta.com"
+TEST_ADMIN_PASSWORD = "test1234"
 
 class Command(BaseCommand):
     help = "Fully resets admin data (users, tokens, profiles, identities, logs) for local testing."
@@ -41,6 +43,44 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING(label))
         except (ProgrammingError, DatabaseError) as exc:
             self.stdout.write(self.style.WARNING(f"⏭️ Skipping {label} (table unavailable: {exc.__class__.__name__})."))
+
+    def _ensure_test_admin(self, User):
+        admin_user, created = User.objects.get_or_create(
+            username=TEST_ADMIN_EMAIL,
+            defaults={
+                "email": TEST_ADMIN_EMAIL,
+                "role": "admin",
+                "is_staff": True,
+                "is_active": True,
+                "subscription_status": "admin_monthly",
+            },
+        )
+
+        changed_fields = []
+        if admin_user.email != TEST_ADMIN_EMAIL:
+            admin_user.email = TEST_ADMIN_EMAIL
+            changed_fields.append("email")
+        if getattr(admin_user, "role", None) != "admin":
+            admin_user.role = "admin"
+            changed_fields.append("role")
+        if not admin_user.is_staff:
+            admin_user.is_staff = True
+            changed_fields.append("is_staff")
+        if not admin_user.is_active:
+            admin_user.is_active = True
+            changed_fields.append("is_active")
+        if getattr(admin_user, "subscription_status", None) != "admin_monthly":
+            admin_user.subscription_status = "admin_monthly"
+            changed_fields.append("subscription_status")
+
+        admin_user.set_password(TEST_ADMIN_PASSWORD)
+        changed_fields.append("password")
+        admin_user.save(update_fields=changed_fields)
+
+        AdminIdentity.objects.get_or_create(admin_email=TEST_ADMIN_EMAIL)
+
+        action = "created" if created else "updated"
+        self.stdout.write(self.style.SUCCESS(f"🧪 Test admin {action}: {TEST_ADMIN_EMAIL}"))
 
     def handle(self, *args, **kwargs):
         User = get_user_model()
@@ -107,6 +147,9 @@ class Command(BaseCommand):
                         dirty = True
                     if dirty:
                         prof.save(update_fields=[f for f in ["stripe_customer_id","stripe_subscription_id","current_price_id","is_canceled","subscription_active","is_active"] if hasattr(prof, f)])
+
+            # 5) Ensure deterministic local coach admin for messaging/dev flows
+            self._ensure_test_admin(User)
 
         self.stdout.write(self.style.SUCCESS("🎯 All admin-related test data reset and sequences restarted!"))
 

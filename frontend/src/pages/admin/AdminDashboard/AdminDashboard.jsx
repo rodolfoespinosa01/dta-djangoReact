@@ -71,7 +71,7 @@ function currentHost() {
 }
 
 function AdminDashboard() {
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, logout, user } = useAuth();
   const navigate = useNavigate();
   const { t } = useLanguage();
 
@@ -92,7 +92,9 @@ function AdminDashboard() {
   const [clientTracking, setClientTracking] = useState(null);
   const [clientTrackingLoading, setClientTrackingLoading] = useState(false);
   const [clientTrackingError, setClientTrackingError] = useState('');
-  const isParamSetupRequired = status === 'ok' && !paramStatus.loading && !paramStatus.setupCompleted;
+  // For admin@dta.com, never require param setup
+  const isDTAAdmin = user?.email?.toLowerCase() === 'admin@dta.com';
+  const isParamSetupRequired = !isDTAAdmin && status === 'ok' && !paramStatus.loading && !paramStatus.setupCompleted;
   const normalizedSubdomain = normalizeSubdomain(subdomainInput);
 
   useEffect(() => {
@@ -140,6 +142,26 @@ function AdminDashboard() {
     };
 
     fetchDashboard();
+
+    // For admin@dta.com, auto-apply DTA defaults if needed
+    if (isDTAAdmin && status === 'ok' && (!paramStatus.initialized || !paramStatus.setupCompleted)) {
+      (async () => {
+        try {
+          setApplyingDefaults(true);
+          await apiRequest('/api/v1/users/admin/parameter_settings/use_defaults/', {
+            method: 'POST',
+            auth: true,
+            body: {},
+          });
+          setParamStatus({ loading: false, initialized: true, setupCompleted: true, subdomain: { slug: 'dta' }, error: '' });
+          setSubdomainInput('dta');
+        } catch (err) {
+          // ignore
+        } finally {
+          setApplyingDefaults(false);
+        }
+      })();
+    }
   }, [isAuthenticated, navigate]);
 
   const handleUseDefaults = async () => {
@@ -507,86 +529,15 @@ function AdminDashboard() {
           <button onClick={() => navigate('/admin_parameter_settings')} className="btn btn-outline">
             🧮 Admin Parameters
           </button>
+          <button onClick={() => navigate('/admin_messaging')} className="btn btn-success">
+            💬 Messaging Portal
+          </button>
           <button onClick={() => logout()} className="btn btn-danger">
             🚪 {t('common.logout')}
           </button>
         </div>
       )}
 
-      {isParamSetupRequired && (
-        <div className="admin-setup-modal-backdrop" role="presentation">
-          <div
-            className="admin-setup-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="admin-setup-modal-title"
-          >
-            <h2 id="admin-setup-modal-title" className="admin-setup-modal-title">
-              Admin Parameter Settings Required
-            </h2>
-            <p className="admin-setup-modal-text">
-              Before moving forward in your dashboard, you must acknowledge your admin parameter settings and set your subdomain.
-              Choose DTA defaults or go to the parameter editor to set your own values.
-            </p>
-            <p className="admin-setup-modal-note">
-              This is required before continuing. If you log out and come back, you will be prompted again until completed.
-            </p>
-
-            <div className="admin-setup-modal-subdomain">
-              <label htmlFor="admin-subdomain-input">Choose your subdomain (one time only)</label>
-              <div className="admin-setup-subdomain-row">
-                <input
-                  id="admin-subdomain-input"
-                  type="text"
-                  value={subdomainInput}
-                  onChange={(e) => handleSubdomainChange(e.target.value)}
-                  placeholder="coachmike"
-                  disabled={currentSubdomainLocked || applyingDefaults}
-                  autoComplete="off"
-                />
-                <span className="admin-setup-subdomain-suffix">.lvh.me:3000</span>
-              </div>
-              <p className="admin-setup-modal-preview">
-                Dev preview: {normalizedSubdomain ? `${normalizedSubdomain}.lvh.me:3000` : '—'}
-              </p>
-              <p className="admin-setup-modal-preview">
-                Phone dev: {normalizedSubdomain ? `http://${host}:3000/start/${normalizedSubdomain}` : '—'}
-              </p>
-              <p className="admin-setup-modal-preview">
-                Production: {normalizedSubdomain ? `${normalizedSubdomain}.dtameals.com` : '—'}
-              </p>
-              {effectiveSubdomainError && (
-                <p className="admin-params-error">{effectiveSubdomainError}</p>
-              )}
-              {currentSubdomainLocked && (
-                <p className="admin-params-success">Subdomain locked: {paramStatus.subdomain?.slug}.dtameals.com</p>
-              )}
-            </div>
-
-            <div className="admin-setup-modal-actions">
-              <button className="btn btn-primary" onClick={handleUseDefaults} disabled={applyingDefaults || !canProceedWithSetup}>
-                {applyingDefaults ? 'Applying Defaults…' : 'Use DTA Defaults'}
-              </button>
-              <button
-                className="btn btn-outline"
-                onClick={() => navigate('/admin_parameter_settings', { state: { suggestedSubdomain: normalizedSubdomain } })}
-                disabled={applyingDefaults || !canProceedWithSetup}
-              >
-                Go to Edit Parameters
-              </button>
-              <button className="btn btn-danger" onClick={() => logout()} disabled={applyingDefaults}>
-                Log Out
-              </button>
-            </div>
-
-            {paramMessage && (
-              <p className={paramMessage.toLowerCase().includes('unable') || paramMessage.toLowerCase().includes('error') ? 'admin-params-error' : 'admin-params-success'}>
-                {paramMessage}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

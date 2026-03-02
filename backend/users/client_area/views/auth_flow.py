@@ -4,6 +4,7 @@ from django.db import transaction
 from django.utils import timezone
 from django.utils.crypto import get_random_string
 from datetime import timedelta
+from urllib.parse import quote_plus
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -556,8 +557,11 @@ def start_signup(request):
         if not stripe_price_id:
             return error("STRIPE_PRICE_NOT_CONFIGURED", "Stripe price is not configured for this plan.", http_status=500)
 
-        success_path = f"/start/{admin_slug}/plans" if admin_slug else "/user_plans"
-        cancel_path = success_path
+        success_path = "/client_signup_success"
+        cancel_path = f"/start/{admin_slug}/plans" if admin_slug else "/user_plans"
+        success_query = f"signup_checkout=success&session_id={{CHECKOUT_SESSION_ID}}&signup_email={quote_plus(email)}"
+        if admin_slug:
+            success_query = f"{success_query}&admin_slug={quote_plus(admin_slug)}"
 
         subscription_data = {
             "metadata": {
@@ -602,7 +606,7 @@ def start_signup(request):
                 "trial_days": str(applied_trial_days),
                 "amount_cents": str(pending_amount_cents),
             },
-            success_url=f"{FRONTEND_URL}{success_path}?signup_checkout=success&session_id={{CHECKOUT_SESSION_ID}}",
+            success_url=f"{FRONTEND_URL}{success_path}?{success_query}",
             cancel_url=f"{FRONTEND_URL}{cancel_path}?signup_checkout=cancel",
         )
         if stripe_discount:
@@ -865,6 +869,20 @@ def client_dashboard(request):
         defaults={"status": "not_started", "current_step": QUESTIONNAIRE_STEPS[0], "answers_json": {}},
     )
 
+
+    admin_user_id = None
+    admin_identity = profile.associated_admin if profile and profile.associated_admin else None
+    # If no associated_admin and B2C, use default DTA admin
+    if not admin_identity and profile and profile.sale_channel == 'dta_direct':
+        admin_identity = AdminIdentity.objects.filter(admin_email='admin@dta.com').first()
+    if admin_identity and admin_identity.admin_email:
+        from core.models import CustomUser
+        try:
+            admin_user = CustomUser.objects.get(email=admin_identity.admin_email, role='admin')
+            admin_user_id = admin_user.id
+        except CustomUser.DoesNotExist:
+            admin_user_id = None
+
     return ok(
         {
             "client": {
@@ -876,6 +894,7 @@ def client_dashboard(request):
                 "includes_coaching": bool(profile and profile.includes_coaching),
                 "sale_channel": profile.sale_channel if profile else "dta_direct",
                 "associated_admin_slug": profile.associated_admin.subdomain_slug if profile and profile.associated_admin else None,
+                "associated_admin_user_id": admin_user_id,
             },
             "questionnaire": _questionnaire_payload(progress),
             "results": build_questionnaire_results(

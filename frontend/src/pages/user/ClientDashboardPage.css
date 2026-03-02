@@ -60,6 +60,29 @@
   color: #b42318;
 }
 
+.client-coaching-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.client-coaching-btn {
+  border-radius: 10px;
+  border: 1px solid rgba(20, 40, 74, 0.18);
+  background: #fff;
+  color: #13233f;
+  padding: 0.6rem 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.client-coaching-btn.danger {
+  background: #fff5f5;
+  border-color: rgba(180, 35, 24, 0.2);
+  color: #b42318;
+}
+
 .client-q-backdrop {
   position: fixed;
   inset: 0;
