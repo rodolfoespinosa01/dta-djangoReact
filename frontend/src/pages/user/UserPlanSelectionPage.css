@@ -1,3 +1,92 @@
+.user-plan-page-dark {
+  background: #18181b;
+  color: #fff;
+}
+
+.user-plan-page-dark .user-plan-header-card {
+  background: linear-gradient(150deg, #23232a, #18181b 90%);
+  border: 1px solid #27272a;
+  color: #fff;
+}
+
+.user-plan-page-dark .user-plan-brand,
+.user-plan-page-dark .user-plan-header-card h2,
+.user-plan-page-dark .user-plan-header-card p,
+.user-plan-page-dark .user-plan-subheadline {
+  color: #fff;
+}
+
+.user-plan-page-dark .user-plan-card {
+  background: #23232a;
+  color: #fff;
+  border: 1px solid #27272a;
+}
+
+.user-plan-page-dark .user-plan-card-free {
+  background: linear-gradient(120deg, #2a1a1a 60%, #23232a 100%);
+  border: 2px solid #ef4444;
+  box-shadow: 0 0 0 3px #ef444433;
+}
+
+.user-plan-page-dark .user-plan-img {
+  background: #23232a;
+  border: 1px solid #27272a;
+}
+
+.user-plan-page-dark .user-plan-button {
+  background: linear-gradient(145deg, #ef4444, #991b1b);
+  color: #fff;
+  border: 1px solid #ef4444;
+}
+
+.user-plan-page-dark .user-plan-button-secondary {
+  background: #18181b;
+  color: #fff;
+  border: 1px solid #fff;
+}
+
+.user-plan-page-dark .user-plan-trial.is-free {
+  color: #ef4444;
+}
+
+.user-plan-page-dark .user-plan-price {
+  background: #18181b;
+  color: #fff;
+  border: 1px solid #ef4444;
+}
+.user-plan-blink {
+  animation: user-plan-blink-anim 1s steps(2, start) infinite;
+  color: #e11d48;
+  font-weight: 900;
+  font-size: 1.1rem;
+  letter-spacing: 1px;
+}
+
+@keyframes user-plan-blink-anim {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.1; }
+}
+
+.user-plan-img {
+  display: block;
+  margin: 0.5rem auto 0.2rem auto;
+  max-width: 100%;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(37,99,235,0.07);
+}
+
+.user-plan-card-free {
+  border: 2px solid #e11d48;
+  background: linear-gradient(120deg, #fff1f2 60%, #f7fbff 100%);
+  box-shadow: 0 0 0 3px #fda4af33;
+}
+
+.user-plan-subheadline {
+  color: #e11d48;
+  font-size: 1.08rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
 .user-plan-page {
   padding: 2rem 1rem;
   max-width: 1080px;
@@ -53,6 +142,7 @@
   margin-top: 1rem;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
   gap: 0.9rem;
 }
 

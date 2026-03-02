@@ -27,8 +27,8 @@ import AdminReactivatePage from './pages/admin/AdminReactivatePage/AdminReactiva
 import AdminConfirmTrialPage from './pages/admin/AdminConfirmTrialPage/AdminConfirmTrialPage';
 
 import UserHomePage from './pages/user/UserHomePage';
+// ...existing code...
 import UserPlanSelectionPage from './pages/user/UserPlanSelectionPage';
-import AdminClientLandingPage from './pages/user/AdminClientLandingPage';
 import ClientRegisterPage from './pages/user/ClientRegisterPage';
 import ClientLoginPage from './pages/user/ClientLoginPage';
 import ClientDashboardPage from './pages/user/ClientDashboardPage';
@@ -84,7 +84,7 @@ function AppLayout() {
           <Route path="/client_login" element={<Navigate to="/user_login" replace />} />
           <Route path="/user_login" element={<ClientLoginPage />} />
           <Route path="/macro_calculator" element={<ClientMacroCalculatorPage />} />
-          <Route path="/start/:adminSlug" element={<AdminClientLandingPage />} />
+          <Route path="/start/:adminSlug" element={<UserPlanSelectionPage />} />
           <Route path="/start/:adminSlug/plans" element={<UserPlanSelectionPage />} />
           <Route path="/start/:adminSlug/login" element={<ClientLoginPage />} />
           <Route

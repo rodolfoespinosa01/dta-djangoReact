@@ -1,3 +1,4 @@
+
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { apiRequest } from '../../api/client';
@@ -5,7 +6,9 @@ import { useAuth } from '../../context/AuthContext';
 import { getFoodImageUrl } from '../../utils/foodImageLookup';
 import { escapeHtml, openPrintPdfWindow, renderPrintTable } from '../../utils/printPdf';
 import aiLogo from '../../assets/misc/ailogo.png';
+
 import './ClientDashboardPage.css';
+
 
 const WEEK_DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
@@ -348,6 +351,8 @@ function ClientMealPlanGenerationPage() {
   const [recipeIdeasLoading, setRecipeIdeasLoading] = useState(false);
   const [recipeIdeasError, setRecipeIdeasError] = useState('');
   const [recipeIdeasResult, setRecipeIdeasResult] = useState(null);
+  const [showAllMeals, setShowAllMeals] = useState(false);
+  const [currentMealIndex, setCurrentMealIndex] = useState(0);
   const weekPollTimeoutRef = useRef(null);
 
   const loadLatestDetail = useCallback(async (day, jobId = null) => {
@@ -885,6 +890,37 @@ function ClientMealPlanGenerationPage() {
             </div>
             {recipeIdeasError ? <p className="client-q-error">{recipeIdeasError}</p> : null}
 
+            <div style={{ marginBottom: '0.7rem' }}>
+              <button
+                type="button"
+                className="client-q-btn secondary"
+                onClick={() => setShowAllMeals((prev) => !prev)}
+                style={{ marginRight: 8 }}
+              >
+                {showAllMeals ? 'Show One Meal' : 'Show All Meals'}
+              </button>
+              {!showAllMeals && (detail.meals?.length > 1) && (
+                <>
+                  <button
+                    type="button"
+                    className="client-q-btn secondary"
+                    onClick={() => setCurrentMealIndex((i) => Math.max(0, i - 1))}
+                    disabled={currentMealIndex === 0}
+                    style={{ marginRight: 4 }}
+                  >
+                    Previous Meal
+                  </button>
+                  <button
+                    type="button"
+                    className="client-q-btn secondary"
+                    onClick={() => setCurrentMealIndex((i) => Math.min(detail.meals.length - 1, i + 1))}
+                    disabled={currentMealIndex === detail.meals.length - 1}
+                  >
+                    Next Meal
+                  </button>
+                </>
+              )}
+            </div>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 980 }}>
                 <thead>
@@ -900,20 +936,39 @@ function ClientMealPlanGenerationPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(detail.meals || []).map((meal) => (
-                    <tr key={`detail-${meal.meal_number}`}>
-                      <td style={{ padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.08)' }}>Meal {meal.meal_number}</td>
-                      <td style={{ padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.08)' }}>{meal.combo_id}</td>
-                      {['protein_1', 'protein_2', 'carbs_1', 'carbs_2', 'fats_1', 'fats_2'].map((slotKey) => {
-                        const slot = meal.slots?.[slotKey];
-                        return (
-                          <td key={`${meal.meal_number}-${slotKey}`} style={{ padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.08)' }}>
-                            <FoodSlotCell slot={slot} unitMode={unitMode} />
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
+                  {showAllMeals
+                    ? (detail.meals || []).map((meal) => (
+                        <tr key={`detail-${meal.meal_number}`}>
+                          <td style={{ padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.08)' }}>Meal {meal.meal_number}</td>
+                          <td style={{ padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.08)' }}>{meal.combo_id}</td>
+                          {['protein_1', 'protein_2', 'carbs_1', 'carbs_2', 'fats_1', 'fats_2'].map((slotKey) => {
+                            const slot = meal.slots?.[slotKey];
+                            return (
+                              <td key={`${meal.meal_number}-${slotKey}`} style={{ padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.08)' }}>
+                                <FoodSlotCell slot={slot} unitMode={unitMode} />
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))
+                    : (() => {
+                        const meal = (detail.meals || [])[currentMealIndex] || null;
+                        return meal ? (
+                          <tr key={`detail-${meal.meal_number}`}>
+                            <td style={{ padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.08)' }}>Meal {meal.meal_number}</td>
+                            <td style={{ padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.08)' }}>{meal.combo_id}</td>
+                            {['protein_1', 'protein_2', 'carbs_1', 'carbs_2', 'fats_1', 'fats_2'].map((slotKey) => {
+                              const slot = meal.slots?.[slotKey];
+                              return (
+                                <td key={`${meal.meal_number}-${slotKey}`} style={{ padding: '0.5rem', borderBottom: '1px solid rgba(20,40,74,0.08)' }}>
+                                  <FoodSlotCell slot={slot} unitMode={unitMode} />
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ) : null;
+                      })()
+                  }
                   {(!detail.meals || detail.meals.length === 0) && (
                     <tr>
                       <td colSpan={8} style={{ padding: '0.75rem' }}>No generated rows found for this day.</td>
@@ -935,8 +990,8 @@ function ClientMealPlanGenerationPage() {
           </div>
         )}
       </section>
+
     </div>
   );
 }
-
 export default ClientMealPlanGenerationPage;

@@ -16,7 +16,17 @@
       "command": "zsh -lc 'export NVM_DIR=\"$HOME/.nvm\"; if [ -s \"$NVM_DIR/nvm.sh\" ]; then . \"$NVM_DIR/nvm.sh\"; elif [ -s \"/opt/homebrew/opt/nvm/nvm.sh\" ]; then . \"/opt/homebrew/opt/nvm/nvm.sh\"; else echo \"nvm not found\"; exit 1; fi; nvm install && nvm use && HOST=0.0.0.0 HTTPS=false PORT=3000 npm start'",
       "options": {
         "cwd": "${workspaceFolder}/frontend"
-      }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Run Ngrok Tunnel",
+      "type": "shell",
+      "command": "ngrok http 3000",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
     },
     {
       "label": "Run Redis Server",
@@ -61,7 +71,8 @@
         "Run Celery Worker",
         "Run Django Server",
         "Run React App",
-        "Run Stripe Webhook"
+        "Run Stripe Webhook",
+        "Run Ngrok Tunnel"
       ],
       "dependsOrder": "parallel"
     },
