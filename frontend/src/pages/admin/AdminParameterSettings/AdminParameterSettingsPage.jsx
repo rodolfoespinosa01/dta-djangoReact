@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { apiRequest } from '../../../api/client';
 import './AdminParameterSettingsPage.css';
 
@@ -31,7 +31,6 @@ function setNestedValue(obj, path, value) {
 
 function AdminParameterSettingsPage() {
   const navigate = useNavigate();
-  const location = useLocation();
   const [status, setStatus] = useState('loading');
   const [saveStatus, setSaveStatus] = useState('idle');
   const [message, setMessage] = useState('');
@@ -119,8 +118,7 @@ function AdminParameterSettingsPage() {
           updatedAt: payload.updated_at || null,
         });
         const fetchedSubdomain = res.data?.subdomain || null;
-        const suggestedSubdomain = normalizeSubdomain(location.state?.suggestedSubdomain || '');
-        const slugValue = fetchedSubdomain?.slug || suggestedSubdomain || '';
+        const slugValue = fetchedSubdomain?.slug || '';
         setSubdomainInfo(fetchedSubdomain);
         setSavedSubdomainSlug(fetchedSubdomain?.slug || '');
         setSubdomainInput(slugValue);
@@ -140,7 +138,7 @@ function AdminParameterSettingsPage() {
 
     load();
     return () => { ignore = true; };
-  }, [navigate, location.state]);
+  }, [navigate]);
 
   const goalAdjustments = parsedSettings?.goal_calorie_adjustments || {};
   const mealPlans = parsedSettings?.meal_plans || {};
@@ -472,7 +470,7 @@ function AdminParameterSettingsPage() {
           <button
             className="admin-params-btn"
             onClick={handleUseDefaults}
-            disabled={saveStatus === 'saving' || !!effectiveSubdomainError}
+            disabled={saveStatus === 'saving'}
           >
             Use DTA Defaults
           </button>
@@ -488,38 +486,18 @@ function AdminParameterSettingsPage() {
       </section>
 
       <section className="admin-params-card">
-        <h2 className="admin-params-section-title">Subdomain (One-Time Setup)</h2>
+        <h2 className="admin-params-section-title">Subdomain</h2>
         <p className="admin-params-muted">
-          This is your branded link. It can only be set once during setup and then becomes locked.
+          Your branded subdomain is collected during signup and locked after registration.
         </p>
         <div className="admin-params-form-panel admin-params-form-panel-wide">
-          <label>
-            Subdomain slug
-            <div className="admin-params-subdomain-row">
-              <input
-                type="text"
-                value={subdomainInput}
-                onChange={(e) => {
-                  const next = normalizeSubdomain(e.target.value);
-                  setSubdomainInput(next);
-                  if (subdomainError) setSubdomainError(validateSubdomainSlug(next));
-                }}
-                placeholder="coachmike"
-                autoComplete="off"
-                disabled={currentSubdomainLocked}
-              />
-              <span className="admin-params-subdomain-suffix">.dtameals.com</span>
-            </div>
-          </label>
+          <p className="admin-params-muted">Subdomain slug: {normalizedSubdomain || '—'}</p>
           <p className="admin-params-muted">Dev preview: {normalizedSubdomain ? `${normalizedSubdomain}.lvh.me:3000` : '—'}</p>
           <p className="admin-params-muted">Production: {normalizedSubdomain ? `${normalizedSubdomain}.dtameals.com` : '—'}</p>
           {currentSubdomainLocked && (
             <p className="admin-params-success">
               Subdomain locked on {subdomainInfo?.locked_at ? new Date(subdomainInfo.locked_at).toLocaleString() : 'setup'}.
             </p>
-          )}
-          {!!effectiveSubdomainError && (
-            <p className="admin-params-error">{effectiveSubdomainError}</p>
           )}
         </div>
       </section>
@@ -533,7 +511,7 @@ function AdminParameterSettingsPage() {
           <button
             className="admin-params-btn admin-params-btn-primary admin-params-floating-btn"
             onClick={handleSave}
-            disabled={saveStatus === 'saving' || !!effectiveSubdomainError}
+            disabled={saveStatus === 'saving'}
             type="button"
           >
             {saveStatus === 'saving'

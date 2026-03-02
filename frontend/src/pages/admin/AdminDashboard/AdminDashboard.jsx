@@ -521,22 +521,20 @@ function AdminDashboard() {
         <p className="error">{t('admin_dashboard.error_loading')}</p>
       )}
 
-      {!isParamSetupRequired && (
-        <div className="actions">
-          <button onClick={() => navigate('/admin_settings')} className="btn btn-primary">
-            ⚙️ {t('admin_dashboard.account_settings')}
-          </button>
-          <button onClick={() => navigate('/admin_parameter_settings')} className="btn btn-outline">
-            🧮 Admin Parameters
-          </button>
-          <button onClick={() => navigate('/admin_messaging')} className="btn btn-success">
-            💬 Messaging Portal
-          </button>
-          <button onClick={() => logout()} className="btn btn-danger">
-            🚪 {t('common.logout')}
-          </button>
-        </div>
-      )}
+      <div className="actions">
+        <button onClick={() => navigate('/admin_settings')} className="btn btn-primary">
+          ⚙️ {t('admin_dashboard.account_settings')}
+        </button>
+        <button onClick={() => navigate('/admin_parameter_settings')} className="btn btn-outline">
+          🧮 Admin Parameters
+        </button>
+        <button onClick={() => navigate('/admin_messaging')} className="btn btn-success">
+          💬 Messaging Portal
+        </button>
+        <button onClick={() => logout()} className="btn btn-danger">
+          🚪 {t('common.logout')}
+        </button>
+      </div>
 
     </div>
   );
