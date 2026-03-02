@@ -1,9 +1,11 @@
 import json
+import re
 import stripe
 from django.utils import timezone
 from datetime import timedelta
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError
 
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
@@ -18,10 +20,62 @@ from core.services.google_oauth import verify_google_id_token
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 User = get_user_model()
+SUBDOMAIN_SLUG_RE = re.compile(r"^[a-z]+(?:-[a-z]+)*$")
+RESERVED_SUBDOMAIN_SLUGS = {
+    "www",
+    "admin",
+    "api",
+    "app",
+    "support",
+    "mail",
+    "static",
+}
 
 def _is_gmail_email(value):
     email = (value or '').strip().lower()
     return email.endswith('@gmail.com') or email.endswith('@googlemail.com')
+
+
+def _is_dta_house_admin_email(value):
+    return (value or '').strip().lower() == 'admin@dta.com'
+
+
+def _validate_subdomain_slug(raw_slug):
+    slug = str(raw_slug or '').strip().lower()
+    if not slug:
+        return None, 'Subdomain is required.'
+    if ' ' in slug:
+        return None, 'Subdomain cannot contain spaces.'
+    if len(slug) < 3 or len(slug) > 40:
+        return None, 'Subdomain must be between 3 and 40 characters.'
+    if slug in RESERVED_SUBDOMAIN_SLUGS:
+        return None, 'That subdomain is reserved. Please choose another.'
+    if not SUBDOMAIN_SLUG_RE.fullmatch(slug):
+        return None, 'Use only letters and hyphens (no numbers, spaces, or underscores).'
+    return slug, None
+
+
+def _assign_subdomain_once(identity, raw_slug):
+    if identity.subdomain_slug:
+        existing = (identity.subdomain_slug or '').strip().lower()
+        incoming, err = _validate_subdomain_slug(raw_slug)
+        if err:
+            return None, err
+        if incoming != existing:
+            return None, 'Subdomain is locked and can only be set once.'
+        return identity.subdomain_slug, None
+
+    slug, err = _validate_subdomain_slug(raw_slug)
+    if err:
+        return None, err
+
+    identity.subdomain_slug = slug
+    identity.subdomain_locked_at = timezone.now()
+    try:
+        identity.save(update_fields=['subdomain_slug', 'subdomain_locked_at'])
+    except IntegrityError:
+        return None, 'That subdomain is already taken. Please choose another.'
+    return identity.subdomain_slug, None
 
 def _truthy(v):
     return str(v).strip().lower() in ("true", "1", "yes", "y", "t")
@@ -89,6 +143,7 @@ def register(request):
     password = data.get('password')
     token = data.get('token')
     credential = (data.get('credential') or '').strip()
+    subdomain_slug = data.get('subdomain_slug')
 
     if not email or not token or (not password and not credential):
         return error(code='MISSING_FIELDS', message='Email, token, and password or Google credential are required.', http_status=status.HTTP_400_BAD_REQUEST)
@@ -167,6 +222,12 @@ def register(request):
     if User.objects.filter(username=email).exists():
         return error(code='USER_EXISTS', message='User already exists', http_status=status.HTTP_400_BAD_REQUEST)
 
+    admin_identity, _ = AdminIdentity.objects.get_or_create(admin_email=email)
+    if not _is_dta_house_admin_email(email):
+        _, subdomain_error = _assign_subdomain_once(admin_identity, subdomain_slug)
+        if subdomain_error:
+            return error(code='INVALID_SUBDOMAIN_SLUG', message=subdomain_error, http_status=status.HTTP_400_BAD_REQUEST)
+
     # Create user
     if credential:
         user = User.objects.create_user(username=email, email=email)
@@ -181,13 +242,11 @@ def register(request):
     now = timezone.now()
 
     # EventTracker
-    admin_identity = AdminIdentity.objects.filter(admin_email=email).first()
-    if admin_identity:
-        EventTracker.objects.create(
-            admin=admin_identity,
-            event_type="registration_success",
-            timestamp=now
-        )
+    EventTracker.objects.create(
+        admin=admin_identity,
+        event_type="registration_success",
+        timestamp=now
+    )
 
     # ---------- Accurate date stamping from Stripe Subscription ----------
     trial_start = None

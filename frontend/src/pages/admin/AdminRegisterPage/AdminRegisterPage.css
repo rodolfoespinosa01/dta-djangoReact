@@ -37,6 +37,22 @@
   border-radius: 6px;
 }
 
+.admin-register-subdomain-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.admin-register-subdomain-row .admin-register-input {
+  margin-bottom: 0;
+}
+
+.admin-register-subdomain-suffix {
+  color: #6b7280;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
 .admin-register-input.disabled {
   background-color: #f9fafb;
 }

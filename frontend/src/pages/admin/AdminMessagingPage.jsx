@@ -43,13 +43,14 @@ function AdminMessagingPage() {
   const loadTracking = (clientId) =>
     apiRequest(`/api/v1/messages/admin/clients/${clientId}/tracking-snapshot/`, { auth: true })
       .then(res => {
-        if (res.ok && res.data?.tracking) {
-          setTracking(res.data.tracking);
+        const trackingPayload = res.data?.tracking || res.data?.data?.tracking;
+        if (res.ok && trackingPayload) {
+          setTracking(trackingPayload);
           setTrackingError('');
           return;
         }
         setTracking(null);
-        setTrackingError('Could not load client tracking.');
+        setTrackingError(res.data?.error?.message || 'Could not load client tracking.');
       })
       .catch(() => {
         setTracking(null);
@@ -72,6 +73,14 @@ function AdminMessagingPage() {
       .finally(() => setLoading(false));
     loadTracking(selectedClient.id)
       .finally(() => setTrackingLoading(false));
+  }, [selectedClient]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!selectedClient) return undefined;
+    const intervalId = setInterval(() => {
+      loadTracking(selectedClient.id);
+    }, 15000);
+    return () => clearInterval(intervalId);
   }, [selectedClient]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSelectClient = (client) => {
@@ -122,7 +131,7 @@ function AdminMessagingPage() {
 
       setReply('');
       setReplyPdf(null);
-      await Promise.all([loadMessages(selectedClient.id), loadConversations()]);
+      await Promise.all([loadMessages(selectedClient.id), loadConversations(), loadTracking(selectedClient.id)]);
     } else {
       setError('Failed to send message.');
     }
@@ -206,7 +215,21 @@ function AdminMessagingPage() {
               </section>
 
               <section className="tracking-panel tracking-panel-below">
-                <h3>Client Tracking Snapshot</h3>
+                <div className="tracking-header-row">
+                  <h3>Client Tracking Snapshot</h3>
+                  <button
+                    type="button"
+                    className="tracking-refresh-btn"
+                    onClick={() => {
+                      if (!selectedClient) return;
+                      setTrackingLoading(true);
+                      loadTracking(selectedClient.id).finally(() => setTrackingLoading(false));
+                    }}
+                    disabled={trackingLoading}
+                  >
+                    {trackingLoading ? 'Refreshing…' : 'Refresh'}
+                  </button>
+                </div>
                 {trackingLoading && <p className="tracking-muted">Loading tracking…</p>}
                 {trackingError && <p className="error">{trackingError}</p>}
 
