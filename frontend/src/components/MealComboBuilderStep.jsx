@@ -13,8 +13,8 @@ const SLOT_LABELS = {
 const WEEK_DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 const MAX_SAVED_TEMPLATES = 7;
 const SLOT_MIN_GRAMS_FOR_SECOND_SOURCE = {
-  protein_2: 30,
-  carbs_2: 35,
+  protein_2: 35,
+  carbs_2: 30,
   fats_2: 20,
 };
 
@@ -162,10 +162,62 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
     emit({ weekly_days: { ...normalized.weekly_days, [day]: dayMeals } });
   };
 
+  const macroResultsByDay = useMemo(() => {
+    const map = {};
+    (Array.isArray(weeklyMacroResults) ? weeklyMacroResults : []).forEach((dayRow) => {
+      if (dayRow?.day) map[dayRow.day] = dayRow;
+    });
+    return map;
+  }, [weeklyMacroResults]);
+
+  function applyMacroThresholdsToMeal(meal, mealSplit) {
+    const next = { ...(meal || {}) };
+    const proteinG = Number(mealSplit?.grams?.protein_g || 0);
+    const carbsG = Number(mealSplit?.grams?.carbs_g || 0);
+    const fatsG = Number(mealSplit?.grams?.fats_g || 0);
+
+    if (proteinG === 0) {
+      next.protein_1 = '-';
+      next.protein_2 = '-';
+    } else if (proteinG < SLOT_MIN_GRAMS_FOR_SECOND_SOURCE.protein_2) {
+      next.protein_2 = '-';
+    }
+
+    if (carbsG === 0) {
+      next.carbs_1 = '-';
+      next.carbs_2 = '-';
+    } else if (carbsG < SLOT_MIN_GRAMS_FOR_SECOND_SOURCE.carbs_2) {
+      next.carbs_2 = '-';
+    }
+
+    if (fatsG === 0) {
+      next.fats_1 = '-';
+      next.fats_2 = '-';
+    } else if (fatsG < SLOT_MIN_GRAMS_FOR_SECOND_SOURCE.fats_2) {
+      next.fats_2 = '-';
+    }
+
+    return {
+      ...next,
+      combo_id: null,
+      combo_match: 'unknown',
+    };
+  }
+
+  function applyMacroThresholdsToMealsForDay(meals, day) {
+    const dayResult = macroResultsByDay[day];
+    if (!dayResult) return meals;
+    return (Array.isArray(meals) ? meals : []).map((meal, idx) => {
+      const split = (dayResult.meal_macro_splits || []).find((row) => Number(row?.meal_number) === idx + 1) || null;
+      return applyMacroThresholdsToMeal(meal, split);
+    });
+  }
+
   const applyDefaultToAllDays = () => {
     const weeklyDays = { ...normalized.weekly_days };
     WEEK_DAYS.forEach((day) => {
-      weeklyDays[day] = cloneMealsForCount(normalized.default_day_meals, normalized.week_counts[day]);
+      const cloned = cloneMealsForCount(normalized.default_day_meals, normalized.week_counts[day]);
+      weeklyDays[day] = applyMacroThresholdsToMealsForDay(cloned, day);
     });
     emit({ weekly_days: weeklyDays });
   };
@@ -208,10 +260,11 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
   };
 
   const applyTemplateToDay = (template, day) => {
+    const cloned = cloneMealsForCount(template.meals, normalized.week_counts[day]);
     emit({
       weekly_days: {
         ...normalized.weekly_days,
-        [day]: cloneMealsForCount(template.meals, normalized.week_counts[day]),
+        [day]: applyMacroThresholdsToMealsForDay(cloned, day),
       },
     });
   };
@@ -219,18 +272,11 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
   const applyTemplateToAllDays = (template) => {
     const weeklyDays = { ...normalized.weekly_days };
     WEEK_DAYS.forEach((day) => {
-      weeklyDays[day] = cloneMealsForCount(template.meals, normalized.week_counts[day]);
+      const cloned = cloneMealsForCount(template.meals, normalized.week_counts[day]);
+      weeklyDays[day] = applyMacroThresholdsToMealsForDay(cloned, day);
     });
     emit({ weekly_days: weeklyDays });
   };
-
-  const macroResultsByDay = useMemo(() => {
-    const map = {};
-    (Array.isArray(weeklyMacroResults) ? weeklyMacroResults : []).forEach((dayRow) => {
-      if (dayRow?.day) map[dayRow.day] = dayRow;
-    });
-    return map;
-  }, [weeklyMacroResults]);
 
   const activeDay = normalized.active_day;
 
@@ -293,27 +339,30 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
 
   const applyStarterTemplateToDefault = (template) => {
     const count = [3, 4, 5, 6].includes(Number(template?.default_meal_count)) ? Number(template.default_meal_count) : 6;
+    const baseMeals = ensureMealArray(template?.default_day_meals, count);
     emit({
       default_day_meal_count: count,
-      default_day_meals: ensureMealArray(template?.default_day_meals, count),
+      default_day_meals: applyMacroThresholdsToMealsForDay(baseMeals, activeDay),
     });
   };
 
   const applyStarterTemplateToActiveDay = (template) => {
+    const cloned = cloneMealsForCount(template?.default_day_meals, normalized.week_counts[activeDay]);
     emit({
       weekly_days: {
         ...normalized.weekly_days,
-        [activeDay]: cloneMealsForCount(template?.default_day_meals, normalized.week_counts[activeDay]),
+        [activeDay]: applyMacroThresholdsToMealsForDay(cloned, activeDay),
       },
     });
   };
 
   const copyDayToDay = (fromDay, toDay) => {
     if (!fromDay || !toDay || fromDay === toDay) return;
+    const cloned = cloneMealsForCount(normalized.weekly_days[fromDay], normalized.week_counts[toDay]);
     emit({
       weekly_days: {
         ...normalized.weekly_days,
-        [toDay]: cloneMealsForCount(normalized.weekly_days[fromDay], normalized.week_counts[toDay]),
+        [toDay]: applyMacroThresholdsToMealsForDay(cloned, toDay),
       },
     });
   };
@@ -325,7 +374,8 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
     WEEK_DAYS.forEach((day) => {
       if (day === fromDay) return;
       if (dayCompletion[day]?.isComplete) return;
-      weeklyDays[day] = cloneMealsForCount(normalized.weekly_days[fromDay], normalized.week_counts[day]);
+      const cloned = cloneMealsForCount(normalized.weekly_days[fromDay], normalized.week_counts[day]);
+      weeklyDays[day] = applyMacroThresholdsToMealsForDay(cloned, day);
       changed += 1;
     });
     if (!changed) return;
