@@ -24,8 +24,8 @@ python backend/manage.py simulate_dtaclient_signup user@example.com macro_calcul
     --admin_slug rodolfo
 
 # create just an admin (no client)
-python backend/manage.py simulate_create_admin admin@example.com \
-    --password TestAdmin123! --plan_name adminMonthly \
+python backend/manage.py simulate_create_admin admin@rodolfo.com \
+    --password test1234 --plan_name adminMonthly \
     --initialize_parameters --admin_slug rodolfo
 
 # create a client linked to an existing admin
