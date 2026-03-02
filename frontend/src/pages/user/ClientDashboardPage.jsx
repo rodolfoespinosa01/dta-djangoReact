@@ -91,6 +91,9 @@ function ClientDashboardPage() {
 
   const questionnaire = dashboard?.questionnaire;
   const isQuestionnaireComplete = questionnaire?.status === 'completed';
+  // Food preferences are considered complete if questionnaire is complete and food_preferences exists and is not empty
+  const foodPrefs = questionnaire?.answers?.food_preferences;
+  const isFoodPreferencesComplete = isQuestionnaireComplete && foodPrefs && typeof foodPrefs === 'object' && Object.keys(foodPrefs).length > 0;
   const isBlocked = !isQuestionnaireComplete;
   const showQuestionnaireModal = isBlocked || isEditingQuestionnaire;
   const activeQuestionSteps = showQuestionnaireModal && isQuestionnaireComplete
@@ -700,9 +703,11 @@ function ClientDashboardPage() {
               <button type="button" className="client-q-btn" onClick={() => navigate('/client_food_preferences')} disabled={isBlocked}>
                 Open Food Preferences / Meal Combos
               </button>
-              <button type="button" className="client-q-btn secondary" onClick={() => navigate('/client_meal_generation')} disabled={isBlocked}>
-                Run Meal Generation
-              </button>
+              {isFoodPreferencesComplete && (
+                <button type="button" className="client-q-btn secondary" onClick={() => navigate('/client_meal_generation')} disabled={isBlocked}>
+                  Run Meal Generation
+                </button>
+              )}
               <button type="button" className="client-q-btn secondary" onClick={() => navigate('/client_exports')} disabled={isBlocked}>
                 Export Center
               </button>
@@ -720,12 +725,16 @@ function ClientDashboardPage() {
           Start here. Open only the section you need for this session.
         </p>
         <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-          <button type="button" className="client-q-btn" onClick={() => navigate('/client_meal_generation')} disabled={isBlocked}>
-            Meal Plan Generation
-          </button>
-          <button type="button" className="client-q-btn secondary" onClick={() => navigate('/client_meal_generation')} disabled={isBlocked}>
-            Recipe Generation
-          </button>
+          {isFoodPreferencesComplete && (
+            <>
+              <button type="button" className="client-q-btn" onClick={() => navigate('/client_meal_generation')} disabled={isBlocked}>
+                Meal Plan Generation
+              </button>
+              <button type="button" className="client-q-btn secondary" onClick={() => navigate('/client_meal_generation')} disabled={isBlocked}>
+                Recipe Generation
+              </button>
+            </>
+          )}
           <button type="button" className="client-q-btn secondary" onClick={handleOpenQuestionnaireEdit} disabled={isBlocked}>
             Edit Questionnaire
           </button>
