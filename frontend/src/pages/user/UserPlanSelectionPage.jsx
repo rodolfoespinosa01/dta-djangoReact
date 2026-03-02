@@ -3,6 +3,12 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { apiRequest } from '../../api/client';
 import { getAdminSlugFromHostname } from '../../utils/branding';
 import './UserPlanSelectionPage.css';
+import calcImg from '../../assets/misc/calculationtools.png';
+import tapeImg from '../../assets/misc/foodmeasuringtape.png';
+import mealplanImg from '../../assets/misc/nutritionist_mealplan.png';
+import aiImg from '../../assets/misc/ailogo.png';
+import messagingImg from '../../assets/misc/messagingbubbles.png';
+import trainerImg from '../../assets/misc/personaltrainer.png';
 
 const DTA_DIRECT_PAGE = {
   admin_page: {
@@ -86,6 +92,10 @@ function UserPlanSelectionPage() {
   const { adminSlug } = useParams();
   const hostAdminSlug = useMemo(() => getAdminSlugFromHostname(), []);
   const effectiveAdminSlug = adminSlug || hostAdminSlug || '';
+  const [themeClass, setThemeClass] = useState('');
+  const [customCssUrl, setCustomCssUrl] = useState(null);
+  // Determine if this admin should use dark theme
+  const isDarkTheme = (effectiveAdminSlug || '').toLowerCase() === 'rodolfo';
   const [status, setStatus] = useState('loading');
   const [pageData, setPageData] = useState(null);
   const [error, setError] = useState('');
@@ -96,6 +106,29 @@ function UserPlanSelectionPage() {
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [paidQuote, setPaidQuote] = useState(null);
   const [includeCoaching, setIncludeCoaching] = useState(false);
+
+  useEffect(() => {
+    // Dynamically load custom CSS if present in pageData
+    if (pageData?.admin_page) {
+      const theme = pageData.admin_page.marketing_theme;
+      const cssUrl = pageData.admin_page.custom_css_url;
+      setThemeClass(theme ? `user-plan-page-theme-${theme}` : '');
+      setCustomCssUrl(cssUrl || null);
+      if (cssUrl) {
+        // Remove any previous custom CSS
+        const prev = document.getElementById('admin-custom-css');
+        if (prev) prev.remove();
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.id = 'admin-custom-css';
+        link.href = cssUrl;
+        document.head.appendChild(link);
+      } else {
+        const prev = document.getElementById('admin-custom-css');
+        if (prev) prev.remove();
+      }
+    }
+  }, [pageData]);
 
   useEffect(() => {
     let ignore = false;
@@ -254,7 +287,7 @@ function UserPlanSelectionPage() {
   const paidOfferLabel = includeCoaching ? '1 Month + Coaching' : '1 Month (No Coaching)';
 
   return (
-    <div className="user-plan-page">
+    <div className={['user-plan-page', themeClass].filter(Boolean).join(' ')}> 
       {signupCheckoutState === 'success' ? (
         <div className="user-plan-header-card" style={{ marginBottom: '1rem' }}>
           <p className="user-plan-brand">{brandName}</p>
@@ -272,12 +305,22 @@ function UserPlanSelectionPage() {
           </div>
         </div>
       ) : null}
+
       <div className="user-plan-header-card">
         <p className="user-plan-brand">{brandName}</p>
-        <h2>Choose Your Access</h2>
-        <p>
-          Free macro calculator for everyone. Paid options are monthly only and include the food meal-plan generator.
-        </p>
+        {pageData?.admin_page?.marketing_html ? (
+          <div dangerouslySetInnerHTML={{ __html: pageData.admin_page.marketing_html }} />
+        ) : (
+          <>
+            <h2>{pageData?.admin_page?.headline || 'Choose Your Meal Plan'}</h2>
+            {pageData?.admin_page?.marketing_image_url && (
+              <img src={pageData.admin_page.marketing_image_url} alt="Marketing" style={{ maxWidth: '100%', maxHeight: 180, margin: '0.7rem auto', borderRadius: 12 }} />
+            )}
+            <p className="user-plan-subheadline">
+              <strong>{pageData?.admin_page?.subheadline || 'We do the exact calculation needed to get you closest to your macro goals. Guaranteed measurements. AI-generated recipes included.'}</strong>
+            </p>
+          </>
+        )}
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <button type="button" className="user-plan-button user-plan-button-secondary" onClick={handleLoginCTA}>
             Existing Client Login
@@ -332,15 +375,17 @@ function UserPlanSelectionPage() {
         {ctaMessage && <p className="user-plan-inline-message">{ctaMessage}</p>}
       </div>
 
+
       <div className="user-plan-grid">
         {freeOffer ? (
-          <article key={freeOffer.code} className="user-plan-card">
+          <article key={freeOffer.code} className="user-plan-card user-plan-card-free">
             <div className="user-plan-card-top">
               <h3>{freeOffer.name}</h3>
-              <span className="user-plan-price">{freeOffer.price_label}</span>
+              <span className="user-plan-price user-plan-blink">FREE!!!</span>
             </div>
-            <p className="user-plan-trial is-free">Free account + login required</p>
-            <p className="user-plan-description">{freeOffer.description}</p>
+            <img src={calcImg} alt="Macro Calculator" className="user-plan-img" style={{ maxHeight: 80, margin: '0.5rem auto' }} />
+            <p className="user-plan-trial is-free">Absolutely free – no payment required!</p>
+            <p className="user-plan-description"><b>Get your personalized macros calculated for FREE!</b> No signup required. Instantly see your weekly macro breakdown.</p>
             <ul className="user-plan-features">
               <li>Macros only (no food assignments)</li>
               <li>Questionnaire required before dashboard access</li>
@@ -354,51 +399,26 @@ function UserPlanSelectionPage() {
 
         <article className="user-plan-card is-featured">
           <div className="user-plan-card-top">
-            <h3>1 Month Paid Plan</h3>
+            <h3>Standard Meal Plan</h3>
             <span className="user-plan-price">
               {quoteLoading ? 'Updating…' : (paidQuote ? `$${((paidQuote.amounts?.total_cents || 0) / 100).toFixed(2)}` : (selectedPaidOffer?.price_label || '-'))}
             </span>
           </div>
+          <img src={mealplanImg} alt="Meal Plan" className="user-plan-img" style={{ maxHeight: 80, margin: '0.5rem auto' }} />
           <p className="user-plan-trial">
             {paidQuote?.trial_days ? `${paidQuote.trial_days}-day free trial for first-time users` : 'Card required to begin paid access'}
           </p>
           <p className="user-plan-description">
-            Choose whether coaching is included. Both paid options include food-plan generation and go to secure Stripe checkout.
+            <b>Let us do the work!</b> We’ll generate a meal plan that gets you as close as possible to your macro goals. <b>AI-generated recipes included.</b> Guaranteed measurements.
           </p>
-
-          <div style={{ display: 'grid', gap: '0.55rem', marginTop: '0.4rem' }}>
-            <div>
-              <p style={{ margin: '0 0 0.3rem', fontWeight: 600 }}>Select One of the 2 Paid Options</p>
-              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  className="user-plan-button user-plan-button-secondary"
-                  onClick={() => setIncludeCoaching(false)}
-                  style={{ opacity: includeCoaching ? 0.8 : 1 }}
-                >
-                  Standard
-                </button>
-                <button
-                  type="button"
-                  className="user-plan-button user-plan-button-secondary"
-                  onClick={() => setIncludeCoaching(true)}
-                  style={{ opacity: includeCoaching ? 1 : 0.8 }}
-                >
-                  Coaching Premium
-                </button>
-              </div>
-            </div>
-          </div>
-
           <ul className="user-plan-features">
-            <li>{includeCoaching ? 'Food meal-plan generator + coaching features included' : 'Food meal-plan generator included (no coaching)'}</li>
+            <li>Food meal-plan generator (no coaching)</li>
+            <li>AI-generated recipes included</li>
             <li>Questionnaire required before dashboard access</li>
             <li>Billing cadence: monthly</li>
             <li>Selection: {paidOfferLabel}</li>
           </ul>
-
           <QuoteChip quote={paidQuote} />
-
           <button
             type="button"
             className="user-plan-button"
@@ -406,6 +426,41 @@ function UserPlanSelectionPage() {
             disabled={!selectedPaidOffer}
           >
             {startingOfferCode === selectedPaidOffer?.code ? 'Starting…' : 'Go To Secure Checkout'}
+          </button>
+        </article>
+
+        <article className="user-plan-card">
+          <div className="user-plan-card-top">
+            <h3>Premium + Coaching</h3>
+            <span className="user-plan-price">$35/month</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 10, margin: '0.5rem 0' }}>
+            <img src={messagingImg} alt="Messaging Bubbles" className="user-plan-img" style={{ maxHeight: 60, width: 'auto' }} />
+            <img src={trainerImg} alt="Personal Trainer" className="user-plan-img" style={{ maxHeight: 60, width: 'auto' }} />
+          </div>
+          <p className="user-plan-trial">Everything in Standard, <b>plus your own coach!</b></p>
+          <p className="user-plan-description">
+            <b>Unlock the best results!</b> Get a personal trainer who checks in with you, makes adjustments to your plan, and ensures you stay on track. <b>AI-generated recipes included.</b> Premium dashboard access.
+          </p>
+          <ul className="user-plan-features">
+            <li>Food meal-plan generator + 1:1 coaching</li>
+            <li>Regular check-ins and plan adjustments by your trainer</li>
+            <li>AI-generated recipes included</li>
+            <li>Premium dashboard access</li>
+            <li>Billing cadence: monthly</li>
+            <li>Selection: Premium + Coaching</li>
+          </ul>
+          <button
+            type="button"
+            className="user-plan-button"
+            onClick={() => {
+              setIncludeCoaching(true);
+              // Find the premium offer (with includes_coaching true)
+              const premiumOffer = paidOffers.find((o) => o.includes_coaching);
+              if (premiumOffer) handleOfferSelect(premiumOffer);
+            }}
+          >
+            Choose Premium + Coaching
           </button>
         </article>
       </div>
