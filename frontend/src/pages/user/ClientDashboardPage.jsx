@@ -741,9 +741,11 @@ function ClientDashboardPage() {
           <button type="button" className="client-q-btn secondary" onClick={() => navigate('/client_tracking')}>
             Tracking
           </button>
-          <button type="button" className="client-q-btn secondary" onClick={() => navigate('/client_coaching')}>
-            Coaching
-          </button>
+          {dashboard?.client?.includes_coaching && (
+            <button type="button" className="client-q-btn secondary" onClick={() => navigate('/client_coaching')}>
+              Coaching
+            </button>
+          )}
           <button
             type="button"
             className="client-q-btn secondary"
