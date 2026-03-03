@@ -22,6 +22,8 @@ PLAN_NAME_TO_STATUS = {
     "adminAnnual": "admin_annual",
 }
 
+ADMIN_TRIAL_DAYS = 30
+
 
 def _truthy(v):
     return str(v).strip().lower() in ("true", "1", "yes", "y", "t")
@@ -58,6 +60,7 @@ def create_test_admin(request):
         )
 
     if plan_name == "adminTrial":
+        # Legacy compatibility: trial always maps to a paid monthly plan.
         make_trial = True
         actual_plan_name = "adminMonthly"
     else:
@@ -84,7 +87,7 @@ def create_test_admin(request):
 
     now = timezone.now()
     trial_start = now if make_trial else None
-    next_billing = now + timedelta(days=14 if make_trial else 30)
+    next_billing = now + timedelta(days=ADMIN_TRIAL_DAYS if make_trial else 30)
     subscription_start = None if make_trial else now
 
     log_Profile(

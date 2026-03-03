@@ -231,6 +231,15 @@
   border: 1px solid rgba(20, 40, 74, 0.18);
  }
 
+.user-plan-button.user-plan-button-locked,
+.user-plan-button.user-plan-button-locked:disabled {
+  background: linear-gradient(145deg, #ff3b30, #d90429);
+  border: 1px solid #b00020;
+  color: #fff;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
 @media (max-width: 640px) {
   .user-plan-page {
     padding: 1.6rem 0.9rem;

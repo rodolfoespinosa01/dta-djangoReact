@@ -78,6 +78,11 @@ function AdminPlanSelectionPage() {
     <div className="admin-plan-wrapper">
       <h2 className="admin-plan-title">🧾 {t('admin_plan.title')}</h2>
 
+      <div className="admin-plan-trial-notice">
+        <h3>{t('admin_plan.trial_notice_title')}</h3>
+        <p>{t('admin_plan.trial_notice_desc')}</p>
+      </div>
+
       <div className="admin-plan-email">
         <input
           type="email"

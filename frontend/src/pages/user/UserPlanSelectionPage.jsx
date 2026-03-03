@@ -51,6 +51,26 @@ const DTA_DIRECT_PAGE = {
   ],
 };
 
+const BRANDED_SAFE_FALLBACK_PAGE = {
+  admin_page: {
+    brand_name: 'DTA',
+    admin_slug: null,
+    sale_channel: 'admin_white_label',
+  },
+  offers: [
+    {
+      code: 'macro_calculator_free',
+      name: 'Macro Calculator',
+      price_label: 'Free',
+      trial_days: 0,
+      description: 'Get your macro calculations and weekly macro breakdown with a DTA account.',
+      includes_food_plan: false,
+      billing: 'free',
+      featured: false,
+    },
+  ],
+};
+
 function QuoteChip({ quote }) {
   if (!quote) return null;
   const amounts = quote.amounts || {};
@@ -145,8 +165,8 @@ function UserPlanSelectionPage() {
         const res = await apiRequest(`/api/v1/users/client/public/admin-page/${effectiveAdminSlug}/`);
         if (ignore) return;
         if (!res.ok) {
-          // If branded page lookup fails, fallback to direct DTA page instead of crashing UX.
-          setPageData(DTA_DIRECT_PAGE);
+          // Branded page lookup failed: fail safe by only showing the free macro option.
+          setPageData(BRANDED_SAFE_FALLBACK_PAGE);
           setStatus('ready');
           setError('');
           return;
@@ -178,14 +198,17 @@ function UserPlanSelectionPage() {
   const offers = useMemo(() => pageData?.offers || [], [pageData]);
   const freeOffer = useMemo(() => offers.find((o) => o.billing === 'free') || null, [offers]);
   const paidOffers = useMemo(() => offers.filter((o) => o.billing !== 'free'), [offers]);
+  const standardOffer = useMemo(() => paidOffers.find((o) => o.code === 'food_plan_monthly') || null, [paidOffers]);
+  const premiumOffer = useMemo(() => paidOffers.find((o) => o.code === 'food_plan_monthly_premium') || null, [paidOffers]);
+  const hasPaidOffers = Boolean(standardOffer || premiumOffer);
+  const unlockedPaidOffers = useMemo(() => paidOffers.filter((o) => !o.is_locked), [paidOffers]);
+  const hasUnlockedPaidOffers = unlockedPaidOffers.length > 0;
+  const paidOffersLocked = Boolean(pageData?.paid_offers_locked) || (hasPaidOffers && !hasUnlockedPaidOffers);
+  const paidOfferLockReason = pageData?.offer_lock_reason || standardOffer?.lock_reason || premiumOffer?.lock_reason || '';
   const selectedPaidOffer = useMemo(() => {
     const targetCoaching = includeCoaching;
-    return paidOffers.find((o) => o.billing === 'monthly' && Boolean(o.includes_coaching) === targetCoaching) || null;
-  }, [paidOffers, includeCoaching]);
-  const premiumOffer = useMemo(
-    () => paidOffers.find((o) => o.billing === 'monthly' && Boolean(o.includes_coaching)) || null,
-    [paidOffers],
-  );
+    return unlockedPaidOffers.find((o) => o.billing === 'monthly' && Boolean(o.includes_coaching) === targetCoaching) || null;
+  }, [unlockedPaidOffers, includeCoaching]);
 
   useEffect(() => {
     if (!selectedPaidOffer) {
@@ -345,43 +368,50 @@ function UserPlanSelectionPage() {
             ref={emailInputRef}
           />
         </label>
-        <label className="user-plan-email-field">
-          Discount Code (optional)
-          <input
-            type="text"
-            value={discountCode}
-            onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
-            onBlur={() => {
-              // Re-run quote after editing the discount field
-              if (!selectedPaidOffer) return;
-              setQuoteLoading(true);
-              apiRequest('/api/v1/users/client/signup/quote/', {
-                method: 'POST',
-                body: {
-                  email: signupEmail.trim(),
-                  offer_code: selectedPaidOffer.code,
-                  admin_slug: effectiveAdminSlug || null,
-                  discount_code: discountCode.trim(),
-                },
-              })
-                .then((res) => {
-                  if (!res.ok) {
-                    setPaidQuote(null);
-                    setCtaMessage(res.data?.error?.message || 'Unable to apply discount code.');
-                    return;
-                  }
-                  setPaidQuote(res.data?.quote || null);
-                  setCtaMessage('');
+        {hasUnlockedPaidOffers ? (
+          <label className="user-plan-email-field">
+            Discount Code (optional)
+            <input
+              type="text"
+              value={discountCode}
+              onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+              onBlur={() => {
+                // Re-run quote after editing the discount field
+                if (!selectedPaidOffer) return;
+                setQuoteLoading(true);
+                apiRequest('/api/v1/users/client/signup/quote/', {
+                  method: 'POST',
+                  body: {
+                    email: signupEmail.trim(),
+                    offer_code: selectedPaidOffer.code,
+                    admin_slug: effectiveAdminSlug || null,
+                    discount_code: discountCode.trim(),
+                  },
                 })
-                .catch((err) => {
-                  console.error(err);
-                  setCtaMessage('Unable to apply discount code.');
-                })
-                .finally(() => setQuoteLoading(false));
-            }}
-            placeholder="SUMMER20"
-          />
-        </label>
+                  .then((res) => {
+                    if (!res.ok) {
+                      setPaidQuote(null);
+                      setCtaMessage(res.data?.error?.message || 'Unable to apply discount code.');
+                      return;
+                    }
+                    setPaidQuote(res.data?.quote || null);
+                    setCtaMessage('');
+                  })
+                  .catch((err) => {
+                    console.error(err);
+                    setCtaMessage('Unable to apply discount code.');
+                  })
+                  .finally(() => setQuoteLoading(false));
+              }}
+              placeholder="SUMMER20"
+            />
+          </label>
+        ) : null}
+        {paidOffersLocked ? (
+          <p className="user-plan-inline-message">
+            {paidOfferLockReason || 'Paid plans are currently unavailable for this coach account. Please continue with the free macro calculator option.'}
+          </p>
+        ) : null}
         {ctaMessage && <p className="user-plan-inline-message">{ctaMessage}</p>}
       </div>
 
@@ -407,16 +437,19 @@ function UserPlanSelectionPage() {
           </article>
         ) : null}
 
+        {standardOffer ? (
         <article className="user-plan-card is-featured">
           <div className="user-plan-card-top">
             <h3>Standard Meal Plan</h3>
             <span className="user-plan-price">
-              {quoteLoading ? 'Updating…' : (paidQuote ? `$${((paidQuote.amounts?.total_cents || 0) / 100).toFixed(2)}` : (selectedPaidOffer?.price_label || '-'))}
+              {quoteLoading ? 'Updating…' : (paidQuote ? `$${((paidQuote.amounts?.total_cents || 0) / 100).toFixed(2)}` : (standardOffer?.price_label || '-'))}
             </span>
           </div>
           <img src={mealplanImg} alt="Meal Plan" className="user-plan-img" style={{ maxHeight: 80, margin: '0.5rem auto' }} />
           <p className="user-plan-trial">
-            {paidQuote?.trial_days ? `${paidQuote.trial_days}-day free trial for first-time users` : 'Card required to begin paid access'}
+            {standardOffer?.is_locked
+              ? 'Temporarily unavailable for this coach account'
+              : (paidQuote?.trial_days ? `${paidQuote.trial_days}-day free trial for first-time users` : 'Card required to begin paid access')}
           </p>
           <p className="user-plan-description">
             <b>Let us do the work!</b> We’ll generate a meal plan that gets you as close as possible to your macro goals. <b>AI-generated recipes included.</b> Guaranteed measurements.
@@ -431,14 +464,19 @@ function UserPlanSelectionPage() {
           <QuoteChip quote={paidQuote} />
           <button
             type="button"
-            className="user-plan-button"
-            onClick={() => selectedPaidOffer && handleOfferSelect(selectedPaidOffer)}
-            disabled={!selectedPaidOffer}
+            className={`user-plan-button ${standardOffer?.is_locked ? 'user-plan-button-locked' : ''}`}
+            onClick={() => {
+              if (standardOffer?.is_locked) return;
+              selectedPaidOffer && handleOfferSelect(selectedPaidOffer);
+            }}
+            disabled={!selectedPaidOffer || Boolean(standardOffer?.is_locked)}
           >
-            {startingOfferCode === selectedPaidOffer?.code ? 'Starting…' : 'Go To Secure Checkout'}
+            {standardOffer?.is_locked ? 'Unavailable' : (startingOfferCode === selectedPaidOffer?.code ? 'Starting…' : 'Go To Secure Checkout')}
           </button>
         </article>
+        ) : null}
 
+        {premiumOffer ? (
         <article className="user-plan-card">
           <div className="user-plan-card-top">
             <h3>Premium + Coaching</h3>
@@ -462,8 +500,9 @@ function UserPlanSelectionPage() {
           </ul>
           <button
             type="button"
-            className="user-plan-button"
+            className={`user-plan-button ${premiumOffer?.is_locked ? 'user-plan-button-locked' : ''}`}
             onClick={() => {
+              if (premiumOffer?.is_locked) return;
               setIncludeCoaching(true);
               if (!premiumOffer) {
                 setCtaMessage('Premium coaching option is not available right now.');
@@ -471,11 +510,12 @@ function UserPlanSelectionPage() {
               }
               handleOfferSelect(premiumOffer);
             }}
-            disabled={!premiumOffer}
+            disabled={!premiumOffer || Boolean(premiumOffer?.is_locked)}
           >
-            {startingOfferCode === premiumOffer?.code ? 'Starting…' : 'Choose Premium + Coaching'}
+            {premiumOffer?.is_locked ? 'Unavailable' : (startingOfferCode === premiumOffer?.code ? 'Starting…' : 'Choose Premium + Coaching')}
           </button>
         </article>
+        ) : null}
       </div>
 
       <button onClick={handleHomeCTA} className="user-plan-button user-plan-button-secondary">

@@ -1,7 +1,11 @@
 from rest_framework.decorators import api_view
+from django.contrib.auth import get_user_model
 
 from users.admin_area.models import AdminIdentity
+from users.client_area.models import ClientProfile
 from users.client_area.services.pricing import OFFER_CATALOG
+
+TRIAL_ADMIN_CLIENT_LIMIT = 5
 
 
 def _ok(payload, status=200):
@@ -69,7 +73,26 @@ def _offer_card_payload(code: str, *, featured: bool = False):
         "includes_food_plan": bool(offer.get("includes_food_plan")),
         "includes_coaching": includes_coaching,
         "featured": featured,
+        "is_locked": False,
+        "lock_reason": "",
     }
+
+
+def _admin_trial_offer_restricted(identity: AdminIdentity) -> bool:
+    User = get_user_model()
+    admin_user = User.objects.filter(email__iexact=identity.admin_email, role="admin").first()
+    if not admin_user:
+        return False
+
+    has_active_trial = admin_user.profiles.filter(is_active=True, is_trial=True).exists()
+    if not has_active_trial:
+        return False
+
+    active_clients_count = ClientProfile.objects.filter(
+        associated_admin=identity,
+        is_active=True,
+    ).count()
+    return active_clients_count >= TRIAL_ADMIN_CLIENT_LIMIT
 
 
 @api_view(["GET"])
@@ -82,11 +105,26 @@ def admin_public_marketing_page(request, slug):
     if not identity:
         return _error("ADMIN_PAGE_NOT_FOUND", "This admin page could not be found.", status=404)
 
+    restrict_paid_offers = _admin_trial_offer_restricted(identity)
+    lock_reason = (
+        f"This coach is currently on a trial plan and has reached the {TRIAL_ADMIN_CLIENT_LIMIT}-client limit. "
+        "Paid plans are temporarily unavailable."
+    )
+
     offer_rows = [
         _offer_card_payload("macro_calculator_free"),
         _offer_card_payload("food_plan_monthly"),
         _offer_card_payload("food_plan_monthly_premium", featured=True),
     ]
+
+    if restrict_paid_offers:
+        for row in offer_rows:
+            if not row:
+                continue
+            if row.get("billing") != "free":
+                row["is_locked"] = True
+                row["lock_reason"] = lock_reason
+
     offers = [row for row in offer_rows if row]
     if not offers:
         return _error("OFFERS_NOT_CONFIGURED", "No offers are configured right now.", status=503)
@@ -105,6 +143,8 @@ def admin_public_marketing_page(request, slug):
                 "dev_url": f"{slug}.lvh.me:3000",
                 "public_url": f"{slug}.dtameals.com",
             },
+            "paid_offers_locked": bool(restrict_paid_offers),
+            "offer_lock_reason": lock_reason if restrict_paid_offers else "",
             "offers": offers,
         }
     )
