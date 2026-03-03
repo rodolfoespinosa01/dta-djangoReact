@@ -3,7 +3,7 @@ from django.db import models  # 👉 provides base model functionality for defin
 class Plan(models.Model):  # 👉 stores subscription plans available to admin users
 
     PLAN_CHOICES = [
-        ('adminTrial', 'Free Admin Trial'),
+        ('adminTrial', 'Legacy Trial (Deprecated)'),
         ('adminMonthly', 'Monthly Admin Plan'),
         ('adminQuarterly', 'Quarterly Admin Plan'),
         ('adminAnnual', 'Annual Admin Plan'),

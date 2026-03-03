@@ -31,6 +31,8 @@ RESERVED_SUBDOMAIN_SLUGS = {
     "static",
 }
 
+ADMIN_TRIAL_DAYS = 30
+
 def _is_gmail_email(value):
     email = (value or '').strip().lower()
     return email.endswith('@gmail.com') or email.endswith('@googlemail.com')
@@ -194,6 +196,7 @@ def register(request):
     elif meta_is_trial is not None:
         is_trial = meta_is_trial
     else:
+        # Backward compatibility for legacy flows that may have stored adminTrial
         is_trial = (raw_plan_name == 'adminTrial')
 
     # Normalize plan
@@ -280,7 +283,7 @@ def register(request):
             if status_val == 'trialing' or is_trial:
                 is_trial = True
                 trial_start = cur_start or li_start or now
-                next_billing = trial_end or li_end or cur_end or (now + timedelta(days=14))
+                next_billing = trial_end or li_end or cur_end or (now + timedelta(days=ADMIN_TRIAL_DAYS))
                 subscription_start = None
                 subscription_end = None
             else:
@@ -294,7 +297,7 @@ def register(request):
             # Fallbacks if we can’t fetch sub cleanly
             if is_trial:
                 trial_start = now
-                next_billing = now + timedelta(days=14)
+                next_billing = now + timedelta(days=ADMIN_TRIAL_DAYS)
             else:
                 subscription_start = None
                 next_billing = None
@@ -302,7 +305,7 @@ def register(request):
         # No subscription id on session (rare) → fall back
         if is_trial:
             trial_start = now
-            next_billing = now + timedelta(days=14)
+            next_billing = now + timedelta(days=ADMIN_TRIAL_DAYS)
         else:
             subscription_start = None
             next_billing = None
