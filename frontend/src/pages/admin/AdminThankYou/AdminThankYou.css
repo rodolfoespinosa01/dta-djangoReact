@@ -21,3 +21,15 @@
     padding: 2rem 0.9rem;
   }
 }
+
+.app-shell.admin-theme-dark .admin-thankyou-title {
+  color: #f8fafc;
+}
+
+.app-shell.admin-theme-dark .admin-thankyou-text {
+  color: #cbd5e1;
+}
+
+.app-shell.admin-theme-light .admin-thankyou-title {
+  color: #13233f;
+}

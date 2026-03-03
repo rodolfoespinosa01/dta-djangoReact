@@ -15,6 +15,16 @@ function AdminSettings() {
   const [planPriceMap, setPlanPriceMap] = useState({});
   const [message, setMessage] = useState('');
   const [loadingAction, setLoadingAction] = useState(null); // 'cancel' | 'upgrade' | 'downgrade' | null
+  const [themePreference, setThemePreference] = useState('light');
+  const [savingTheme, setSavingTheme] = useState(false);
+
+  const persistAdminTheme = (theme) => {
+    const normalized = theme === 'dark' ? 'dark' : 'light';
+    try {
+      localStorage.setItem('admin_theme_preference', normalized);
+    } catch {}
+    window.dispatchEvent(new Event('admin-theme-changed'));
+  };
 
   // modal for plan selection
   const [modalOpen, setModalOpen] = useState(false);
@@ -117,11 +127,50 @@ function AdminSettings() {
       }
     };
 
+    const fetchThemePreference = async () => {
+      try {
+        const { ok, status, data } = await apiRequest('/api/v1/users/admin/theme_preference/', { auth: true });
+        if (!isAuthedGuard({ status })) return;
+        if (!ignore && ok && data?.theme) {
+          const normalized = data.theme === 'dark' ? 'dark' : 'light';
+          setThemePreference(normalized);
+          persistAdminTheme(normalized);
+        }
+      } catch (err) {
+        console.error('error fetching theme preference:', err);
+      }
+    };
+
     fetchDashboard();
     fetchPlanMap();
     fetchPaymentMethod();
+    fetchThemePreference();
     return () => { ignore = true; };
   }, [isAuthenticated, navigate]);
+
+  const handleThemeToggle = async () => {
+    const nextTheme = themePreference === 'dark' ? 'light' : 'dark';
+    try {
+      setSavingTheme(true);
+      const { ok, status, data } = await apiRequest('/api/v1/users/admin/theme_preference/', {
+        method: 'PUT',
+        auth: true,
+        body: { theme: nextTheme },
+      });
+      if (!isAuthedGuard({ status })) return;
+      if (ok) {
+        setThemePreference(nextTheme);
+        persistAdminTheme(nextTheme);
+      } else {
+        setMessage(data?.error?.message || data?.error || 'Unable to update theme preference.');
+      }
+    } catch (err) {
+      console.error('theme toggle error:', err);
+      setMessage('Network error while updating theme preference.');
+    } finally {
+      setSavingTheme(false);
+    }
+  };
 
   const openPlanModal = (title, options, requireAcknowledge = false) => {
     setModalTitle(title);
@@ -370,6 +419,24 @@ return (
     {dashboardData ? (
       <div className="admin-settings-card">
         <h3>📄 {t('admin_settings.subscription_info')}</h3>
+
+        <div className="admin-theme-row">
+          <div>
+            <p className="admin-theme-title">🎨 {t('admin_settings.theme_title')}</p>
+            <p className="admin-theme-subtitle">
+              {themePreference === 'dark' ? t('admin_settings.theme_dark') : t('admin_settings.theme_light')}
+            </p>
+          </div>
+          <button
+            type="button"
+            className={`theme-toggle ${themePreference === 'dark' ? 'is-dark' : 'is-light'}`}
+            aria-label={t('admin_settings.theme_toggle_aria')}
+            onClick={handleThemeToggle}
+            disabled={savingTheme}
+          >
+            <span className="theme-toggle-knob" />
+          </button>
+        </div>
 
         <p>
           <strong>{t('admin_settings.plan')}</strong>{" "}

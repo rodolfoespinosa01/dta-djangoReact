@@ -1,3 +1,16 @@
+.admin-dashboard-page {
+  min-height: 100vh;
+  background: linear-gradient(160deg, #0a0f1d 0%, #111827 45%, #1f2937 100%);
+}
+
+.app-shell.admin-theme-dark .admin-dashboard-page {
+  background: linear-gradient(160deg, #0a0f1d 0%, #111827 45%, #1f2937 100%);
+}
+
+.app-shell.admin-theme-light .admin-dashboard-page {
+  background: linear-gradient(160deg, #eef4ff 0%, #f8fafc 45%, #e8eef9 100%);
+}
+
 .admin-dashboard-wrapper {
   padding: 2.5rem 1.2rem 3rem;
   max-width: 760px;
@@ -7,6 +20,7 @@
 
 .admin-dashboard-title {
   text-align: center;
+  color: white;
   margin: 0;
   font-size: clamp(1.8rem, 4vw, 2.2rem);
   letter-spacing: 0.08em;
@@ -14,13 +28,22 @@
   text-shadow: 0 0 18px rgba(42, 255, 200, 0.22);
 }
 
+.app-shell.admin-theme-light .admin-dashboard-title {
+  color: #13233f;
+  text-shadow: 0 0 18px rgba(37, 99, 235, 0.18);
+}
+
 .admin-dashboard-subtitle {
   text-align: center;
-  color: var(--accent);
+  color: white;
   margin: 0.4rem 0 0;
   font-size: clamp(0.95rem, 2.4vw, 1.15rem);
   letter-spacing: 0.05em;
   font-weight: 700;
+}
+
+.app-shell.admin-theme-light .admin-dashboard-subtitle {
+  color: #27447d;
 }
 
 .admin-dashboard-card {

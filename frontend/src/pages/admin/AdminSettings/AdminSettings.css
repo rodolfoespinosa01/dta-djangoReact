@@ -1,8 +1,49 @@
 .admin-settings-wrapper {
   padding: 2.4rem 1.1rem 3.2rem;
+  color: white;
   max-width: 860px;
   margin: 0 auto;
   animation: settings-enter 520ms ease;
+}
+
+.app-shell.admin-theme-light .admin-settings-wrapper h2 {
+  color: #13233f;
+  text-shadow: 0 0 18px rgba(37, 99, 235, 0.14);
+}
+
+.app-shell.admin-theme-light .admin-settings-email {
+  color: #50617b;
+}
+
+.app-shell.admin-theme-light .admin-settings-card {
+  border: 1px solid rgba(24, 45, 83, 0.12);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 12px 24px rgba(16, 24, 40, 0.1);
+}
+
+.app-shell.admin-theme-light .admin-settings-card h3 {
+  color: #13233f;
+}
+
+.app-shell.admin-theme-light .admin-settings-card p {
+  color: #243853;
+}
+
+.app-shell.admin-theme-light .admin-settings-card strong {
+  color: #1f4b8f;
+}
+
+.app-shell.admin-theme-light .admin-theme-row {
+  border: 1px solid rgba(24, 45, 83, 0.12);
+  background: rgba(246, 249, 255, 0.9);
+}
+
+.app-shell.admin-theme-light .admin-theme-title {
+  color: #13233f;
+}
+
+.app-shell.admin-theme-light .admin-theme-subtitle {
+  color: #50617b;
 }
 
 .admin-settings-wrapper h2 {
@@ -17,7 +58,7 @@
 .admin-settings-email {
   margin: 0.5rem 0 0;
   text-align: center;
-  color: var(--muted);
+  color: white;
   letter-spacing: 0.02em;
 }
 
@@ -39,6 +80,71 @@
   letter-spacing: 0.05em;
   font-size: 0.97rem;
   color: #c8f4e7;
+}
+
+.admin-theme-row {
+  margin-top: 0.9rem;
+  margin-bottom: 0.9rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid rgba(36, 164, 255, 0.22);
+  background: rgba(10, 26, 44, 0.38);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.admin-theme-title {
+  margin: 0;
+  color: #f0fbff;
+  font-weight: 700;
+}
+
+.admin-theme-subtitle {
+  margin: 0.2rem 0 0;
+  color: #9ec7f3;
+  font-size: 0.88rem;
+}
+
+.theme-toggle {
+  width: 58px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: #334155;
+  position: relative;
+  cursor: pointer;
+  transition: background 180ms ease, border-color 180ms ease;
+}
+
+.theme-toggle.is-dark {
+  background: #0f172a;
+}
+
+.theme-toggle.is-light {
+  background: #2563eb;
+}
+
+.theme-toggle-knob {
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+  transition: transform 180ms ease;
+}
+
+.theme-toggle.is-light .theme-toggle-knob {
+  transform: translateX(26px);
+}
+
+.theme-toggle:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 
 .admin-settings-card p {

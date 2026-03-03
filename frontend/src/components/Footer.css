@@ -31,3 +31,21 @@
   max-width: 520px;
   text-align: center;
 }
+
+.app-shell.admin-theme-dark .site-footer {
+  border-top: 1px solid rgba(148, 163, 184, 0.24);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  background: linear-gradient(180deg, rgba(11, 18, 35, 0.96), rgba(17, 24, 39, 0.84));
+}
+
+.app-shell.admin-theme-dark .site-footer-copy {
+  color: #e2e8f0;
+}
+
+.app-shell.admin-theme-dark .site-footer-note {
+  color: #94a3b8;
+}
+
+.app-shell.admin-theme-light .site-footer {
+  background: linear-gradient(180deg, rgba(250, 252, 255, 0.95), rgba(233, 240, 255, 0.78));
+}

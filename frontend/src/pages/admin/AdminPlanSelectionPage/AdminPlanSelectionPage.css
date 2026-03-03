@@ -180,3 +180,42 @@
     margin: 0.35rem 0 0;
   }
 }
+
+.app-shell.admin-theme-dark .admin-plan-wrapper {
+  color: #e2e8f0;
+}
+
+.app-shell.admin-theme-dark .admin-plan-title {
+  color: #f8fafc;
+}
+
+.app-shell.admin-theme-dark .admin-plan-trial-notice {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+}
+
+.app-shell.admin-theme-dark .admin-plan-trial-notice h3 {
+  color: #f1f5f9;
+}
+
+.app-shell.admin-theme-dark .admin-plan-trial-notice p {
+  color: #cbd5e1;
+}
+
+.app-shell.admin-theme-light .admin-plan-card {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(24, 45, 83, 0.14);
+  box-shadow: 0 10px 20px rgba(16, 24, 40, 0.1);
+}
+
+.app-shell.admin-theme-light .admin-plan-card h3 {
+  color: #13233f;
+}
+
+.app-shell.admin-theme-light .admin-plan-price {
+  color: #27447d;
+}
+
+.app-shell.admin-theme-light .admin-plan-description {
+  color: #4c6484;
+}
