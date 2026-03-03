@@ -62,6 +62,8 @@ QUESTIONNAIRE_REQUIRES_REGEN_FIELDS = {
     "training_schedule",
 }
 
+TRIAL_ADMIN_CLIENT_LIMIT = 5
+
 
 def _stripe_once_discount_from_quote(quote_payload):
     discount = (quote_payload or {}).get("discount") or {}
@@ -115,6 +117,40 @@ def _macro_link_questionnaire_payload(link):
 
 def _trial_days_for_offer(email, offer_code):
     return trial_days_for_offer(email, offer_code)
+
+
+def _admin_trial_client_stats(admin_identity: AdminIdentity | None):
+    if not admin_identity:
+        return {
+            "trial_active": False,
+            "active_clients": 0,
+            "pending_signups": 0,
+        }
+
+    User = get_user_model()
+    admin_user = User.objects.filter(email__iexact=admin_identity.admin_email, role="admin").first()
+    if not admin_user:
+        return {
+            "trial_active": False,
+            "active_clients": 0,
+            "pending_signups": 0,
+        }
+
+    has_active_trial = admin_user.profiles.filter(is_active=True, is_trial=True).exists()
+    if not has_active_trial:
+        return {
+            "trial_active": False,
+            "active_clients": 0,
+            "pending_signups": 0,
+        }
+
+    active_clients = ClientProfile.objects.filter(associated_admin=admin_identity).count()
+    pending_signups = ClientPendingSignup.objects.filter(admin=admin_identity).count()
+    return {
+        "trial_active": True,
+        "active_clients": active_clients,
+        "pending_signups": pending_signups,
+    }
 
 
 def _build_client_settings_payload(profile: ClientProfile | None):
@@ -506,6 +542,22 @@ def start_signup(request):
     if existing_pending:
         existing_pending.delete()
 
+    if admin and offer_code != "macro_calculator_free":
+        trial_stats = _admin_trial_client_stats(admin)
+        if trial_stats["trial_active"]:
+            reserved_slots = int(trial_stats["active_clients"]) + int(trial_stats["pending_signups"])
+            if reserved_slots >= TRIAL_ADMIN_CLIENT_LIMIT:
+                return error(
+                    "ADMIN_TRIAL_CLIENT_LIMIT_REACHED",
+                    "Trial admins can sign up up to 5 clients. Upgrade to continue adding more clients.",
+                    http_status=403,
+                    details={
+                        "client_limit": TRIAL_ADMIN_CLIENT_LIMIT,
+                        "active_clients": int(trial_stats["active_clients"]),
+                        "pending_signups": int(trial_stats["pending_signups"]),
+                    },
+                )
+
     if offer.get("billing_cycle") == "free":
         applied_trial_days = _trial_days_for_offer(email, offer_code)
         pending_amount_cents = int(offer["amount_cents"])
@@ -696,6 +748,19 @@ def register_client(request):
         return error("INVALID_TOKEN", "Invalid or expired registration token.", http_status=404)
     if pending.email != email:
         return error("EMAIL_TOKEN_MISMATCH", "This token does not match the provided email.", http_status=400)
+
+    if pending.admin and pending.offer_code != "macro_calculator_free":
+        trial_stats = _admin_trial_client_stats(pending.admin)
+        if trial_stats["trial_active"] and int(trial_stats["active_clients"]) >= TRIAL_ADMIN_CLIENT_LIMIT:
+            return error(
+                "ADMIN_TRIAL_CLIENT_LIMIT_REACHED",
+                "Trial admins can sign up up to 5 clients. Upgrade to continue adding more clients.",
+                http_status=403,
+                details={
+                    "client_limit": TRIAL_ADMIN_CLIENT_LIMIT,
+                    "active_clients": int(trial_stats["active_clients"]),
+                },
+            )
 
     User = get_user_model()
     if User.objects.filter(username=email).exists():

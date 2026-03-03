@@ -13,6 +13,27 @@
   text-shadow: none;
 }
 
+.admin-plan-trial-notice {
+  max-width: 720px;
+  margin: 0 auto 20px;
+  background: #f2f7ff;
+  border: 1px solid rgba(28, 41, 69, 0.2);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.admin-plan-trial-notice h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+  color: #132038;
+}
+
+.admin-plan-trial-notice p {
+  margin: 0;
+  font-size: 14px;
+  color: #31425e;
+}
+
 .admin-plan-email {
   display: flex;
   flex-direction: column;

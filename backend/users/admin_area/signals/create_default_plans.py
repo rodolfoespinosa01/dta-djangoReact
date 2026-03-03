@@ -11,12 +11,6 @@ def create_default_plans(sender, **kwargs):
 
     default_plans = [
         {
-            'name': 'adminTrial',
-            'description': 'Free 14-day trial',
-            'stripe_price_id': 'price_1R8ZfGAYzIGw9RTd5w6Dh5gQ',
-            'price_cents': 0,
-        },
-        {
             'name': 'adminMonthly',
             'description': 'Monthly subscription',
             'stripe_price_id': 'price_1RF4JjAYzIGw9RTdQWgrk6HN',

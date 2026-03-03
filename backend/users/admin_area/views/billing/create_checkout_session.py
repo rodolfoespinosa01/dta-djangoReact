@@ -29,6 +29,9 @@ PLAN_NAME_ALIASES = {
     "admin_annual": "adminAnnual",
 }
 
+ALLOWED_ADMIN_PLANS = {"adminMonthly", "adminQuarterly", "adminAnnual"}
+ADMIN_TRIAL_DAYS = 30
+
 def _has_any_prior_plan_activity(email: str) -> bool:
     admin_identity = AdminIdentity.objects.filter(admin_email=email).first()
     has_events = False
@@ -85,6 +88,15 @@ def create_checkout_session(request):
         if not plan_name or not email:
             return finalize(
                 error(code='MISSING_FIELDS', message='Missing plan or email', http_status=status.HTTP_400_BAD_REQUEST)
+            )
+
+        if plan_name not in ALLOWED_ADMIN_PLANS:
+            return finalize(
+                error(
+                    code='PLAN_NOT_ALLOWED',
+                    message='Invalid admin plan selected.',
+                    http_status=status.HTTP_400_BAD_REQUEST,
+                )
             )
 
         # ✅ Prevent duplicate user accounts
@@ -196,7 +208,7 @@ def create_checkout_session(request):
             if trial_seconds > 0:
                 subscription_data['trial_end'] = int(time.time()) + trial_seconds
             else:
-                subscription_data['trial_period_days'] = 14
+                subscription_data['trial_period_days'] = ADMIN_TRIAL_DAYS
 
         # ✅ Create Checkout Session
         session = stripe.checkout.Session.create(
