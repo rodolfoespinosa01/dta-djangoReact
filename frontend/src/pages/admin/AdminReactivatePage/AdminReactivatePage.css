@@ -190,3 +190,49 @@
   border-color: #334155;
   color: #e5e7eb;
 }
+
+.app-shell.admin-theme-light .admin-reactivate-wrapper {
+  background: transparent;
+}
+
+.app-shell.admin-theme-light .admin-reactivate-card {
+  background: #ffffff;
+  border: 1px solid rgba(24, 45, 83, 0.14);
+  color: #13233f;
+  box-shadow: 0 12px 24px rgba(16, 24, 40, 0.12);
+}
+
+.app-shell.admin-theme-light .admin-reactivate-description,
+.app-shell.admin-theme-light .admin-reactivate-hint {
+  color: #50617b;
+}
+
+.app-shell.admin-theme-light .plan-card {
+  background: #f8fbff;
+  border: 1px solid rgba(24, 45, 83, 0.14);
+  color: #13233f;
+}
+
+.app-shell.admin-theme-light .plan-price {
+  color: #31445f;
+}
+
+.app-shell.admin-theme-light .plan-trial,
+.app-shell.admin-theme-light .plan-trial-disabled,
+.app-shell.admin-theme-light .trial-toggle {
+  color: #50617b;
+}
+
+.app-shell.admin-theme-light .admin-reactivate-settings-btn,
+.app-shell.admin-theme-light .admin-reactivate-logout-btn {
+  background: #ffffff;
+  color: #1e293b;
+  border: 1px solid rgba(24, 45, 83, 0.2);
+}
+
+.app-shell.admin-theme-light .admin-reactivate-settings-btn:hover,
+.app-shell.admin-theme-light .admin-reactivate-logout-btn:hover {
+  background: #f1f5ff;
+  border-color: rgba(24, 45, 83, 0.3);
+  color: #13233f;
+}

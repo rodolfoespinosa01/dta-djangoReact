@@ -16,7 +16,11 @@ from users.admin_area.models import (
     AdminDiscountCode,
     # Plan,  # uncomment if you want optional seeding at the end
 )
-from users.client_area.models import DiscountCode as ClientDiscountCode
+from users.client_area.models import (
+    DiscountCode as ClientDiscountCode,
+    ClientPendingSignup,
+    ClientMacroAccessLink,
+)
 
 SUPERADMIN_USERNAME = "dta_user"
 TEST_ADMIN_EMAIL = "admin@dta.com"
@@ -52,7 +56,7 @@ class Command(BaseCommand):
                 "role": "admin",
                 "is_staff": True,
                 "is_active": True,
-                "subscription_status": "admin_monthly",
+                "subscription_status": "admin_inactive",
             },
         )
 
@@ -69,8 +73,8 @@ class Command(BaseCommand):
         if not admin_user.is_active:
             admin_user.is_active = True
             changed_fields.append("is_active")
-        if getattr(admin_user, "subscription_status", None) != "admin_monthly":
-            admin_user.subscription_status = "admin_monthly"
+        if getattr(admin_user, "subscription_status", None) != "admin_inactive":
+            admin_user.subscription_status = "admin_inactive"
             changed_fields.append("subscription_status")
 
         admin_user.set_password(TEST_ADMIN_PASSWORD)
@@ -106,6 +110,8 @@ class Command(BaseCommand):
             self._safe_delete_all(PendingSignup.objects.all(), "⏳ Pending signup entries deleted.")
             self._safe_delete_all(EventTracker.objects.all(), "📚 Event tracker entries deleted.")
             self._safe_delete_all(ClientDiscountCode.objects.all(), "🏷️ Client discount codes deleted.")
+            self._safe_delete_all(ClientPendingSignup.objects.all(), "🧾 Client pending signups deleted.")
+            self._safe_delete_all(ClientMacroAccessLink.objects.all(), "🔗 Client macro access links deleted.")
             self._safe_delete_all(AdminDiscountCode.objects.all(), "🏷️ Admin discount codes deleted.")
             self._safe_delete_all(AdminIdentity.objects.all(), "🆔 Admin identities deleted.")
             self._safe_delete_all(TransactionLog.objects.all(), "🗒️ Transaction log entries deleted.")
@@ -118,6 +124,8 @@ class Command(BaseCommand):
                 PendingSignup,
                 EventTracker,
                 ClientDiscountCode,
+                ClientPendingSignup,
+                ClientMacroAccessLink,
                 AdminDiscountCode,
                 AdminIdentity,
                 TransactionLog,

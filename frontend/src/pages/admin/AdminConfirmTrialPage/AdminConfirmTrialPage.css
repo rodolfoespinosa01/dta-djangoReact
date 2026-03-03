@@ -21,3 +21,19 @@
     padding: 2.2rem 0.9rem;
   }
 }
+
+.app-shell.admin-theme-dark .admin-confirm-wrapper h2 {
+  color: #86efac;
+}
+
+.app-shell.admin-theme-dark .admin-confirm-wrapper p {
+  color: #cbd5e1;
+}
+
+.app-shell.admin-theme-light .admin-confirm-wrapper h2 {
+  color: #15803d;
+}
+
+.app-shell.admin-theme-light .admin-confirm-wrapper p {
+  color: #334155;
+}
