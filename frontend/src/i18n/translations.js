@@ -255,6 +255,10 @@ const translations = {
     'admin_settings.modal_schedule_msg': 'Your current plan stays active until this billing cycle ends. Then your selected plan begins and is charged on the next renewal date.',
     'admin_settings.modal_ack': 'I understand and confirm this scheduled plan change.',
     'admin_settings.modal_confirm_change': 'confirm scheduled change',
+    'admin_settings.theme_title': 'Dashboard theme',
+    'admin_settings.theme_dark': 'Dark mode',
+    'admin_settings.theme_light': 'Light mode',
+    'admin_settings.theme_toggle_aria': 'Toggle admin dashboard theme',
 
     'guard.loading': 'Loading...',
   },
@@ -514,6 +518,10 @@ const translations = {
     'admin_settings.modal_schedule_msg': 'Tu plan actual sigue activo hasta que termine este ciclo de cobro. Luego inicia el plan seleccionado y se cobra en la próxima renovación.',
     'admin_settings.modal_ack': 'Entiendo y confirmo este cambio de plan programado.',
     'admin_settings.modal_confirm_change': 'confirmar cambio programado',
+    'admin_settings.theme_title': 'Tema del panel',
+    'admin_settings.theme_dark': 'Modo oscuro',
+    'admin_settings.theme_light': 'Modo claro',
+    'admin_settings.theme_toggle_aria': 'Cambiar tema del panel de admin',
 
     'guard.loading': 'Cargando...',
   },

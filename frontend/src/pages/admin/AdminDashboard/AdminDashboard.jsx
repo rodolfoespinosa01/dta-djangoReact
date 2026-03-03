@@ -132,6 +132,7 @@ function AdminDashboard() {
           const setupCompleted = Boolean(settingsStatus.setup_completed);
           setParamStatus({ loading: false, initialized, setupCompleted, subdomain, error: '' });
           setSubdomainInput(subdomain?.slug || '');
+
         } else {
           setStatus('error');
         }
@@ -245,6 +246,7 @@ function AdminDashboard() {
   };
 
   return (
+    <div className="admin-dashboard-page">
     <div className="admin-dashboard-wrapper">
       <h1 className="admin-dashboard-title">🎯 {t('admin_dashboard.title')}</h1>
       <p className="admin-dashboard-subtitle">{t('admin_dashboard.subtitle')}</p>
@@ -536,6 +538,7 @@ function AdminDashboard() {
         </button>
       </div>
 
+    </div>
     </div>
   );
 }

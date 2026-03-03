@@ -29,6 +29,7 @@ from users.admin_area.views.parameters.admin_parameter_settings import (
     parameter_settings_status,
     parameter_settings_use_defaults,
 )
+from users.admin_area.views.parameters.admin_theme_preference import admin_theme_preference
 from users.admin_area.views.dev.create_test_admin import create_test_admin
 
 
@@ -50,6 +51,7 @@ urlpatterns = [
     path('parameter_settings/status/', parameter_settings_status, name='parameter_settings_status'),
     path('parameter_settings/use_defaults/', parameter_settings_use_defaults, name='parameter_settings_use_defaults'),
     path('parameter_settings/', parameter_settings_detail, name='parameter_settings_detail'),
+    path('theme_preference/', admin_theme_preference, name='admin_theme_preference'),
 
     # 💳 Billing
     path('create_checkout_session/', create_checkout_session, name='create_checkout_session'),

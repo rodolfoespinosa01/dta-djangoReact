@@ -13,6 +13,22 @@
   backdrop-filter: blur(14px);
 }
 
+.app-shell.admin-theme-dark {
+  background: rgba(10, 15, 29, 0.88);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.42);
+}
+
+.app-shell.admin-theme-dark::before {
+  background:
+    radial-gradient(760px 390px at 4% -5%, rgba(44, 62, 102, 0.68), transparent 65%),
+    radial-gradient(700px 340px at 100% 0%, rgba(67, 28, 80, 0.52), transparent 64%);
+}
+
+.app-shell.admin-theme-light {
+  background: rgba(255, 255, 255, 0.9);
+}
+
 .app-shell::before {
   content: "";
   position: absolute;

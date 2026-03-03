@@ -237,3 +237,26 @@
     align-items: flex-start;
   }
 }
+
+.app-shell.admin-theme-light .admin-home-title,
+.app-shell.admin-theme-light .admin-ops-copy h2,
+.app-shell.admin-theme-light .admin-info-card h2 {
+  color: #13233f;
+}
+
+.app-shell.admin-theme-light .admin-home-subtitle,
+.app-shell.admin-theme-light .admin-info-card p,
+.app-shell.admin-theme-light .admin-ops-copy ul,
+.app-shell.admin-theme-light .admin-noai-banner p {
+  color: #31445f;
+  text-shadow: none;
+}
+
+.app-shell.admin-theme-light .admin-home-hero,
+.app-shell.admin-theme-light .admin-info-card,
+.app-shell.admin-theme-light .admin-home-ops,
+.app-shell.admin-theme-light .admin-noai-banner {
+  border: 1px solid rgba(24, 45, 83, 0.14);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 12px 24px rgba(16, 24, 40, 0.1);
+}

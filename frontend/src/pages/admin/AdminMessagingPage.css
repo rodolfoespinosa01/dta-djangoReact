@@ -346,3 +346,68 @@
     max-width: 90%;
   }
 }
+
+.app-shell.admin-theme-dark .admin-messaging-title,
+.app-shell.admin-theme-dark .messaging-sidebar-title,
+.app-shell.admin-theme-dark .conversation-title,
+.app-shell.admin-theme-dark .tracking-panel h3,
+.app-shell.admin-theme-dark .tracking-section h4 {
+  color: #f1f5f9;
+}
+
+.app-shell.admin-theme-dark .messaging-sidebar,
+.app-shell.admin-theme-dark .messaging-main,
+.app-shell.admin-theme-dark .tracking-panel {
+  background: rgba(10, 19, 33, 0.7);
+  border: 1px solid rgba(117, 161, 255, 0.18);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.32);
+}
+
+.app-shell.admin-theme-dark .client-list li {
+  color: #dbeafe;
+}
+
+.app-shell.admin-theme-dark .client-list li.selected {
+  background: rgba(30, 58, 138, 0.42);
+  border-color: rgba(96, 165, 250, 0.5);
+}
+
+.app-shell.admin-theme-dark .client-list li:hover {
+  background: rgba(30, 41, 59, 0.7);
+  border-color: rgba(148, 163, 184, 0.3);
+}
+
+.app-shell.admin-theme-dark .message,
+.app-shell.admin-theme-dark .tracking-list li {
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.app-shell.admin-theme-dark .message.sent {
+  background: rgba(30, 58, 138, 0.48);
+  border-color: rgba(96, 165, 250, 0.45);
+}
+
+.app-shell.admin-theme-dark .message-content,
+.app-shell.admin-theme-dark .tracking-refresh-btn,
+.app-shell.admin-theme-dark .reply-file-name,
+.app-shell.admin-theme-dark .tracking-list a {
+  color: #e2e8f0;
+}
+
+.app-shell.admin-theme-dark .message-meta,
+.app-shell.admin-theme-dark .tracking-muted,
+.app-shell.admin-theme-dark .tracking-list small,
+.app-shell.admin-theme-dark .reply-controls-row input[type="file"] {
+  color: #94a3b8;
+}
+
+.app-shell.admin-theme-dark .message-reply {
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.app-shell.admin-theme-dark .message-reply textarea {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: #0f172a;
+  color: #e2e8f0;
+}

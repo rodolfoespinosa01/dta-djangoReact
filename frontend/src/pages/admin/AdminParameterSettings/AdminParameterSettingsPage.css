@@ -4,6 +4,64 @@
   margin: 0 auto;
 }
 
+.app-shell.admin-theme-dark .admin-params-title {
+  color: #eaf3ff;
+}
+
+.app-shell.admin-theme-dark .admin-params-muted {
+  color: #a7bfdc;
+}
+
+.app-shell.admin-theme-dark .admin-params-meta {
+  color: #cfe1f8;
+  background: rgba(10, 26, 44, 0.55);
+  border: 1px solid rgba(117, 161, 255, 0.18);
+}
+
+.app-shell.admin-theme-dark .admin-params-card {
+  background: linear-gradient(160deg, rgba(8, 14, 16, 0.78), rgba(5, 9, 12, 0.62));
+  border: 1px solid rgba(117, 161, 255, 0.18);
+  box-shadow: 0 18px 32px rgba(0, 0, 0, 0.44), inset 0 0 0 1px rgba(36, 164, 255, 0.08);
+}
+
+.app-shell.admin-theme-dark .admin-params-btn {
+  border: 1px solid rgba(117, 161, 255, 0.2);
+  background: rgba(10, 19, 33, 0.52);
+  color: #eaf3ff;
+}
+
+.app-shell.admin-theme-dark .admin-params-btn-primary {
+  background: linear-gradient(140deg, #2affc8, #24a4ff);
+  color: #03151a;
+  border-color: rgba(36, 164, 255, 0.28);
+}
+
+.app-shell.admin-theme-dark .admin-params-section-title,
+.app-shell.admin-theme-dark .admin-params-form-panel h3,
+.app-shell.admin-theme-dark .admin-params-rule-head {
+  color: #eaf3ff;
+}
+
+.app-shell.admin-theme-dark .admin-params-form-panel,
+.app-shell.admin-theme-dark .admin-params-rule-block,
+.app-shell.admin-theme-dark .admin-params-editor-group {
+  border: 1px solid rgba(117, 161, 255, 0.16);
+  background: rgba(10, 19, 33, 0.48);
+}
+
+.app-shell.admin-theme-dark .admin-params-form-panel label,
+.app-shell.admin-theme-dark .admin-params-editor-label,
+.app-shell.admin-theme-dark .admin-params-subdomain-suffix {
+  color: #c9dbf2;
+}
+
+.app-shell.admin-theme-dark .admin-params-form-panel input,
+.app-shell.admin-theme-dark .admin-params-subdomain-row input {
+  border: 1px solid rgba(117, 161, 255, 0.22);
+  background: rgba(15, 24, 41, 0.86);
+  color: #eaf3ff;
+}
+
 .admin-params-header {
   display: flex;
   justify-content: space-between;

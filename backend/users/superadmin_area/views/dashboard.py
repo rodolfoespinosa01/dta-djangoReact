@@ -14,6 +14,9 @@ from users.superadmin_area.serializers.contracts import (
 from .api_contract import error, ok, require_superadmin
 
 
+DTA_HOUSE_ADMIN_EMAIL = "admin@dta.com"
+
+
 def _sum_admin_spend_dollars(admin):
     total_cents = 0
     seen_transactions = set()
@@ -122,7 +125,12 @@ def dashboard(request):
     page = max(page, 1)
     page_size = min(max(page_size, 1), 100)
 
-    admins_qs = CustomUser.objects.filter(role="admin").order_by("-date_joined")
+    admins_qs = (
+        CustomUser.objects
+        .filter(role="admin")
+        .exclude(email__iexact=DTA_HOUSE_ADMIN_EMAIL)
+        .order_by("-date_joined")
+    )
     paginator = Paginator(admins_qs, page_size)
     page_obj = paginator.get_page(page)
 
