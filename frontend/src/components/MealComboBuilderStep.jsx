@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { apiRequest } from '../api/client';
 
 const SLOT_KEYS = ['protein_1', 'protein_2', 'carbs_1', 'carbs_2', 'fats_1', 'fats_2'];
@@ -40,6 +40,15 @@ function ensureMealArray(meals, count) {
 function cloneMealsForCount(sourceMeals, count) {
   const normalized = ensureMealArray(sourceMeals, Math.max(count, sourceMeals?.length || 0));
   return ensureMealArray(normalized, count);
+}
+
+function normalizeSlotValue(value) {
+  const normalized = String(value || '').trim();
+  return normalized || '-';
+}
+
+function rowSignature(row) {
+  return SLOT_KEYS.map((slot) => normalizeSlotValue(row?.[slot])).join('|');
 }
 
 function normalizeSavedTemplates(savedTemplates) {
@@ -141,25 +150,129 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
     };
   }, [value, mealScheduleDays]);
 
-  const emit = (patch) => onChange({ ...normalized, ...patch });
+  const normalizedRef = useRef(normalized);
+
+  useEffect(() => {
+    normalizedRef.current = normalized;
+  }, [normalized]);
+
+  const emit = (patchOrFactory) => {
+    const base = normalizedRef.current;
+    const patch = typeof patchOrFactory === 'function' ? patchOrFactory(base) : patchOrFactory;
+    if (!patch) return;
+    onChange({ ...base, ...patch });
+  };
 
   const updateDefaultMealCount = (count) => {
+    const meals = ensureMealArray(normalized.default_day_meals, count);
     emit({
       default_day_meal_count: count,
-      default_day_meals: ensureMealArray(normalized.default_day_meals, count),
+      default_day_meals: meals,
+    });
+    triggerAutoLookupForMeals({ scope: 'default', meals });
+  };
+
+  const lookupComboForRow = async ({ row, scope, day, mealIndex }) => {
+    const key = `${scope}:${day || 'default'}:${mealIndex}`;
+    const requestedSignature = rowSignature(row);
+
+    setLookupBusy((prev) => ({ ...prev, [key]: true }));
+    emit((base) => {
+      if (scope === 'default') {
+        const meals = [...base.default_day_meals];
+        const current = meals[mealIndex] || createEmptyMeal();
+        if (rowSignature(current) !== requestedSignature) return null;
+        meals[mealIndex] = { ...current, combo_match: 'checking' };
+        return { default_day_meals: meals };
+      }
+      if (scope === 'weekly' && day) {
+        const dayMeals = [...(base.weekly_days?.[day] || [])];
+        const current = dayMeals[mealIndex] || createEmptyMeal();
+        if (rowSignature(current) !== requestedSignature) return null;
+        dayMeals[mealIndex] = { ...current, combo_match: 'checking' };
+        return { weekly_days: { ...base.weekly_days, [day]: dayMeals } };
+      }
+      return null;
+    });
+
+    try {
+      const payload = SLOT_KEYS.reduce((acc, slot) => ({ ...acc, [slot]: normalizeSlotValue(row[slot]) }), {});
+      const res = await apiRequest('/api/v1/users/client/public/meal-combo-lookup/', {
+        method: 'POST',
+        body: payload,
+      });
+      const found = Boolean(res.ok && res.data?.combo_match?.found);
+      const comboId = found ? res.data.combo_match.combo_id : null;
+
+      emit((base) => {
+        if (scope === 'default') {
+          const meals = [...base.default_day_meals];
+          const current = meals[mealIndex] || createEmptyMeal();
+          if (rowSignature(current) !== requestedSignature) return null;
+          meals[mealIndex] = {
+            ...current,
+            combo_id: comboId,
+            combo_match: found ? 'matched' : 'not_found',
+          };
+          return { default_day_meals: meals };
+        }
+        if (scope === 'weekly' && day) {
+          const dayMeals = [...(base.weekly_days?.[day] || [])];
+          const current = dayMeals[mealIndex] || createEmptyMeal();
+          if (rowSignature(current) !== requestedSignature) return null;
+          dayMeals[mealIndex] = {
+            ...current,
+            combo_id: comboId,
+            combo_match: found ? 'matched' : 'not_found',
+          };
+          return { weekly_days: { ...base.weekly_days, [day]: dayMeals } };
+        }
+        return null;
+      });
+    } catch (err) {
+      console.error(err);
+      emit((base) => {
+        if (scope === 'default') {
+          const meals = [...base.default_day_meals];
+          const current = meals[mealIndex] || createEmptyMeal();
+          if (rowSignature(current) !== requestedSignature) return null;
+          meals[mealIndex] = { ...current, combo_id: null, combo_match: 'not_found' };
+          return { default_day_meals: meals };
+        }
+        if (scope === 'weekly' && day) {
+          const dayMeals = [...(base.weekly_days?.[day] || [])];
+          const current = dayMeals[mealIndex] || createEmptyMeal();
+          if (rowSignature(current) !== requestedSignature) return null;
+          dayMeals[mealIndex] = { ...current, combo_id: null, combo_match: 'not_found' };
+          return { weekly_days: { ...base.weekly_days, [day]: dayMeals } };
+        }
+        return null;
+      });
+    } finally {
+      setLookupBusy((prev) => ({ ...prev, [key]: false }));
+    }
+  };
+
+  const triggerAutoLookupForMeals = ({ scope, day, meals }) => {
+    (Array.isArray(meals) ? meals : []).forEach((meal, mealIndex) => {
+      lookupComboForRow({ row: meal, scope, day, mealIndex });
     });
   };
 
   const updateDefaultMealSlot = (mealIndex, slotKey, slotValue) => {
     const meals = [...normalized.default_day_meals];
-    meals[mealIndex] = { ...meals[mealIndex], [slotKey]: slotValue, combo_id: null, combo_match: 'unknown' };
+    const nextMeal = { ...meals[mealIndex], [slotKey]: slotValue, combo_id: null, combo_match: 'unknown' };
+    meals[mealIndex] = nextMeal;
     emit({ default_day_meals: meals });
+    lookupComboForRow({ row: nextMeal, scope: 'default', mealIndex });
   };
 
   const updateWeeklyMealSlot = (day, mealIndex, slotKey, slotValue) => {
     const dayMeals = [...normalized.weekly_days[day]];
-    dayMeals[mealIndex] = { ...dayMeals[mealIndex], [slotKey]: slotValue, combo_id: null, combo_match: 'unknown' };
+    const nextMeal = { ...dayMeals[mealIndex], [slotKey]: slotValue, combo_id: null, combo_match: 'unknown' };
+    dayMeals[mealIndex] = nextMeal;
     emit({ weekly_days: { ...normalized.weekly_days, [day]: dayMeals } });
+    lookupComboForRow({ row: nextMeal, scope: 'weekly', day, mealIndex });
   };
 
   const macroResultsByDay = useMemo(() => {
@@ -172,6 +285,7 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
 
   function applyMacroThresholdsToMeal(meal, mealSplit) {
     const next = { ...(meal || {}) };
+    const beforeSignature = rowSignature(next);
     const proteinG = Number(mealSplit?.grams?.protein_g || 0);
     const carbsG = Number(mealSplit?.grams?.carbs_g || 0);
     const fatsG = Number(mealSplit?.grams?.fats_g || 0);
@@ -197,10 +311,18 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
       next.fats_2 = '-';
     }
 
+    const afterSignature = rowSignature(next);
+    if (beforeSignature !== afterSignature) {
+      return {
+        ...next,
+        combo_id: null,
+        combo_match: 'unknown',
+      };
+    }
     return {
       ...next,
-      combo_id: null,
-      combo_match: 'unknown',
+      combo_id: Number(meal?.combo_id) > 0 ? Number(meal.combo_id) : null,
+      combo_match: meal?.combo_match || (Number(meal?.combo_id) > 0 ? 'matched' : 'unknown'),
     };
   }
 
@@ -215,11 +337,15 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
 
   const applyDefaultToAllDays = () => {
     const weeklyDays = { ...normalized.weekly_days };
+    const lookupQueue = [];
     WEEK_DAYS.forEach((day) => {
       const cloned = cloneMealsForCount(normalized.default_day_meals, normalized.week_counts[day]);
-      weeklyDays[day] = applyMacroThresholdsToMealsForDay(cloned, day);
+      const patched = applyMacroThresholdsToMealsForDay(cloned, day);
+      weeklyDays[day] = patched;
+      lookupQueue.push({ day, meals: patched });
     });
     emit({ weekly_days: weeklyDays });
+    lookupQueue.forEach(({ day, meals }) => triggerAutoLookupForMeals({ scope: 'weekly', day, meals }));
   };
 
   const saveDefaultAsTemplate = () => {
@@ -253,29 +379,37 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
   };
 
   const loadTemplateIntoDefault = (template) => {
+    const nextMeals = cloneMealsForCount(template.meals, template.meal_count);
     emit({
       default_day_meal_count: template.meal_count,
-      default_day_meals: cloneMealsForCount(template.meals, template.meal_count),
+      default_day_meals: nextMeals,
     });
+    triggerAutoLookupForMeals({ scope: 'default', meals: nextMeals });
   };
 
   const applyTemplateToDay = (template, day) => {
     const cloned = cloneMealsForCount(template.meals, normalized.week_counts[day]);
+    const patched = applyMacroThresholdsToMealsForDay(cloned, day);
     emit({
       weekly_days: {
         ...normalized.weekly_days,
-        [day]: applyMacroThresholdsToMealsForDay(cloned, day),
+        [day]: patched,
       },
     });
+    triggerAutoLookupForMeals({ scope: 'weekly', day, meals: patched });
   };
 
   const applyTemplateToAllDays = (template) => {
     const weeklyDays = { ...normalized.weekly_days };
+    const lookupQueue = [];
     WEEK_DAYS.forEach((day) => {
       const cloned = cloneMealsForCount(template.meals, normalized.week_counts[day]);
-      weeklyDays[day] = applyMacroThresholdsToMealsForDay(cloned, day);
+      const patched = applyMacroThresholdsToMealsForDay(cloned, day);
+      weeklyDays[day] = patched;
+      lookupQueue.push({ day, meals: patched });
     });
     emit({ weekly_days: weeklyDays });
+    lookupQueue.forEach(({ day, meals }) => triggerAutoLookupForMeals({ scope: 'weekly', day, meals }));
   };
 
   const activeDay = normalized.active_day;
@@ -340,76 +474,59 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
   const applyStarterTemplateToDefault = (template) => {
     const count = [3, 4, 5, 6].includes(Number(template?.default_meal_count)) ? Number(template.default_meal_count) : 6;
     const baseMeals = ensureMealArray(template?.default_day_meals, count);
+    const patched = applyMacroThresholdsToMealsForDay(baseMeals, activeDay);
     emit({
       default_day_meal_count: count,
-      default_day_meals: applyMacroThresholdsToMealsForDay(baseMeals, activeDay),
+      default_day_meals: patched,
     });
+    triggerAutoLookupForMeals({ scope: 'default', meals: patched });
   };
 
   const applyStarterTemplateToActiveDay = (template) => {
     const cloned = cloneMealsForCount(template?.default_day_meals, normalized.week_counts[activeDay]);
+    const patched = applyMacroThresholdsToMealsForDay(cloned, activeDay);
     emit({
       weekly_days: {
         ...normalized.weekly_days,
-        [activeDay]: applyMacroThresholdsToMealsForDay(cloned, activeDay),
+        [activeDay]: patched,
       },
     });
+    triggerAutoLookupForMeals({ scope: 'weekly', day: activeDay, meals: patched });
   };
 
   const copyDayToDay = (fromDay, toDay) => {
     if (!fromDay || !toDay || fromDay === toDay) return;
     const cloned = cloneMealsForCount(normalized.weekly_days[fromDay], normalized.week_counts[toDay]);
+    const patched = applyMacroThresholdsToMealsForDay(cloned, toDay);
     emit({
       weekly_days: {
         ...normalized.weekly_days,
-        [toDay]: applyMacroThresholdsToMealsForDay(cloned, toDay),
+        [toDay]: patched,
       },
     });
+    triggerAutoLookupForMeals({ scope: 'weekly', day: toDay, meals: patched });
   };
 
   const copyDayToAllIncompleteDays = (fromDay) => {
     if (!fromDay) return;
     const weeklyDays = { ...normalized.weekly_days };
+    const lookupQueue = [];
     let changed = 0;
     WEEK_DAYS.forEach((day) => {
       if (day === fromDay) return;
       if (dayCompletion[day]?.isComplete) return;
       const cloned = cloneMealsForCount(normalized.weekly_days[fromDay], normalized.week_counts[day]);
-      weeklyDays[day] = applyMacroThresholdsToMealsForDay(cloned, day);
+      const patched = applyMacroThresholdsToMealsForDay(cloned, day);
+      weeklyDays[day] = patched;
+      lookupQueue.push({ day, meals: patched });
       changed += 1;
     });
     if (!changed) return;
     emit({ weekly_days: weeklyDays });
+    lookupQueue.forEach(({ day, meals }) => triggerAutoLookupForMeals({ scope: 'weekly', day, meals }));
   };
 
-  const lookupComboForRow = async ({ row, scope, day, mealIndex }) => {
-    const key = `${scope}:${day || 'default'}:${mealIndex}`;
-    setLookupBusy((prev) => ({ ...prev, [key]: true }));
-    try {
-      const payload = SLOT_KEYS.reduce((acc, slot) => ({ ...acc, [slot]: row[slot] || '-' }), {});
-      const res = await apiRequest('/api/v1/users/client/public/meal-combo-lookup/', {
-        method: 'POST',
-        body: payload,
-      });
-      const found = Boolean(res.ok && res.data?.combo_match?.found);
-      const comboId = found ? res.data.combo_match.combo_id : null;
-      if (scope === 'default') {
-        const meals = [...normalized.default_day_meals];
-        meals[mealIndex] = { ...meals[mealIndex], combo_id: comboId, combo_match: found ? 'matched' : 'not_found' };
-        emit({ default_day_meals: meals });
-      } else if (day) {
-        const dayMeals = [...normalized.weekly_days[day]];
-        dayMeals[mealIndex] = { ...dayMeals[mealIndex], combo_id: comboId, combo_match: found ? 'matched' : 'not_found' };
-        emit({ weekly_days: { ...normalized.weekly_days, [day]: dayMeals } });
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLookupBusy((prev) => ({ ...prev, [key]: false }));
-    }
-  };
-
-  const renderMealRow = ({ meal, mealIndex, onSlotChange, onLookup, scopeLabel, lookupKey }) => {
+  const renderMealRow = ({ meal, mealIndex, onSlotChange, scopeLabel, lookupKey }) => {
     const refDay = scopeLabel === 'default' ? activeDay : scopeLabel;
     const dayResult = macroResultsByDay[refDay];
     const mealSplit = getReferenceMealSplit(scopeLabel, mealIndex);
@@ -437,7 +554,13 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
             </>
           ) : null}
           <span className={`client-q-chip ${meal.combo_match === 'matched' ? 'ok' : meal.combo_match === 'not_found' ? 'warn' : ''}`}>
-            {meal.combo_match === 'matched' ? `Combo ID: ${meal.combo_id}` : meal.combo_match === 'not_found' ? 'No combo match' : 'Not checked'}
+            {meal.combo_match === 'matched'
+              ? `Combo ID: ${meal.combo_id}`
+              : meal.combo_match === 'not_found'
+                ? 'No combo match'
+                : lookupBusy[lookupKey] || meal.combo_match === 'checking'
+                  ? 'Checking combo...'
+                  : 'Waiting...'}
           </span>
         </div>
       </div>
@@ -480,14 +603,6 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
           </label>
         ))}
       </div>
-      <button
-        type="button"
-        className="client-q-btn secondary"
-        onClick={() => onLookup(meal, mealIndex)}
-        disabled={Boolean(lookupBusy[lookupKey])}
-      >
-        {lookupBusy[lookupKey] ? 'Checking…' : 'Check Combo ID'}
-      </button>
     </div>
   );
   };
@@ -580,7 +695,6 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
               scopeLabel: 'default',
               lookupKey: `default:default:${idx}`,
               onSlotChange: updateDefaultMealSlot,
-              onLookup: (row) => lookupComboForRow({ row, scope: 'default', mealIndex: idx }),
             }))}
         </div>
         <button type="button" className="client-q-btn" onClick={applyDefaultToAllDays}>
@@ -726,7 +840,6 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
               scopeLabel: activeDay,
               lookupKey: `weekly:${activeDay}:${idx}`,
               onSlotChange: (mealIndex, slotKey, slotValue) => updateWeeklyMealSlot(activeDay, mealIndex, slotKey, slotValue),
-              onLookup: (row) => lookupComboForRow({ row, scope: 'weekly', day: activeDay, mealIndex: idx }),
             }))}
         </div>
       </div>
