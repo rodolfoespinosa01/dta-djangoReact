@@ -22,6 +22,29 @@ function formatTrainingLabel(value) {
   return String(value).replace('before_meal_', 'Before Meal ');
 }
 
+function toMealCount(value) {
+  const count = Number(value || 0);
+  return [3, 4, 5, 6].includes(count) ? count : 0;
+}
+
+function buildComboCoverage(foodPreferencesPayload) {
+  const builder = foodPreferencesPayload?.builder_value || {};
+  const schedule = foodPreferencesPayload?.meal_schedule_days || {};
+  const weekly = builder?.weekly_days || {};
+  const byDay = {};
+  let weekComplete = true;
+  WEEK_DAYS.forEach((day) => {
+    const expected = toMealCount(schedule?.[day]);
+    const meals = Array.isArray(weekly?.[day]) ? weekly[day] : [];
+    const validLength = meals.length === expected;
+    const matched = meals.filter((meal) => Number(meal?.combo_id) > 0).length;
+    const isComplete = expected > 0 && validLength && matched === expected;
+    byDay[day] = { expected, actualMeals: meals.length, matched, isComplete };
+    if (!isComplete) weekComplete = false;
+  });
+  return { byDay, isWeekComplete: weekComplete };
+}
+
 function amountLabel(slot, unitMode) {
   if (!slot) return '-';
   if (unitMode === 'g') return `${Number(slot.amount_g || 0).toFixed(2)} g`;
@@ -354,6 +377,8 @@ function ClientMealPlanGenerationPage() {
   const [showAllMeals, setShowAllMeals] = useState(false);
   const [currentMealIndex, setCurrentMealIndex] = useState(0);
   const weekPollTimeoutRef = useRef(null);
+  const [comboCoverage, setComboCoverage] = useState(null);
+  const [coverageLoading, setCoverageLoading] = useState(true);
 
   const loadLatestDetail = useCallback(async (day, jobId = null) => {
     setLoadingDetail(true);
@@ -406,6 +431,27 @@ function ClientMealPlanGenerationPage() {
     loadLatestDetail(dayOfWeek).catch((err) => console.error(err));
   }, [dayOfWeek, loadLatestDetail]);
 
+  const loadComboCoverage = useCallback(async () => {
+    setCoverageLoading(true);
+    try {
+      const res = await apiRequest('/api/v1/users/client/app/food-preferences/', { auth: true });
+      if (res.ok) {
+        setComboCoverage(buildComboCoverage(res.data?.food_preferences || {}));
+      } else {
+        setComboCoverage(null);
+      }
+    } catch (err) {
+      console.error(err);
+      setComboCoverage(null);
+    } finally {
+      setCoverageLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadComboCoverage().catch((err) => console.error(err));
+  }, [loadComboCoverage]);
+
   useEffect(() => () => {
     if (weekPollTimeoutRef.current) {
       clearTimeout(weekPollTimeoutRef.current);
@@ -451,6 +497,7 @@ function ClientMealPlanGenerationPage() {
       await Promise.all([
         loadJobSnapshot(generation?.job_id),
         loadLatestDetail(dayOfWeek, generation?.job_id),
+        loadComboCoverage(),
       ]);
     } catch (err) {
       console.error(err);
@@ -529,6 +576,7 @@ function ClientMealPlanGenerationPage() {
             if (batch.status === 'completed') {
               setMessage('Weekly meal generation completed.');
             }
+            await loadComboCoverage();
             return;
           }
           weekPollTimeoutRef.current = setTimeout(pollBatch, 2000);
@@ -549,6 +597,10 @@ function ClientMealPlanGenerationPage() {
       if (!queued) setRunning(false);
     }
   };
+
+  const selectedDayCoverage = comboCoverage?.byDay?.[dayOfWeek] || null;
+  const runDayDisabled = running || coverageLoading || !selectedDayCoverage?.isComplete;
+  const runWeekDisabled = running || coverageLoading || !comboCoverage?.isWeekComplete;
 
   const handleGenerateRecipeIdeas = async () => {
     if (!detail?.meals?.length) {
@@ -729,16 +781,26 @@ function ClientMealPlanGenerationPage() {
             </label>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <button type="button" className="client-q-btn" onClick={handleRunGeneration} disabled={running}>
+            <button type="button" className="client-q-btn" onClick={handleRunGeneration} disabled={runDayDisabled}>
               {running ? 'Running Steps 1-10…' : `Run ${prettyDay(dayOfWeek)} Generation`}
             </button>
-            <button type="button" className="client-q-btn" onClick={handleRunWholeWeek} disabled={running}>
+            <button type="button" className="client-q-btn" onClick={handleRunWholeWeek} disabled={runWeekDisabled}>
               {running ? 'Running Week…' : 'Run Whole Week'}
             </button>
             <button type="button" className="client-q-btn secondary" onClick={() => loadLatestDetail(dayOfWeek)} disabled={loadingDetail || running}>
               {loadingDetail ? 'Loading…' : 'Load Latest Detailed Plan'}
             </button>
           </div>
+          {!coverageLoading && selectedDayCoverage && !selectedDayCoverage.isComplete ? (
+            <p className="client-dash-muted" style={{ marginTop: '0.2rem' }}>
+              {prettyDay(dayOfWeek)} is incomplete: {selectedDayCoverage.matched}/{selectedDayCoverage.expected} meals have combo IDs.
+            </p>
+          ) : null}
+          {!coverageLoading && comboCoverage && !comboCoverage.isWeekComplete ? (
+            <p className="client-dash-muted" style={{ marginTop: '0.2rem' }}>
+              Whole-week run is locked until all days have full combo selections saved in Food Preferences.
+            </p>
+          ) : null}
           {message ? <p className="client-q-message">{message}</p> : null}
           {error ? <p className="client-q-error">{error}</p> : null}
         </div>

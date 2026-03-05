@@ -31,6 +31,7 @@ from users.client_area.services.pricing import (
 )
 from users.client_area.views.api_contract import error, ok, require_client
 from core.services.google_oauth import verify_google_id_token
+from core.services.meal_combo_lookup import find_meal_combo_id_by_slots
 from core.models import MealComboTemplate
 from users.client_area.services.results_engine import BuildResultsContext, build_questionnaire_results
 
@@ -315,8 +316,18 @@ def _extract_weekly_combo_selection_rows(answers):
             except (TypeError, ValueError):
                 combo_id = 0
             if combo_id <= 0:
-                invalid.append({"day": day, "meal_number": idx, "reason": "missing_combo_id"})
-                continue
+                auto_combo_id = find_meal_combo_id_by_slots(
+                    protein_1=(meal or {}).get("protein_1"),
+                    protein_2=(meal or {}).get("protein_2"),
+                    carbs_1=(meal or {}).get("carbs_1"),
+                    carbs_2=(meal or {}).get("carbs_2"),
+                    fats_1=(meal or {}).get("fats_1"),
+                    fats_2=(meal or {}).get("fats_2"),
+                )
+                if not auto_combo_id:
+                    invalid.append({"day": day, "meal_number": idx, "reason": "missing_combo_id"})
+                    continue
+                combo_id = int(auto_combo_id)
             rows.append({"day_of_week": day, "meal_number": idx, "combo_id": combo_id})
 
     return rows, missing, invalid

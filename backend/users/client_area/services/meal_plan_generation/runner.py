@@ -5,9 +5,11 @@ import uuid
 from typing import Any
 
 from django.db import transaction
+from django.db.models import Count
 from django.utils import timezone
 
 from users.client_area.models import (
+    ClientMealComboSelection,
     ClientMealPlanGeneratedMeal,
     ClientMealPlanGenerationJob,
     ClientMealPlanGenerationStep1Row,
@@ -115,10 +117,64 @@ def _with_optional_batch_snapshot(snapshot: dict[str, Any], batch_id: str | None
     return snapshot
 
 
+def _expected_meals_by_day(progress: ClientQuestionnaireProgress) -> dict[str, int]:
+    meal_days = ((progress.answers_json or {}).get("meal_schedule") or {}).get("days") or {}
+    expected = {}
+    for day in WEEK_DAYS:
+        try:
+            count = int(meal_days.get(day) or 0)
+        except (TypeError, ValueError):
+            count = 0
+        expected[day] = count
+    return expected
+
+
+def _saved_combo_counts_by_day(user) -> dict[str, int]:
+    rows = (
+        ClientMealComboSelection.objects.filter(user=user)
+        .values("day_of_week")
+        .annotate(total=Count("id"))
+    )
+    return {str(row["day_of_week"]): int(row["total"] or 0) for row in rows}
+
+
+def _assert_day_combo_coverage(user, progress: ClientQuestionnaireProgress, day: str):
+    expected = _expected_meals_by_day(progress)
+    expected_count = int(expected.get(day) or 0)
+    if expected_count not in (3, 4, 5, 6):
+        raise ValueError(f"Invalid meal schedule for {day}. Update questionnaire meal schedule first.")
+    actual_count = int(_saved_combo_counts_by_day(user).get(day) or 0)
+    if actual_count < expected_count:
+        raise ValueError(
+            f"Food preferences incomplete for {day}: {actual_count}/{expected_count} meals have combo selections. "
+            "Complete and save food preferences before running generation."
+        )
+
+
+def _assert_week_combo_coverage(user, progress: ClientQuestionnaireProgress, days: list[str]):
+    expected = _expected_meals_by_day(progress)
+    counts = _saved_combo_counts_by_day(user)
+    missing = []
+    for day in days:
+        expected_count = int(expected.get(day) or 0)
+        actual_count = int(counts.get(day) or 0)
+        if expected_count not in (3, 4, 5, 6):
+            missing.append(f"{day} (invalid schedule)")
+            continue
+        if actual_count < expected_count:
+            missing.append(f"{day} ({actual_count}/{expected_count})")
+    if missing:
+        raise ValueError(
+            "Food preferences incomplete for weekly generation. Complete and save combo selections for: "
+            + ", ".join(missing)
+        )
+
+
 @transaction.atomic
 def run_step1_for_day(user, day_of_week: str | None = None) -> Step1RunResult:
     day = _normalize_day(day_of_week)
     profile, progress, results = _get_client_generation_context(user)
+    _assert_day_combo_coverage(user, progress, day)
     day_payload = _find_day_payload(results, day)
     if not day_payload:
         raise ValueError(f"No calculated macro schedule found for {day}.")
@@ -175,6 +231,7 @@ def run_full_generation_for_day(
 ) -> FullGenerationRunResult:
     day = _normalize_day(day_of_week)
     profile, progress, results = _get_client_generation_context(user)
+    _assert_day_combo_coverage(user, progress, day)
     day_payload = _find_day_payload(results, day)
     if not day_payload:
         raise ValueError(f"No calculated macro schedule found for {day}.")
@@ -255,6 +312,8 @@ def run_full_generation_for_week(
     batch_mode: str | None = "week",
 ) -> FullWeekGenerationRunResult:
     requested_days = _normalize_days(days)
+    _, progress, _ = _get_client_generation_context(user)
+    _assert_week_combo_coverage(user, progress, requested_days)
     jobs: list[dict[str, Any]] = []
     completed: list[str] = []
 
@@ -284,6 +343,8 @@ def run_full_generation_for_week(
 
 def launch_full_generation_for_week_background(user, days: list[str] | None = None) -> dict[str, Any]:
     requested_days = _normalize_days(days)
+    _, progress, _ = _get_client_generation_context(user)
+    _assert_week_combo_coverage(user, progress, requested_days)
     batch_id = str(uuid.uuid4())
     # Lazy import keeps the synchronous generation path free of task import side effects.
     try:
