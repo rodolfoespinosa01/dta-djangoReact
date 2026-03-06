@@ -361,6 +361,74 @@
   cursor: not-allowed;
 }
 
+.client-dashboard-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.6rem;
+}
+
+.client-dash-action-btn {
+  width: 100%;
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  text-align: left;
+}
+
+.client-dash-action-icon {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+  flex: 0 0 34px;
+}
+
+.client-dash-action-icon-stack {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.client-dash-action-icon-food {
+  width: 32px;
+  height: 32px;
+}
+
+.client-dash-action-icon-overlay {
+  width: 16px;
+  height: 16px;
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  background: #fff;
+  border-radius: 999px;
+  border: 1px solid rgba(20, 40, 74, 0.16);
+}
+
+.client-dash-action-copy {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.client-dash-action-title {
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.client-dash-action-desc {
+  font-size: 0.78rem;
+  color: #4f6484;
+  line-height: 1.2;
+}
+
+.app-shell.client-theme-dark .client-dash-action-desc {
+  color: #9fb0c8;
+}
+
 .client-q-message,
 .client-q-error {
   margin: 0.75rem 0 0;
@@ -417,5 +485,8 @@
   }
   .client-q-btn.danger {
     margin-left: 0;
+  }
+  .client-dashboard-actions {
+    grid-template-columns: 1fr;
   }
 }
