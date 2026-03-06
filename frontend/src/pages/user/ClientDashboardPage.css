@@ -5,6 +5,10 @@
   color: #13233f;
 }
 
+.app-shell.client-theme-dark .client-dashboard-page {
+  color: #e2e8f0;
+}
+
 .client-dashboard-header {
   display: flex;
   justify-content: space-between;
@@ -19,6 +23,10 @@
 
 .client-dash-muted {
   color: #5b6f8e;
+}
+
+.app-shell.client-theme-dark .client-dash-muted {
+  color: #9fb0c8;
 }
 
 .client-dash-chips {
@@ -37,12 +45,23 @@
   padding: 0.25rem 0.5rem;
 }
 
+.app-shell.client-theme-dark .client-dash-chips span {
+  border-color: rgba(148, 163, 184, 0.24);
+  background: rgba(15, 23, 42, 0.75);
+  color: #c9ddff;
+}
+
 .client-dashboard-card {
   margin-top: 1rem;
   background: #fff;
   border: 1px solid rgba(20, 40, 74, 0.12);
   border-radius: 14px;
   padding: 1rem;
+}
+
+.app-shell.client-theme-dark .client-dashboard-card {
+  background: rgba(15, 23, 42, 0.85);
+  border-color: rgba(148, 163, 184, 0.22);
 }
 
 .client-dashboard-card h2 {
@@ -290,11 +309,51 @@
   color: #13233f;
 }
 
+.app-shell.client-theme-dark .client-q-btn.secondary {
+  background: rgba(15, 23, 42, 0.85);
+  color: #dbeafe;
+  border-color: rgba(148, 163, 184, 0.3);
+}
+
 .client-q-btn.danger {
   background: #fff5f5;
   border-color: rgba(180, 35, 24, 0.2);
   color: #b42318;
   margin-left: auto;
+}
+
+.app-shell.client-theme-dark .client-q-btn.danger {
+  background: rgba(127, 29, 29, 0.25);
+  border-color: rgba(248, 113, 113, 0.4);
+  color: #fecaca;
+}
+
+.client-theme-row {
+  margin-top: 0.7rem;
+  margin-bottom: 0;
+  border: 1px solid rgba(20, 40, 74, 0.12);
+  background: #f7f9ff;
+}
+
+.client-theme-row .theme-pref-title {
+  color: #13233f;
+}
+
+.client-theme-row .theme-pref-subtitle {
+  color: #4f6484;
+}
+
+.app-shell.client-theme-dark .client-theme-row {
+  border-color: rgba(148, 163, 184, 0.24);
+  background: rgba(15, 23, 42, 0.7);
+}
+
+.app-shell.client-theme-dark .client-theme-row .theme-pref-title {
+  color: #f1f5f9;
+}
+
+.app-shell.client-theme-dark .client-theme-row .theme-pref-subtitle {
+  color: #93c5fd;
 }
 
 .client-q-btn:disabled {

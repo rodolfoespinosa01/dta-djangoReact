@@ -1,31 +1,24 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 
-from users.admin_area.models import AdminIdentity
-from users.admin_area.views.api_contract import error, ok, require_admin
+from users.client_area.models import ClientProfile
+from users.client_area.views.api_contract import error, ok, require_client
 from core.services.theme_preferences import ALLOWED_THEMES, DEFAULT_THEME, normalize_theme
-
-
-def _identity_for_request_user(user):
-    identity, _ = AdminIdentity.objects.get_or_create(admin_email=getattr(user, "email", ""))
-    return identity
 
 
 @api_view(["GET", "PUT"])
 @permission_classes([IsAuthenticated])
-def admin_theme_preference(request):
-    auth_error = require_admin(request)
+def client_theme_preference(request):
+    auth_error = require_client(request)
     if auth_error:
         return auth_error
 
-    identity = _identity_for_request_user(request.user)
+    profile = ClientProfile.objects.filter(user=request.user).first()
+    if not profile:
+        return error("CLIENT_PROFILE_NOT_FOUND", "Client profile not found.", http_status=404)
 
     if request.method == "GET":
-        return ok(
-            {
-                "theme": normalize_theme(getattr(identity, "marketing_theme", "") or DEFAULT_THEME),
-            }
-        )
+        return ok({"theme": normalize_theme(getattr(profile, "theme_preference", "") or DEFAULT_THEME)})
 
     payload = request.data or {}
     requested_theme = str(payload.get("theme") or "").strip().lower()
@@ -36,8 +29,8 @@ def admin_theme_preference(request):
             http_status=400,
         )
 
-    identity.marketing_theme = requested_theme
-    identity.save(update_fields=["marketing_theme"])
+    profile.theme_preference = requested_theme
+    profile.save(update_fields=["theme_preference", "updated_at"])
 
     return ok(
         {

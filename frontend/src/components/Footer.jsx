@@ -4,9 +4,10 @@ import { useLanguage } from '../context/LanguageContext';
 import './Footer.css';
 import logoWhite from '../assets/dta_brand_content/DTA_Logo_white.png';
 
-function Footer({ adminTheme = null }) {
+function Footer({ adminTheme = null, theme = null }) {
   const { t } = useLanguage();
-  const logoSrc = adminTheme === 'dark' ? logoWhite : logo;
+  const activeTheme = theme || adminTheme;
+  const logoSrc = activeTheme === 'dark' ? logoWhite : logo;
 
   return (
     <footer className="site-footer">
