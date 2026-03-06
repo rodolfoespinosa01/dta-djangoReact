@@ -175,6 +175,13 @@
   font-size: 1.45rem;
 }
 
+.client-q-option-icon-image {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  display: block;
+}
+
 .client-q-stack {
   display: grid;
   gap: 0.7rem;
