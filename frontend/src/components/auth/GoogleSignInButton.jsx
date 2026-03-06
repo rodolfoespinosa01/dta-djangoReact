@@ -51,8 +51,10 @@ function GoogleSignInButton({ onCredential, disabled = false, label = 'Continue 
           auto_select: false,
           cancel_on_tap_outside: true,
         });
-        btnRef.current.innerHTML = '';
-        window.google.accounts.id.renderButton(btnRef.current, {
+        const buttonMount = btnRef.current;
+        if (!buttonMount) return;
+        buttonMount.innerHTML = '';
+        window.google.accounts.id.renderButton(buttonMount, {
           theme: 'outline',
           size: 'large',
           shape: 'pill',
@@ -88,4 +90,3 @@ function GoogleSignInButton({ onCredential, disabled = false, label = 'Continue 
 }
 
 export default GoogleSignInButton;
-
