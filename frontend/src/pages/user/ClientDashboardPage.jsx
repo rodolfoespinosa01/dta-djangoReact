@@ -148,16 +148,21 @@ function toTrainingMealTimingUiValue(value, trainingDays = [], mealScheduleByDay
   const rawSame = Number(value?._default_before_meal);
   const safeSame = Number.isFinite(rawSame) ? rawSame : fallbackSame;
   const sameBeforeMeal = Math.max(1, Math.min(sharedMax, safeSame));
+  const explicitMode = String(value?._mode || '').trim().toLowerCase();
+  const inferredMode = inferredSame ? 'same' : 'custom';
+  const mode = explicitMode === 'custom' || explicitMode === 'same' ? explicitMode : inferredMode;
 
   return {
-    mode: inferredSame ? 'same' : 'custom',
+    mode,
     sameBeforeMeal,
     days,
   };
 }
 
 function toBackendTrainingMealTimingValue(value, trainingDays = [], mealScheduleByDay = {}) {
+  const mode = String(value?.mode || '').trim().toLowerCase() === 'custom' ? 'custom' : 'same';
   const payload = {
+    _mode: mode,
     _default_before_meal: Number(value?.sameBeforeMeal) || 1,
   };
 
