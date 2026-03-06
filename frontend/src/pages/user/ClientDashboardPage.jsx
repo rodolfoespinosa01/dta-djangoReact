@@ -10,6 +10,16 @@ import DOBSelector from '../../components/questionnaire/DOBSelector';
 import GoalSelector from '../../components/questionnaire/GoalSelector';
 import LifestyleSelector, { normalizeLifestyleCode } from '../../components/questionnaire/LifestyleSelector';
 import MealPlanTypeSelector, { normalizeMealPlanTypeCode } from '../../components/questionnaire/MealPlanTypeSelector';
+import MealFrequencySelector from '../../components/questionnaire/MealFrequencySelector';
+import TrainingMealTimingSelector from '../../components/questionnaire/TrainingMealTimingSelector';
+import WorkoutScheduleSelector from '../../components/questionnaire/WorkoutScheduleSelector';
+import {
+  BACKEND_DAY_TO_WORKOUT_CODE,
+  WORKOUT_DAYS,
+  WORKOUT_CODE_TO_BACKEND_DAY,
+  inferScheduleMode,
+  normalizeTrainingDays,
+} from '../../components/questionnaire/workoutSchedule.constants';
 import maleSignImage from '../../assets/questionnaire/1/malesign.png';
 import femaleSignImage from '../../assets/questionnaire/1/femalesign.png';
 import './ClientDashboardPage.css';
@@ -52,6 +62,118 @@ function formatTrainingLabel(value) {
   if (!value) return 'No training';
   return value.replace('before_meal_', 'Before Meal ');
 }
+
+function toWorkoutCodeDays(value) {
+  const list = Array.isArray(value) ? value : [];
+  const mapped = list.map((backendDay) => BACKEND_DAY_TO_WORKOUT_CODE[backendDay]).filter(Boolean);
+  return normalizeTrainingDays(mapped);
+}
+
+function toBackendWorkoutDays(value) {
+  const list = normalizeTrainingDays(value);
+  return list.map((code) => WORKOUT_CODE_TO_BACKEND_DAY[code]).filter(Boolean);
+}
+
+function toMealFrequencyUiValue(value) {
+  const existingDays = value?.days || {};
+  const fallbackDefault = [3, 4, 5, 6].includes(Number(value?.default_meals)) ? Number(value.default_meals) : 4;
+
+  const days = WORKOUT_DAYS.reduce((acc, day) => {
+    const parsed = Number(existingDays[day.backendKey]);
+    acc[day.code] = [3, 4, 5, 6].includes(parsed) ? parsed : fallbackDefault;
+    return acc;
+  }, {});
+
+  const firstDayCode = WORKOUT_DAYS[0]?.code || 'mon';
+  const inferredDefaultMeals = Number(days[firstDayCode] || fallbackDefault);
+  const inferredSame = WORKOUT_DAYS.every((day) => Number(days[day.code]) === inferredDefaultMeals);
+  const mode = value?.mode === 'custom' ? 'custom' : (inferredSame ? 'same' : 'custom');
+
+  return {
+    mode,
+    defaultMeals: inferredDefaultMeals,
+    days,
+  };
+}
+
+function toBackendMealScheduleValue(value) {
+  const mode = value?.mode === 'custom' ? 'custom' : 'same';
+  const defaultMeals = [3, 4, 5, 6].includes(Number(value?.defaultMeals)) ? Number(value.defaultMeals) : 4;
+  const days = WORKOUT_DAYS.reduce((acc, day) => {
+    const parsed = Number(value?.days?.[day.code]);
+    acc[day.backendKey] = [3, 4, 5, 6].includes(parsed) ? parsed : defaultMeals;
+    return acc;
+  }, {});
+
+  return {
+    mode,
+    default_meals: defaultMeals,
+    days,
+  };
+}
+
+function toMealScheduleByCode(value) {
+  const days = value?.days || {};
+  return WORKOUT_DAYS.reduce((acc, day) => {
+    const parsed = Number(days[day.backendKey]);
+    acc[day.code] = [3, 4, 5, 6].includes(parsed) ? parsed : 3;
+    return acc;
+  }, {});
+}
+
+function toTrainingMealTimingUiValue(value, trainingDays = [], mealScheduleByDay = {}) {
+  const trainingSet = new Set(trainingDays);
+
+  const days = WORKOUT_DAYS.reduce((acc, day) => {
+    if (!trainingSet.has(day.code)) {
+      acc[day.code] = null;
+      return acc;
+    }
+
+    const mealCount = Number(mealScheduleByDay[day.code] || 3);
+    const raw = String(value?.[day.backendKey] || '');
+    const parsed = Number(raw.replace('before_meal_', ''));
+    const safe = Number.isFinite(parsed) ? parsed : 1;
+    acc[day.code] = Math.max(1, Math.min(mealCount, safe));
+    return acc;
+  }, {});
+
+  const inferredSame = trainingDays.length > 0
+    ? trainingDays.every((dayCode) => days[dayCode] === days[trainingDays[0]])
+    : true;
+  const sharedMax = trainingDays.length
+    ? Math.min(...trainingDays.map((dayCode) => Number(mealScheduleByDay?.[dayCode] || 1)))
+    : 1;
+  const fallbackSame = trainingDays.length ? Number(days[trainingDays[0]]) : 1;
+  const rawSame = Number(value?._default_before_meal);
+  const safeSame = Number.isFinite(rawSame) ? rawSame : fallbackSame;
+  const sameBeforeMeal = Math.max(1, Math.min(sharedMax, safeSame));
+
+  return {
+    mode: inferredSame ? 'same' : 'custom',
+    sameBeforeMeal,
+    days,
+  };
+}
+
+function toBackendTrainingMealTimingValue(value, trainingDays = [], mealScheduleByDay = {}) {
+  const payload = {
+    _default_before_meal: Number(value?.sameBeforeMeal) || 1,
+  };
+
+  trainingDays.forEach((dayCode) => {
+    const backendDay = WORKOUT_CODE_TO_BACKEND_DAY[dayCode];
+    if (!backendDay) return;
+    const mealCount = Number(mealScheduleByDay?.[dayCode] || 1);
+    const parsed = Number(value?.days?.[dayCode]);
+    const safe = Number.isFinite(parsed) ? parsed : 1;
+    const clamped = Math.max(1, Math.min(mealCount, safe));
+    payload[backendDay] = `before_meal_${clamped}`;
+  });
+
+  return payload;
+}
+
 function summarizeAnswers(answers = {}) {
   const mealDays = answers?.meal_schedule?.days || {};
   const training = answers?.training_schedule || {};
@@ -99,6 +221,7 @@ function ClientDashboardPage() {
   const [selectedOverviewDay, setSelectedOverviewDay] = useState(getTodayWeekdayKey());
 
   const questionnaire = dashboard?.questionnaire;
+  const results = dashboard?.results;
   const isQuestionnaireComplete = questionnaire?.status === 'completed';
   // Food preferences are considered complete if questionnaire is complete and food_preferences exists and is not empty
   const foodPrefs = questionnaire?.answers?.food_preferences;
@@ -155,7 +278,9 @@ function ClientDashboardPage() {
     const value = activeAnswer;
     switch (wizardStep) {
       case 'gender':
+        return value === 'male' || value === 'female';
       case 'goal':
+        return value === 'lose' || value === 'maintain' || value === 'gain';
       case 'meal_plan_type':
         return normalizeMealPlanTypeCode(value).length > 0;
       case 'lifestyle':
@@ -167,7 +292,7 @@ function ClientDashboardPage() {
       case 'weight':
         return Number.isFinite(normalizeWeightLbsValue(value, Number.NaN));
       case 'workout_days':
-        return Array.isArray(value);
+        return Array.isArray(value) && value.length >= 1;
       case 'meal_schedule': {
         const days = value?.days || {};
         return WEEK_DAYS.every((day) => [3, 4, 5, 6].includes(Number(days[day])));
@@ -245,6 +370,41 @@ function ClientDashboardPage() {
     await saveDraft(wizardStep, answers[wizardStep], prevStep);
   };
 
+  const handleStepAnswerAndAdvance = async (value) => {
+    updateAnswer(value);
+    if (!activeQuestionSteps.includes(wizardStep)) return;
+    const nextStep = isLastStep ? wizardStep : activeQuestionSteps[stepIndex + 1];
+    await saveDraft(wizardStep, value, nextStep);
+  };
+
+  const mealFrequencyRecommendationContext = useMemo(() => {
+    const workoutSet = new Set(Array.isArray(answers?.workout_days) ? answers.workout_days : []);
+    const weeklyDays = Array.isArray(results?.weekly_days) ? results.weekly_days : [];
+    const weeklyMap = weeklyDays.reduce((acc, row) => {
+      acc[row.day] = row;
+      return acc;
+    }, {});
+
+    const workoutAvgCalories = Number(results?.summary?.workout_day_avg_calories);
+    const offAvgCalories = Number(results?.summary?.off_day_avg_calories);
+
+    const dayCaloriesByCode = WORKOUT_DAYS.reduce((acc, day) => {
+      const direct = Number(weeklyMap?.[day.backendKey]?.calories_target);
+      const fallback = workoutSet.has(day.backendKey) ? workoutAvgCalories : offAvgCalories;
+      const selected = Number.isFinite(direct) ? direct : (Number.isFinite(fallback) ? fallback : null);
+      acc[day.code] = selected;
+      return acc;
+    }, {});
+
+    const numeric = Object.values(dayCaloriesByCode).filter((value) => Number.isFinite(Number(value))).map(Number);
+    const average = numeric.length ? (numeric.reduce((acc, value) => acc + value, 0) / numeric.length) : null;
+
+    return {
+      dailyCalories: average,
+      dayCaloriesByCode,
+    };
+  }, [answers?.workout_days, results?.weekly_days, results?.summary?.workout_day_avg_calories, results?.summary?.off_day_avg_calories]);
+
   const handleSubmitQuestionnaire = async () => {
     setSubmitState('submitting');
     setWizardMessage('');
@@ -294,7 +454,8 @@ function ClientDashboardPage() {
                 key={v}
                 type="button"
                 className={`client-q-option-card ${activeAnswer === v ? 'is-active' : ''}`}
-                onClick={() => updateAnswer(v)}
+                disabled={savingDraft}
+                onClick={() => handleStepAnswerAndAdvance(v)}
               >
                 <span className="client-q-option-icon" aria-hidden="true">
                   <img
@@ -368,171 +529,39 @@ function ClientDashboardPage() {
           />
         );
       case 'workout_days': {
-        const selected = Array.isArray(activeAnswer) ? activeAnswer : [];
+        const trainingDays = toWorkoutCodeDays(activeAnswer);
+        const scheduleMode = inferScheduleMode(trainingDays);
         return (
-          <div className="client-q-stack">
-            <p className="client-q-help">Select every day you plan to work out. This drives workout vs off-day TDEE logic.</p>
-            <div className="client-q-day-grid">
-              {WEEK_DAYS.map((day) => {
-                const on = selected.includes(day);
-                return (
-                  <button
-                    key={day}
-                    type="button"
-                    className={`client-q-day ${on ? 'is-active' : ''}`}
-                    onClick={() => {
-                      const next = on ? selected.filter((d) => d !== day) : [...selected, day];
-                      updateAnswer(next);
-                    }}
-                  >
-                    {day.slice(0, 3).toUpperCase()}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <WorkoutScheduleSelector
+            value={{ scheduleMode, trainingDays }}
+            onChange={(nextValue) => updateAnswer(toBackendWorkoutDays(nextValue?.trainingDays))}
+          />
         );
       }
       case 'meal_schedule': {
-        const existingDays = activeAnswer?.days || {};
-        const firstDayValue = Number(existingDays[WEEK_DAYS[0]] || 3);
-        const inferredSame = WEEK_DAYS.every((day) => Number(existingDays[day] || firstDayValue) === firstDayValue);
-        const value = {
-          mode: activeAnswer?.mode || (inferredSame ? 'same' : 'custom'),
-          default_meals: Number(activeAnswer?.default_meals || firstDayValue || 3),
-          days: WEEK_DAYS.reduce((acc, day) => {
-            acc[day] = [3, 4, 5, 6].includes(Number(existingDays[day])) ? Number(existingDays[day]) : 3;
-            return acc;
-          }, {}),
-        };
-
-        const setSameMeals = (count) => updateAnswer({
-          mode: 'same',
-          default_meals: count,
-          days: WEEK_DAYS.reduce((acc, day) => ({ ...acc, [day]: count }), {}),
-        });
-        const setCustomDayMeals = (day, count) => updateAnswer({
-          ...value,
-          mode: 'custom',
-          days: { ...value.days, [day]: count },
-        });
-
+        const value = toMealFrequencyUiValue(activeAnswer);
         return (
-          <div className="client-q-stack">
-            <p className="client-q-help">Choose one meal amount for all days, or customize each day of the week.</p>
-            <div className="client-q-toggle">
-              <button type="button" className={value.mode === 'same' ? 'is-active' : ''} onClick={() => updateAnswer({ ...value, mode: 'same' })}>
-                Same for all days
-              </button>
-              <button type="button" className={value.mode === 'custom' ? 'is-active' : ''} onClick={() => updateAnswer({ ...value, mode: 'custom' })}>
-                Customize by day
-              </button>
-            </div>
-
-            <div className="client-q-card-grid">
-              {[3, 4, 5, 6].map((count) => (
-                <button
-                  key={`same-${count}`}
-                  type="button"
-                  className={`client-q-option-card ${value.mode === 'same' && Number(value.default_meals) === count ? 'is-active' : ''}`}
-                  onClick={() => setSameMeals(count)}
-                >
-                  <span>{count} Meals</span>
-                </button>
-              ))}
-            </div>
-
-            {value.mode === 'custom' && (
-              <div className="client-q-stack">
-                {WEEK_DAYS.map((day) => (
-                  <div key={day} className="client-q-stack">
-                    <strong>{day.charAt(0).toUpperCase() + day.slice(1)}</strong>
-                    <div className="client-q-card-grid">
-                      {[3, 4, 5, 6].map((count) => (
-                        <button
-                          key={`${day}-${count}`}
-                          type="button"
-                          className={`client-q-option-card ${Number(value.days[day]) === count ? 'is-active' : ''}`}
-                          onClick={() => setCustomDayMeals(day, count)}
-                        >
-                          <span>{count}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <MealFrequencySelector
+            value={value}
+            dailyCalories={mealFrequencyRecommendationContext.dailyCalories}
+            dayCaloriesByCode={mealFrequencyRecommendationContext.dayCaloriesByCode}
+            onChange={(nextValue) => updateAnswer(toBackendMealScheduleValue(nextValue))}
+          />
         );
       }
       case 'training_schedule': {
-        const selectedDays = Array.isArray(answers.workout_days) ? answers.workout_days : [];
-        const mealDays = answers.meal_schedule?.days || {};
-        const value = activeAnswer && typeof activeAnswer === 'object' ? activeAnswer : {};
-        if (selectedDays.length === 0) {
-          return (
-            <div className="client-q-stack">
-              <p className="client-q-help">No workout days selected. We will treat all days as off days for now.</p>
-              <button type="button" className="client-q-btn secondary" onClick={() => updateAnswer({})}>
-                Confirm No Training Schedule
-              </button>
-            </div>
-          );
-        }
-        const quickDefaultMeal = Number(value._default_before_meal || 1);
-        const applicableDaysCount = selectedDays.filter((day) => quickDefaultMeal <= Number(mealDays[day] || 0)).length;
-        const applyQuickDefault = (mealNum) => {
-          const next = { ...value, _default_before_meal: mealNum };
-          selectedDays.forEach((day) => {
-            const count = Number(mealDays[day] || 0);
-            if (mealNum <= count) {
-              next[day] = `before_meal_${mealNum}`;
-            }
-          });
-          updateAnswer(next);
-        };
+        const trainingDays = toWorkoutCodeDays(answers.workout_days);
+        const mealScheduleByDay = toMealScheduleByCode(answers.meal_schedule);
+        const value = toTrainingMealTimingUiValue(activeAnswer, trainingDays, mealScheduleByDay);
+
         return (
-          <div className="client-q-stack">
-            <p className="client-q-help">Choose which meal your workout happens before on each workout day.</p>
-            <div className="client-q-stack">
-              <strong>Quick set default for workout days</strong>
-              <div className="client-q-card-grid">
-                {[1, 2, 3, 4, 5, 6].map((mealNum) => (
-                  <button
-                    key={`quick-default-${mealNum}`}
-                    type="button"
-                    className={`client-q-option-card ${quickDefaultMeal === mealNum ? 'is-active' : ''}`}
-                    onClick={() => applyQuickDefault(mealNum)}
-                  >
-                    <span>Before Meal {mealNum}</span>
-                  </button>
-                ))}
-              </div>
-              <p className="client-q-help">
-                Applies to {applicableDaysCount} workout day{applicableDaysCount === 1 ? '' : 's'} automatically. You can still customize each day below.
-              </p>
-            </div>
-            <div className="client-q-stack">
-              {selectedDays.map((day) => (
-                <label key={day} className="client-q-single">
-                  {day.charAt(0).toUpperCase() + day.slice(1)}
-                  <div className="client-q-card-grid">
-                    {Array.from({ length: Number(mealDays[day] || 3) }, (_, idx) => idx + 1).map((mealNum) => (
-                      <button
-                        key={`${day}-before-${mealNum}`}
-                        type="button"
-                        className={`client-q-option-card ${value[day] === `before_meal_${mealNum}` ? 'is-active' : ''}`}
-                        onClick={() => updateAnswer({ ...value, [day]: `before_meal_${mealNum}` })}
-                      >
-                        <span>Before Meal {mealNum}</span>
-                      </button>
-                    ))}
-                  </div>
-                </label>
-              ))}
-            </div>
-          </div>
+          <TrainingMealTimingSelector
+            gender={answers?.gender === 'female' ? 'female' : 'male'}
+            trainingDays={trainingDays}
+            mealScheduleByDay={mealScheduleByDay}
+            value={value}
+            onChange={(nextValue) => updateAnswer(toBackendTrainingMealTimingValue(nextValue, trainingDays, mealScheduleByDay))}
+          />
         );
       }
       default:
@@ -548,13 +577,12 @@ function ClientDashboardPage() {
     goal: ['What is your goal?', 'Lose, maintain, or gain weight.'],
     lifestyle: ['How active is your lifestyle?', 'This helps determine your TDEE category.'],
     meal_plan_type: ['Which meal plan type do you want?', 'Standard, carb cycling, or keto.'],
-    workout_days: ['What days do you work out?', 'Select Sunday through Saturday.'],
-    meal_schedule: ['How many meals do you want each day?', 'Set one meal amount for all days or customize each day of the week.'],
-    training_schedule: ['Before which meal do you train?', 'Choose the meal your workout happens before on each workout day.'],
+    workout_days: ['What days do you work out?', 'Workout and off days drive calorie totals and macro splitting.'],
+    meal_schedule: ['How many meals do you want each day?', 'Choose a realistic meal pattern for your calorie target, either same every day or custom by day.'],
+    training_schedule: ['Before which meal do you train?', 'Your workout timing helps us customize calorie and macro placement around training for each day.'],
   };
 
   const weeklySchedule = useMemo(() => summarizeAnswers(questionnaire?.answers || {}), [questionnaire?.answers]);
-  const results = dashboard?.results;
   const todayDayKey = getTodayWeekdayKey();
   const resultDays = useMemo(() => (Array.isArray(results?.weekly_days) ? results.weekly_days : []), [results?.weekly_days]);
   const resultDayMap = useMemo(

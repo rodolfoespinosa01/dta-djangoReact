@@ -1,0 +1,246 @@
+.mealfreq-card {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: linear-gradient(145deg, #ffffff, #f7fbff);
+  border-radius: 18px;
+  padding: 1rem;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.mealfreq-header h3 {
+  margin: 0;
+  color: #13233f;
+  font-size: 1.35rem;
+}
+
+.mealfreq-header p {
+  margin: 0.35rem 0 0;
+  color: #50688d;
+  line-height: 1.45;
+  font-size: 0.92rem;
+}
+
+.mealfreq-guidance {
+  border-radius: 12px;
+  border: 1px solid rgba(20, 40, 74, 0.15);
+  background: #f5f9ff;
+  padding: 0.55rem 0.7rem;
+}
+
+.mealfreq-guidance p {
+  margin: 0;
+  color: #2e4a74;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.mealfreq-mode-toggle {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.mealfreq-mode-btn {
+  border-radius: 999px;
+  border: 1px solid rgba(20, 40, 74, 0.14);
+  background: #fff;
+  color: #13233f;
+  font-weight: 700;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+
+.mealfreq-mode-btn.is-active {
+  background: #13233f;
+  color: #fff;
+  border-color: #13233f;
+}
+
+.mealfreq-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.mealfreq-option {
+  border-radius: 14px;
+  border: 1px solid rgba(20, 40, 74, 0.14);
+  background: #fff;
+  color: inherit;
+  text-align: left;
+  padding: 0.6rem;
+  display: grid;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background-color 180ms ease;
+}
+
+.mealfreq-option:hover {
+  transform: translateY(-2px);
+  border-color: rgba(37, 99, 235, 0.3);
+  box-shadow: 0 12px 26px rgba(15, 52, 111, 0.1);
+}
+
+.mealfreq-option.is-selected {
+  border-color: rgba(37, 99, 235, 0.42);
+  background: rgba(37, 99, 235, 0.05);
+  box-shadow: 0 12px 28px rgba(15, 52, 111, 0.14);
+}
+
+.mealfreq-option.is-less-practical {
+  border-color: rgba(194, 65, 12, 0.22);
+}
+
+.mealfreq-option-image-wrap {
+  border-radius: 12px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #f7fbff, #eef4ff);
+  min-height: 118px;
+}
+
+.mealfreq-option-image {
+  width: 100%;
+  height: 130px;
+  object-fit: cover;
+  display: block;
+}
+
+.mealfreq-option-copy h4 {
+  margin: 0;
+  color: #12335f;
+  font-size: 1rem;
+}
+
+.mealfreq-option-copy p {
+  margin: 0.24rem 0 0;
+  color: #557099;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.mealfreq-tag {
+  margin-top: 0.28rem;
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 0.16rem 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  border: 1px solid rgba(20, 40, 74, 0.16);
+}
+
+.mealfreq-tag.recommended {
+  background: #ebfdf3;
+  color: #0f766e;
+  border-color: rgba(15, 118, 110, 0.2);
+}
+
+.mealfreq-tag.less_practical {
+  background: #fff7ed;
+  color: #c2410c;
+  border-color: rgba(194, 65, 12, 0.2);
+}
+
+.mealfreq-custom-grid {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.mealfreq-day-row {
+  border: 1px solid rgba(20, 40, 74, 0.12);
+  border-radius: 12px;
+  background: #fff;
+  padding: 0.6rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.mealfreq-day-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.mealfreq-day-head strong {
+  color: #102c55;
+}
+
+.mealfreq-day-head span {
+  color: #56739c;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.mealfreq-day-options {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.mealfreq-day-pill {
+  border-radius: 10px;
+  border: 1px solid rgba(20, 40, 74, 0.14);
+  background: #fff;
+  color: #13233f;
+  font-weight: 700;
+  padding: 0.45rem 0.4rem;
+  cursor: pointer;
+}
+
+.mealfreq-day-pill.is-selected {
+  background: #13233f;
+  color: #fff;
+  border-color: #13233f;
+}
+
+.mealfreq-day-foot {
+  display: grid;
+  grid-template-columns: 62px 1fr;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.mealfreq-day-thumb {
+  width: 62px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid rgba(20, 40, 74, 0.14);
+}
+
+.mealfreq-day-foot span {
+  display: block;
+  color: #1d3c6a;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.mealfreq-day-foot p {
+  margin: 0.15rem 0 0;
+  color: #557099;
+  font-size: 0.78rem;
+  line-height: 1.3;
+}
+
+.mealfreq-summary {
+  border-radius: 12px;
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  background: rgba(37, 99, 235, 0.06);
+  padding: 0.65rem 0.75rem;
+  display: grid;
+  gap: 0.18rem;
+}
+
+.mealfreq-summary p {
+  margin: 0;
+  color: #123a76;
+  font-size: 0.87rem;
+}
+
+@media (max-width: 980px) {
+  .mealfreq-card-grid {
+    grid-template-columns: 1fr;
+  }
+}
