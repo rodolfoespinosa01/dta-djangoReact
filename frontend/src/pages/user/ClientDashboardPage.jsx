@@ -4,6 +4,10 @@ import { apiRequest } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { openPrintPdfWindow, renderPrintTable, escapeHtml } from '../../utils/printPdf';
 import MessagingPortal from '../../components/MessagingPortal';
+import BodyVisualizationSelector, { normalizeHeightCmValue } from '../../components/questionnaire/BodyVisualizationSelector';
+import WeightSelector, { lbsToKg, normalizeWeightLbsValue } from '../../components/questionnaire/WeightSelector';
+import maleSignImage from '../../assets/questionnaire/1/malesign.png';
+import femaleSignImage from '../../assets/questionnaire/1/femalesign.png';
 import './ClientDashboardPage.css';
 
 const QUESTION_STEPS = [
@@ -154,14 +158,9 @@ function ClientDashboardPage() {
       case 'date_of_birth':
         return typeof value === 'string' && value.length > 0;
       case 'height':
-        return Boolean(
-          value && (
-            (value.unit === 'cm' && Number(value.cm) > 0) ||
-            (value.unit === 'imperial' && (Number(value.feet) > 0 || Number(value.inches) >= 0))
-          )
-        );
+        return Number.isFinite(normalizeHeightCmValue(value, Number.NaN));
       case 'weight':
-        return Boolean(value && Number(value.value) > 0 && ['lbs', 'kg'].includes(value.unit));
+        return Number.isFinite(normalizeWeightLbsValue(value, Number.NaN));
       case 'workout_days':
         return Array.isArray(value);
       case 'meal_schedule': {
@@ -292,55 +291,50 @@ function ClientDashboardPage() {
                 className={`client-q-option-card ${activeAnswer === v ? 'is-active' : ''}`}
                 onClick={() => updateAnswer(v)}
               >
-                <span className="client-q-option-icon" aria-hidden="true">{v === 'male' ? '♂' : '♀'}</span>
+                <span className="client-q-option-icon" aria-hidden="true">
+                  <img
+                    className="client-q-option-icon-image"
+                    src={v === 'male' ? maleSignImage : femaleSignImage}
+                    alt=""
+                  />
+                </span>
                 <span>{v === 'male' ? 'Male' : 'Female'}</span>
               </button>
             ))}
           </div>
         );
       case 'height': {
-        const value = activeAnswer || { unit: 'imperial', feet: 5, inches: 0, cm: '' };
+        const selectedGender = answers?.gender === 'female' ? 'female' : 'male';
         return (
-          <div className="client-q-stack">
-            <div className="client-q-toggle">
-              {[
-                { key: 'imperial', label: 'Feet / Inches' },
-                { key: 'cm', label: 'CM' },
-              ].map((opt) => (
-                <button
-                  key={opt.key}
-                  type="button"
-                  className={value.unit === opt.key ? 'is-active' : ''}
-                  onClick={() => updateAnswer({ ...value, unit: opt.key })}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-            {value.unit === 'imperial' ? (
-              <div className="client-q-inline-grid">
-                <label>Feet<input type="number" min="0" value={value.feet ?? ''} onChange={(e) => updateAnswer({ ...value, feet: e.target.value })} /></label>
-                <label>Inches<input type="number" min="0" max="11" value={value.inches ?? ''} onChange={(e) => updateAnswer({ ...value, inches: e.target.value })} /></label>
-              </div>
-            ) : (
-              <label>Height (cm)<input type="number" min="0" value={value.cm ?? ''} onChange={(e) => updateAnswer({ ...value, cm: e.target.value })} /></label>
-            )}
-          </div>
+          <BodyVisualizationSelector
+            value={activeAnswer}
+            gender={selectedGender}
+            onChange={(heightCm) => updateAnswer(heightCm)}
+          />
         );
       }
       case 'weight': {
-        const value = activeAnswer || { unit: 'lbs', value: '' };
+        const weightUnit = activeAnswer?.unit === 'kg' ? 'kg' : 'lbs';
+        const currentWeightLbs = normalizeWeightLbsValue(activeAnswer);
         return (
-          <div className="client-q-stack">
-            <div className="client-q-toggle">
-              {['lbs', 'kg'].map((unit) => (
-                <button key={unit} type="button" className={value.unit === unit ? 'is-active' : ''} onClick={() => updateAnswer({ ...value, unit })}>
-                  {unit.toUpperCase()}
-                </button>
-              ))}
-            </div>
-            <label>Weight<input type="number" min="0" step="0.1" value={value.value ?? ''} onChange={(e) => updateAnswer({ ...value, value: e.target.value })} /></label>
-          </div>
+          <WeightSelector
+            value={currentWeightLbs}
+            unit={weightUnit}
+            allowUnitToggle
+            onUnitChange={(nextUnit) => {
+              const normalizedLbs = normalizeWeightLbsValue(activeAnswer);
+              updateAnswer({
+                unit: nextUnit,
+                value: nextUnit === 'kg' ? lbsToKg(normalizedLbs) : Math.round(normalizedLbs),
+              });
+            }}
+            onChange={(nextLbs) => {
+              updateAnswer({
+                unit: weightUnit,
+                value: weightUnit === 'kg' ? lbsToKg(nextLbs) : Math.round(nextLbs),
+              });
+            }}
+          />
         );
       }
       case 'date_of_birth':
