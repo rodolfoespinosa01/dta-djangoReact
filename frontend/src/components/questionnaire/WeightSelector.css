@@ -1,0 +1,160 @@
+.weightsel-card {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: linear-gradient(145deg, #ffffff, #f7fbff);
+  border-radius: 18px;
+  padding: 1rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.weightsel-header {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.weightsel-kicker {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #5b6f8e;
+  font-weight: 700;
+}
+
+.weightsel-value {
+  margin: 0;
+  font-size: clamp(2rem, 5vw, 2.8rem);
+  color: #0f346f;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.weightsel-unit-toggle {
+  display: inline-flex;
+  border-radius: 999px;
+  border: 1px solid rgba(20, 40, 74, 0.16);
+  padding: 0.2rem;
+  width: fit-content;
+  background: #fff;
+}
+
+.weightsel-unit-toggle button {
+  border: none;
+  background: transparent;
+  border-radius: 999px;
+  padding: 0.4rem 0.75rem;
+  font-weight: 700;
+  color: #2d4368;
+  cursor: pointer;
+}
+
+.weightsel-unit-toggle button.is-active {
+  background: linear-gradient(145deg, #22d3ee, #2563eb);
+  color: #fff;
+}
+
+.weightsel-dial {
+  position: relative;
+  border-radius: 14px;
+  border: 1px solid rgba(20, 40, 74, 0.12);
+  background: #fff;
+  height: 132px;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  cursor: ew-resize;
+  outline: none;
+}
+
+.weightsel-dial:focus-visible {
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+}
+
+.weightsel-dial-mask {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.96), transparent 26%, transparent 74%, rgba(255, 255, 255, 0.96));
+  pointer-events: none;
+  z-index: 2;
+}
+
+.weightsel-tick-track {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  will-change: transform;
+}
+
+.weightsel-tick-track.is-snapping {
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.weightsel-tick-track.is-dragging {
+  transition: none;
+}
+
+.weightsel-ticks {
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  transition: transform 40ms linear;
+}
+
+.weightsel-tick-slot {
+  width: 12px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.22rem;
+}
+
+.weightsel-tick {
+  width: 2px;
+  border-radius: 999px;
+  background: #8ba0bf;
+}
+
+.weightsel-tick.minor {
+  height: 10px;
+  opacity: 0.42;
+}
+
+.weightsel-tick.mid {
+  height: 18px;
+  opacity: 0.62;
+}
+
+.weightsel-tick.major {
+  height: 30px;
+  opacity: 0.9;
+}
+
+.weightsel-tick-label {
+  font-size: 0.62rem;
+  color: #5b7193;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 0.42rem;
+}
+
+.weightsel-center-indicator {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #1d4ed8, #22d3ee);
+  z-index: 3;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.88);
+}
+
+.weightsel-hint {
+  margin: 0;
+  color: #5a7092;
+  font-size: 0.82rem;
+}
