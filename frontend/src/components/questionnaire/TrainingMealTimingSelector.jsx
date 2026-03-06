@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import mealFemale1 from '../../assets/questionnaire/8/meal-female-1.jpg';
 import mealFemale2 from '../../assets/questionnaire/8/meal-female-2.jpg';
 import mealFemale3 from '../../assets/questionnaire/8/meal-female-3.jpg';
@@ -16,11 +16,13 @@ import trainingMale4 from '../../assets/questionnaire/8/training-male-4.png';
 import {
   TRAINING_TIMING_MODES,
   TIMING_WEEK_DAYS,
-  buildTrainingMealTimeline,
-  getSharedBeforeMealOptions,
-  getValidBeforeMealOptions,
+  beforeMealToSlotIndex,
+  buildTimelineItems,
+  getSharedValidSlots,
+  getValidTrainingSlots,
   normalizeMealCount,
   normalizeTrainingTimingValue,
+  slotIndexToBeforeMeal,
 } from './trainingMealTiming.constants';
 import './TrainingMealTimingSelector.css';
 
@@ -49,6 +51,8 @@ function TrainingMealTimingSelector({
   const normalizedGender = gender === 'female' ? 'female' : 'male';
   const mealImagePool = MEAL_IMAGE_POOLS[normalizedGender] || MEAL_IMAGE_POOLS.male;
   const trainingImagePool = TRAINING_IMAGE_POOLS[normalizedGender] || TRAINING_IMAGE_POOLS.male;
+  const [dragging, setDragging] = useState(null);
+  const [hoveredSlotKey, setHoveredSlotKey] = useState('');
 
   const normalized = useMemo(
     () => normalizeTrainingTimingValue({ value, trainingDays, mealScheduleByDay }),
@@ -56,7 +60,8 @@ function TrainingMealTimingSelector({
   );
 
   const { mode, sameBeforeMeal, days } = normalized;
-  const sharedOptions = getSharedBeforeMealOptions(trainingDays, mealScheduleByDay);
+  const sharedValidSlots = getSharedValidSlots(trainingDays, mealScheduleByDay);
+  const selectedSameSlot = beforeMealToSlotIndex(sameBeforeMeal || 1);
 
   const restDays = useMemo(
     () => TIMING_WEEK_DAYS.filter((day) => !trainingDays.includes(day.code)),
@@ -70,13 +75,47 @@ function TrainingMealTimingSelector({
 
   const setMode = (nextMode) => {
     if (nextMode === mode) return;
+
+    if (nextMode === 'same') {
+      if (!sharedValidSlots.length) {
+        emitChange({ ...normalized, mode: 'same' });
+        return;
+      }
+
+      const currentDaySlots = trainingDays
+        .map((dayCode) => beforeMealToSlotIndex(days?.[dayCode]))
+        .filter((slotIndex) => Number.isFinite(slotIndex));
+
+      const maxSharedSlot = sharedValidSlots[sharedValidSlots.length - 1];
+      const lowestExistingSlot = currentDaySlots.length ? Math.min(...currentDaySlots) : sharedValidSlots[0];
+      const safeSharedSlot = Math.max(0, Math.min(maxSharedSlot, lowestExistingSlot));
+      const nextBeforeMeal = slotIndexToBeforeMeal(safeSharedSlot);
+      const nextDays = { ...days };
+
+      trainingDays.forEach((dayCode) => {
+        const dayMealCount = normalizeMealCount(mealScheduleByDay?.[dayCode], 1);
+        // If meal counts change, clamp to the nearest earlier valid position to keep training in range.
+        nextDays[dayCode] = Math.min(nextBeforeMeal, dayMealCount);
+      });
+
+      emitChange({
+        mode: 'same',
+        sameBeforeMeal: nextBeforeMeal,
+        days: nextDays,
+      });
+      return;
+    }
+
     emitChange({ ...normalized, mode: nextMode });
   };
 
-  const setSameBeforeMeal = (beforeMeal) => {
+  const setSameSlot = (slotIndex) => {
+    const beforeMeal = slotIndexToBeforeMeal(slotIndex);
     const nextDays = { ...days };
+
     trainingDays.forEach((dayCode) => {
       const dayMealCount = normalizeMealCount(mealScheduleByDay?.[dayCode], 1);
+      // If meal counts change, clamp to the nearest earlier valid position to keep training in range.
       nextDays[dayCode] = Math.min(beforeMeal, dayMealCount);
     });
 
@@ -87,7 +126,13 @@ function TrainingMealTimingSelector({
     });
   };
 
-  const setDayBeforeMeal = (dayCode, beforeMeal) => {
+  const setDaySlot = (dayCode, slotIndex) => {
+    const mealCount = normalizeMealCount(mealScheduleByDay?.[dayCode], 1);
+    const validSlots = getValidTrainingSlots(mealCount);
+    const maxSlot = validSlots[validSlots.length - 1] || 0;
+    const safeSlot = Math.max(0, Math.min(maxSlot, slotIndex));
+    const beforeMeal = slotIndexToBeforeMeal(safeSlot);
+
     emitChange({
       ...normalized,
       mode: 'custom',
@@ -96,6 +141,44 @@ function TrainingMealTimingSelector({
         [dayCode]: beforeMeal,
       },
     });
+  };
+
+  const applySlotSelection = (dayCode, slotIndex) => {
+    if (mode === 'same') {
+      if (sharedValidSlots.includes(slotIndex)) {
+        setSameSlot(slotIndex);
+      }
+      return;
+    }
+    setDaySlot(dayCode, slotIndex);
+  };
+
+  const onTrainingDragStart = (event, dayCode) => {
+    event.dataTransfer.effectAllowed = 'move';
+    try {
+      event.dataTransfer.setData('text/plain', dayCode);
+    } catch (error) {
+      // no-op: Safari can reject setData for some drag types.
+    }
+    setDragging({ dayCode });
+  };
+
+  const onTrainingDragEnd = () => {
+    setDragging(null);
+    setHoveredSlotKey('');
+  };
+
+  const onSlotDragOver = (event, dayCode, slotIndex) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    setHoveredSlotKey(`${dayCode}-${slotIndex}`);
+  };
+
+  const onSlotDrop = (event, dayCode, slotIndex) => {
+    event.preventDefault();
+    applySlotSelection(dayCode, slotIndex);
+    setDragging(null);
+    setHoveredSlotKey('');
   };
 
   if (!trainingDays.length) {
@@ -146,22 +229,7 @@ function TrainingMealTimingSelector({
       {mode === 'same' ? (
         <div className="train-time-same-picker">
           <strong>Choose one position for all training days</strong>
-          <div className="train-time-pill-row">
-            {sharedOptions.map((option) => (
-              <button
-                key={`same-before-${option}`}
-                type="button"
-                className={`train-time-pill ${sameBeforeMeal === option ? 'is-selected' : ''}`}
-                onClick={() => setSameBeforeMeal(option)}
-              >
-                Before Meal {option}
-              </button>
-            ))}
-          </div>
-          <p>
-            Available options are based on the minimum meals across your training days so the same timing stays valid
-            everywhere.
-          </p>
+          <p>Shared timing options are limited by your shortest training-day meal schedule.</p>
         </div>
       ) : null}
 
@@ -179,8 +247,14 @@ function TrainingMealTimingSelector({
           const dayMeta = TIMING_WEEK_DAYS.find((entry) => entry.code === dayCode);
           const mealCount = normalizeMealCount(mealScheduleByDay?.[dayCode], 1);
           const selectedBeforeMeal = days?.[dayCode] || 1;
-          const options = getValidBeforeMealOptions(mealCount);
-          const timeline = buildTrainingMealTimeline({ mealCount, beforeMeal: selectedBeforeMeal });
+          const selectedSlotIndex = mode === 'same' ? selectedSameSlot : beforeMealToSlotIndex(selectedBeforeMeal);
+          const timeline = buildTimelineItems({
+            mealCount,
+            trainingSlotIndex: selectedSlotIndex,
+            gender: normalizedGender,
+            imagePools: { meal: mealImagePool, training: trainingImagePool },
+            daySeed: dayIdx,
+          });
 
           return (
             <article key={`training-day-${dayCode}`} className="train-time-day-card">
@@ -192,47 +266,60 @@ function TrainingMealTimingSelector({
                 <em>{mealCount} meals</em>
               </div>
 
-              {mode === 'custom' ? (
-                <div className="train-time-pill-row">
-                  {options.map((option) => (
-                    <button
-                      key={`${dayCode}-before-${option}`}
-                      type="button"
-                      className={`train-time-pill ${selectedBeforeMeal === option ? 'is-selected' : ''}`}
-                      onClick={() => setDayBeforeMeal(dayCode, option)}
-                    >
-                      Before {option}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
+              <div
+                className="train-time-timeline"
+                role="list"
+                aria-label={`${dayMeta?.fullLabel || dayCode} training timeline`}
+              >
+                {timeline.map((entry) => {
+                  if (entry.type === 'slot') {
+                    const slotKey = `${dayCode}-${entry.slotIndex}`;
+                    const sharedInvalid = mode === 'same' && !sharedValidSlots.includes(entry.slotIndex);
+                    const isHovered = hoveredSlotKey === slotKey;
 
-              <div className="train-time-timeline" role="list" aria-label={`${dayMeta?.fullLabel || dayCode} training timeline`}>
-                {timeline.map((entry, itemIdx) => {
-                  if (entry.type === 'training') {
                     return (
-                      <React.Fragment key={`${dayCode}-${entry.id}-${selectedBeforeMeal}`}>
-                        <div className="train-time-node training" role="listitem">
-                          <img src={pickCycledImage(trainingImagePool, dayIdx + itemIdx)} alt="Workout" />
-                          <span>Train</span>
-                        </div>
-                        <span className="train-time-arrow" aria-hidden="true">-></span>
-                      </React.Fragment>
+                      <div key={`${dayCode}-${entry.id}`} className="train-time-slot-wrap" role="listitem">
+                        <button
+                          type="button"
+                          className={`train-time-slot ${entry.isTrainingHere ? 'has-training' : ''} ${isHovered ? 'is-hovered' : ''}`}
+                          onClick={() => applySlotSelection(dayCode, entry.slotIndex)}
+                          onDragOver={(event) => !sharedInvalid && onSlotDragOver(event, dayCode, entry.slotIndex)}
+                          onDragEnter={(event) => !sharedInvalid && onSlotDragOver(event, dayCode, entry.slotIndex)}
+                          onDragLeave={() => isHovered && setHoveredSlotKey('')}
+                          onDrop={(event) => !sharedInvalid && onSlotDrop(event, dayCode, entry.slotIndex)}
+                          disabled={sharedInvalid}
+                          aria-label={`Set training before Meal ${entry.beforeMeal}`}
+                        >
+                          {entry.isTrainingHere ? (
+                            <div
+                              className={`train-time-node training ${dragging ? 'is-dragging-source' : ''}`}
+                              draggable
+                              onDragStart={(event) => onTrainingDragStart(event, dayCode)}
+                              onDragEnd={onTrainingDragEnd}
+                            >
+                              <img src={entry.trainingImage || pickCycledImage(trainingImagePool, dayIdx)} alt="Workout" />
+                              <span>Train</span>
+                            </div>
+                          ) : (
+                            <span className="train-time-slot-hint">
+                              {sharedInvalid ? 'Not shared' : `Before Meal ${entry.beforeMeal}`}
+                            </span>
+                          )}
+                        </button>
+                      </div>
                     );
                   }
 
-                  const isLast = itemIdx === timeline.length - 1;
                   return (
-                    <React.Fragment key={`${dayCode}-${entry.id}`}>
-                      <div className="train-time-node meal" role="listitem">
-                        <img src={pickCycledImage(mealImagePool, dayIdx + itemIdx)} alt={`Meal ${entry.mealNumber}`} />
-                        <span>Meal {entry.mealNumber}</span>
-                      </div>
-                      {!isLast ? <span className="train-time-arrow" aria-hidden="true">-></span> : null}
-                    </React.Fragment>
+                    <div key={`${dayCode}-${entry.id}`} className="train-time-node meal" role="listitem">
+                      <img src={entry.image || pickCycledImage(mealImagePool, dayIdx)} alt={`Meal ${entry.mealNumber}`} />
+                      <span>Meal {entry.mealNumber}</span>
+                    </div>
                   );
                 })}
               </div>
+
+              <p className="train-time-feedback">Training happens before Meal {slotIndexToBeforeMeal(selectedSlotIndex)}</p>
             </article>
           );
         })}
@@ -242,14 +329,15 @@ function TrainingMealTimingSelector({
         {mode === 'same' ? (
           <>
             <p><strong>Training timing:</strong> Same every training day</p>
-            <p><strong>Selected position:</strong> Before Meal {sameBeforeMeal || '-'}</p>
+            <p><strong>Selected position:</strong> Before Meal {slotIndexToBeforeMeal(selectedSameSlot)}</p>
           </>
         ) : (
           <>
             <p><strong>Training timing:</strong> Custom by day</p>
             {trainingDays.map((dayCode) => {
               const dayMeta = TIMING_WEEK_DAYS.find((entry) => entry.code === dayCode);
-              return <p key={`summary-${dayCode}`}><strong>{dayMeta?.label || dayCode.toUpperCase()}:</strong> Before Meal {days[dayCode]}</p>;
+              const daySlot = beforeMealToSlotIndex(days[dayCode]);
+              return <p key={`summary-${dayCode}`}><strong>{dayMeta?.label || dayCode.toUpperCase()}:</strong> Before Meal {slotIndexToBeforeMeal(daySlot)}</p>;
             })}
           </>
         )}
