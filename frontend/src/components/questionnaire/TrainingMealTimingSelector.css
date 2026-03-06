@@ -1,0 +1,239 @@
+.train-time-card {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: linear-gradient(145deg, #ffffff, #f7fbff);
+  border-radius: 18px;
+  padding: 1rem;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.train-time-header h3 {
+  margin: 0;
+  color: #13233f;
+  font-size: 1.35rem;
+}
+
+.train-time-header p {
+  margin: 0.35rem 0 0;
+  color: #50688d;
+  line-height: 1.45;
+  font-size: 0.92rem;
+}
+
+.train-time-empty {
+  border-radius: 12px;
+  border: 1px dashed rgba(20, 40, 74, 0.2);
+  background: rgba(245, 248, 255, 0.9);
+  padding: 0.75rem;
+}
+
+.train-time-empty p {
+  margin: 0;
+  color: #5a7092;
+  font-size: 0.88rem;
+}
+
+.train-time-mode-toggle {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.train-time-mode-btn {
+  border-radius: 999px;
+  border: 1px solid rgba(20, 40, 74, 0.14);
+  background: #fff;
+  color: #13233f;
+  font-weight: 700;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+}
+
+.train-time-mode-btn.is-active {
+  background: #13233f;
+  color: #fff;
+  border-color: #13233f;
+}
+
+.train-time-same-picker {
+  border-radius: 12px;
+  border: 1px solid rgba(20, 40, 74, 0.12);
+  background: #fff;
+  padding: 0.65rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.train-time-same-picker strong {
+  color: #12335f;
+}
+
+.train-time-same-picker p {
+  margin: 0;
+  color: #59729b;
+  font-size: 0.82rem;
+}
+
+.train-time-rest-days {
+  border-radius: 12px;
+  border: 1px solid rgba(20, 40, 74, 0.1);
+  background: #f9fcff;
+  padding: 0.55rem 0.65rem;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.train-time-rest-days strong {
+  color: #39557e;
+  font-size: 0.82rem;
+}
+
+.train-time-rest-days div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.train-time-rest-days span {
+  border-radius: 999px;
+  border: 1px solid rgba(20, 40, 74, 0.12);
+  background: #fff;
+  color: #47628c;
+  padding: 0.16rem 0.48rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.train-time-days-grid {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.train-time-day-card {
+  border-radius: 12px;
+  border: 1px solid rgba(20, 40, 74, 0.14);
+  background: #fff;
+  padding: 0.65rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.train-time-day-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.train-time-day-head strong {
+  color: #11335d;
+}
+
+.train-time-day-head span {
+  display: block;
+  color: #4f6d97;
+  font-size: 0.76rem;
+  font-weight: 700;
+  margin-top: 0.05rem;
+}
+
+.train-time-day-head em {
+  font-style: normal;
+  color: #52739f;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.train-time-pill-row {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.train-time-pill {
+  border-radius: 999px;
+  border: 1px solid rgba(20, 40, 74, 0.14);
+  background: #fff;
+  color: #13233f;
+  font-weight: 700;
+  font-size: 0.79rem;
+  padding: 0.35rem 0.6rem;
+  cursor: pointer;
+}
+
+.train-time-pill.is-selected {
+  background: #13233f;
+  color: #fff;
+  border-color: #13233f;
+}
+
+.train-time-timeline {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  overflow-x: auto;
+  padding-bottom: 0.2rem;
+}
+
+.train-time-node {
+  min-width: 88px;
+  border-radius: 10px;
+  border: 1px solid rgba(20, 40, 74, 0.14);
+  background: #fff;
+  padding: 0.35rem;
+  display: grid;
+  gap: 0.25rem;
+  justify-items: center;
+}
+
+.train-time-node img {
+  width: 100%;
+  height: 58px;
+  border-radius: 8px;
+  object-fit: cover;
+  display: block;
+}
+
+.train-time-node span {
+  color: #2a4e80;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.train-time-node.training {
+  border-color: rgba(37, 99, 235, 0.32);
+  background: rgba(37, 99, 235, 0.06);
+  animation: trainSlide 260ms ease;
+}
+
+.train-time-arrow {
+  color: #5c769b;
+  font-weight: 800;
+  flex: 0 0 auto;
+}
+
+.train-time-summary {
+  border-radius: 12px;
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  background: rgba(37, 99, 235, 0.06);
+  padding: 0.65rem 0.75rem;
+  display: grid;
+  gap: 0.16rem;
+}
+
+.train-time-summary p {
+  margin: 0;
+  color: #123a76;
+  font-size: 0.86rem;
+}
+
+@keyframes trainSlide {
+  from {
+    transform: translateX(-6px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
