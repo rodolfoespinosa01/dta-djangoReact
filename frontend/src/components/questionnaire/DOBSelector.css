@@ -1,0 +1,206 @@
+.dobsel-card {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: linear-gradient(145deg, #ffffff, #f7fbff);
+  border-radius: 18px;
+  padding: 1rem;
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(240px, 0.9fr);
+  gap: 1rem;
+}
+
+.dobsel-left {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.dobsel-header {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.dobsel-kicker {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #5b6f8e;
+  font-weight: 700;
+}
+
+.dobsel-title {
+  margin: 0;
+  color: #13233f;
+  font-size: 1.4rem;
+}
+
+.dobsel-subtitle {
+  margin: 0;
+  color: #536b8f;
+  font-size: 0.9rem;
+}
+
+.dobsel-progress {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.dobsel-progress span {
+  border: 1px solid rgba(20, 40, 74, 0.14);
+  background: #fff;
+  color: #4f688e;
+  border-radius: 999px;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.dobsel-progress span.is-done {
+  background: linear-gradient(145deg, #22d3ee, #2563eb);
+  border-color: transparent;
+  color: #fff;
+}
+
+.dobsel-step-block {
+  border: 1px solid rgba(20, 40, 74, 0.12);
+  border-radius: 12px;
+  background: #fff;
+  padding: 0.7rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.dobsel-step-block h4 {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #1f3658;
+}
+
+.dobsel-year-list {
+  max-height: 120px;
+  overflow: auto;
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  padding-right: 0.2rem;
+}
+
+.dobsel-year-chip,
+.dobsel-month-chip,
+.dobsel-day-chip {
+  border-radius: 10px;
+  border: 1px solid rgba(20, 40, 74, 0.16);
+  background: #fff;
+  color: #233b5f;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 180ms ease;
+}
+
+.dobsel-year-chip {
+  min-width: 68px;
+  padding: 0.45rem 0.6rem;
+}
+
+.dobsel-month-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.dobsel-month-chip {
+  padding: 0.4rem 0.2rem;
+}
+
+.dobsel-day-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.3rem;
+}
+
+.dobsel-day-chip {
+  padding: 0.35rem 0.1rem;
+}
+
+.dobsel-year-chip.is-active,
+.dobsel-month-chip.is-active,
+.dobsel-day-chip.is-active {
+  background: rgba(37, 99, 235, 0.1);
+  border-color: rgba(37, 99, 235, 0.38);
+  color: #0f346f;
+}
+
+.dobsel-year-chip:disabled,
+.dobsel-month-chip:disabled,
+.dobsel-day-chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.dobsel-preview {
+  border: 1px solid rgba(20, 40, 74, 0.12);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(37, 99, 235, 0.08), transparent 62%),
+    linear-gradient(180deg, #f8fbff, #f1f6ff);
+  padding: 0.7rem;
+  display: grid;
+  align-content: space-between;
+  gap: 0.5rem;
+}
+
+.dobsel-preview-image-wrap {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  min-height: 260px;
+}
+
+.dobsel-preview-image {
+  max-height: 250px;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 12px 24px rgba(14, 35, 69, 0.2));
+  transition: opacity 260ms ease, transform 260ms ease;
+}
+
+.dobsel-preview-meta {
+  display: grid;
+  gap: 0.1rem;
+  text-align: center;
+}
+
+.dobsel-stage {
+  margin: 0;
+  color: #0f346f;
+  font-weight: 800;
+  font-size: 1.05rem;
+}
+
+.dobsel-age {
+  margin: 0;
+  color: #2a4873;
+  font-weight: 700;
+}
+
+.dobsel-date {
+  margin: 0;
+  color: #5b6f8e;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+@media (max-width: 980px) {
+  .dobsel-card {
+    grid-template-columns: 1fr;
+  }
+
+  .dobsel-preview-image-wrap {
+    min-height: 220px;
+  }
+
+  .dobsel-preview-image {
+    max-height: 200px;
+  }
+}

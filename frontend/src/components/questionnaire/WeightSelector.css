@@ -153,6 +153,15 @@
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.88);
 }
 
+.weightsel-range {
+  margin-top: -0.3rem;
+  display: flex;
+  justify-content: space-between;
+  color: #6780a3;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
 .weightsel-hint {
   margin: 0;
   color: #5a7092;
