@@ -38,11 +38,11 @@
   background: rgba(246, 249, 255, 0.9);
 }
 
-.app-shell.admin-theme-light .admin-theme-title {
+.app-shell.admin-theme-light .admin-theme-row .theme-pref-title {
   color: #13233f;
 }
 
-.app-shell.admin-theme-light .admin-theme-subtitle {
+.app-shell.admin-theme-light .admin-theme-row .theme-pref-subtitle {
   color: #50617b;
 }
 
@@ -83,68 +83,8 @@
 }
 
 .admin-theme-row {
-  margin-top: 0.9rem;
-  margin-bottom: 0.9rem;
-  padding: 0.75rem 0.85rem;
-  border-radius: 12px;
   border: 1px solid rgba(36, 164, 255, 0.22);
   background: rgba(10, 26, 44, 0.38);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.8rem;
-}
-
-.admin-theme-title {
-  margin: 0;
-  color: #f0fbff;
-  font-weight: 700;
-}
-
-.admin-theme-subtitle {
-  margin: 0.2rem 0 0;
-  color: #9ec7f3;
-  font-size: 0.88rem;
-}
-
-.theme-toggle {
-  width: 58px;
-  height: 32px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: #334155;
-  position: relative;
-  cursor: pointer;
-  transition: background 180ms ease, border-color 180ms ease;
-}
-
-.theme-toggle.is-dark {
-  background: #0f172a;
-}
-
-.theme-toggle.is-light {
-  background: #2563eb;
-}
-
-.theme-toggle-knob {
-  position: absolute;
-  top: 3px;
-  left: 4px;
-  width: 24px;
-  height: 24px;
-  border-radius: 999px;
-  background: #ffffff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
-  transition: transform 180ms ease;
-}
-
-.theme-toggle.is-light .theme-toggle-knob {
-  transform: translateX(26px);
-}
-
-.theme-toggle:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
 }
 
 .admin-settings-card p {

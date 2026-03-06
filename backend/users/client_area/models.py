@@ -107,6 +107,7 @@ class ClientProfile(models.Model):
     coaching_expires_at = models.DateTimeField(null=True, blank=True)
     stripe_customer_id = models.CharField(max_length=64, blank=True, default="")
     stripe_subscription_id = models.CharField(max_length=64, blank=True, default="")
+    theme_preference = models.CharField(max_length=20, default="light")
     is_active = models.BooleanField(default=True)
     cancel_at_period_end = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)

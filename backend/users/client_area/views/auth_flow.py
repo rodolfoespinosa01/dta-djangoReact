@@ -34,6 +34,7 @@ from core.services.google_oauth import verify_google_id_token
 from core.services.meal_combo_lookup import find_meal_combo_id_by_slots
 from core.models import MealComboTemplate
 from users.client_area.services.results_engine import BuildResultsContext, build_questionnaire_results
+from core.services.theme_preferences import normalize_theme
 
 stripe.api_key = getattr(settings, "STRIPE_SECRET_KEY", None)
 FRONTEND_URL = getattr(settings, "FRONTEND_URL", None) or "https://localhost:3000"
@@ -181,6 +182,7 @@ def _build_client_settings_payload(profile: ClientProfile | None):
         "coaching_expires_at": profile.coaching_expires_at,
         "is_active": profile.is_active,
         "cancel_at_period_end": bool(getattr(profile, "cancel_at_period_end", False)),
+        "theme_preference": normalize_theme(getattr(profile, "theme_preference", "light")),
         "sale_channel": profile.sale_channel,
         "associated_admin_slug": profile.associated_admin.subdomain_slug if profile.associated_admin else None,
         "can_start_trial": trial_eligible,

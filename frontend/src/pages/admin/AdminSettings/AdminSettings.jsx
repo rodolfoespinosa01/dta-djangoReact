@@ -2,12 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { useLanguage } from '../../../context/LanguageContext';
+import { useTheme } from '../../../context/ThemeContext';
 import { apiRequest } from '../../../api/client';
+import ThemePreferenceToggle from '../../../components/theme/ThemePreferenceToggle';
 import './AdminSettings.css';
 
 function AdminSettings() {
   const { user, isAuthenticated } = useAuth();
   const { t } = useLanguage();
+  const { getTheme, updateTheme, fetchServerTheme, savingByRole } = useTheme();
   const navigate = useNavigate();
 
   const [dashboardData, setDashboardData] = useState(null);
@@ -15,16 +18,7 @@ function AdminSettings() {
   const [planPriceMap, setPlanPriceMap] = useState({});
   const [message, setMessage] = useState('');
   const [loadingAction, setLoadingAction] = useState(null); // 'cancel' | 'upgrade' | 'downgrade' | null
-  const [themePreference, setThemePreference] = useState('light');
-  const [savingTheme, setSavingTheme] = useState(false);
-
-  const persistAdminTheme = (theme) => {
-    const normalized = theme === 'dark' ? 'dark' : 'light';
-    try {
-      localStorage.setItem('admin_theme_preference', normalized);
-    } catch {}
-    window.dispatchEvent(new Event('admin-theme-changed'));
-  };
+  const themePreference = getTheme('admin');
 
   // modal for plan selection
   const [modalOpen, setModalOpen] = useState(false);
@@ -127,48 +121,18 @@ function AdminSettings() {
       }
     };
 
-    const fetchThemePreference = async () => {
-      try {
-        const { ok, status, data } = await apiRequest('/api/v1/users/admin/theme_preference/', { auth: true });
-        if (!isAuthedGuard({ status })) return;
-        if (!ignore && ok && data?.theme) {
-          const normalized = data.theme === 'dark' ? 'dark' : 'light';
-          setThemePreference(normalized);
-          persistAdminTheme(normalized);
-        }
-      } catch (err) {
-        console.error('error fetching theme preference:', err);
-      }
-    };
-
     fetchDashboard();
     fetchPlanMap();
     fetchPaymentMethod();
-    fetchThemePreference();
+    fetchServerTheme('admin').catch(() => {});
     return () => { ignore = true; };
-  }, [isAuthenticated, navigate]);
+  }, [fetchServerTheme, isAuthenticated, navigate]);
 
   const handleThemeToggle = async () => {
     const nextTheme = themePreference === 'dark' ? 'light' : 'dark';
-    try {
-      setSavingTheme(true);
-      const { ok, status, data } = await apiRequest('/api/v1/users/admin/theme_preference/', {
-        method: 'PUT',
-        auth: true,
-        body: { theme: nextTheme },
-      });
-      if (!isAuthedGuard({ status })) return;
-      if (ok) {
-        setThemePreference(nextTheme);
-        persistAdminTheme(nextTheme);
-      } else {
-        setMessage(data?.error?.message || data?.error || 'Unable to update theme preference.');
-      }
-    } catch (err) {
-      console.error('theme toggle error:', err);
-      setMessage('Network error while updating theme preference.');
-    } finally {
-      setSavingTheme(false);
+    const result = await updateTheme('admin', nextTheme);
+    if (!result.ok) {
+      setMessage(result.error || 'Unable to update theme preference.');
     }
   };
 
@@ -420,23 +384,16 @@ return (
       <div className="admin-settings-card">
         <h3>📄 {t('admin_settings.subscription_info')}</h3>
 
-        <div className="admin-theme-row">
-          <div>
-            <p className="admin-theme-title">🎨 {t('admin_settings.theme_title')}</p>
-            <p className="admin-theme-subtitle">
-              {themePreference === 'dark' ? t('admin_settings.theme_dark') : t('admin_settings.theme_light')}
-            </p>
-          </div>
-          <button
-            type="button"
-            className={`theme-toggle ${themePreference === 'dark' ? 'is-dark' : 'is-light'}`}
-            aria-label={t('admin_settings.theme_toggle_aria')}
-            onClick={handleThemeToggle}
-            disabled={savingTheme}
-          >
-            <span className="theme-toggle-knob" />
-          </button>
-        </div>
+        <ThemePreferenceToggle
+          className="admin-theme-row"
+          theme={themePreference}
+          onToggle={handleThemeToggle}
+          disabled={savingByRole.admin}
+          title={`🎨 ${t('admin_settings.theme_title')}`}
+          darkLabel={t('admin_settings.theme_dark')}
+          lightLabel={t('admin_settings.theme_light')}
+          ariaLabel={t('admin_settings.theme_toggle_aria')}
+        />
 
         <p>
           <strong>{t('admin_settings.plan')}</strong>{" "}

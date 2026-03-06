@@ -18,6 +18,7 @@ from users.client_area.views.auth_flow import (
 )
 from users.client_area.views.token_login import ClientTokenObtainPairView
 from users.client_area.views.google_login import client_google_login
+from users.client_area.views.theme_preference import client_theme_preference
 from users.client_area.views.billing import (
     client_checkout_quote,
     client_checkout_sync,
@@ -58,6 +59,7 @@ urlpatterns = [
     path('google_login/', client_google_login, name='client_google_login'),
     path('app/dashboard/', client_dashboard, name='client_app_dashboard'),
     path('app/settings/', client_settings_view, name='client_app_settings'),
+    path('app/theme_preference/', client_theme_preference, name='client_app_theme_preference'),
     path('app/settings/checkout-quote/', client_checkout_quote, name='client_app_settings_checkout_quote'),
     path('app/settings/start-checkout/', client_start_checkout_session, name='client_app_settings_start_checkout'),
     path('app/settings/start-queued-checkout/', client_start_queued_checkout_session, name='client_app_settings_start_queued_checkout'),

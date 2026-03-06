@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
+import ThemePreferenceToggle from '../../components/theme/ThemePreferenceToggle';
 import './ClientDashboardPage.css';
 
 function normalizeSubdomainLabel(slug) {
@@ -43,6 +45,7 @@ function QuoteSummary({ quote }) {
 
 function ClientSettingsPage() {
   const { logout } = useAuth();
+  const { getTheme, updateTheme, fetchServerTheme, savingByRole } = useTheme();
   const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState(null);
@@ -61,6 +64,7 @@ function ClientSettingsPage() {
   const [queuedCheckoutDiscountCode, setQueuedCheckoutDiscountCode] = useState('');
   const [queuedCheckoutQuoteBusy, setQueuedCheckoutQuoteBusy] = useState(false);
   const [queuedCheckoutQuote, setQueuedCheckoutQuote] = useState(null);
+  const themePreference = getTheme('client');
 
   const load = async () => {
     setLoading(true);
@@ -83,6 +87,8 @@ function ClientSettingsPage() {
       setError('Unable to load client settings.');
       setLoading(false);
     });
+    fetchServerTheme('client').catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -271,6 +277,17 @@ function ClientSettingsPage() {
     }
   };
 
+  const handleThemeToggle = async () => {
+    setError('');
+    const nextTheme = themePreference === 'dark' ? 'light' : 'dark';
+    const result = await updateTheme('client', nextTheme);
+    if (!result.ok) {
+      setError(result.error || 'Unable to update theme preference.');
+      return;
+    }
+    setMessage('Theme preference updated.');
+  };
+
   if (loading) return <div className="client-dashboard-page"><p>Loading settings…</p></div>;
   if (error && !settings) return <div className="client-dashboard-page"><p className="client-dash-error">{error}</p></div>;
 
@@ -303,6 +320,20 @@ function ClientSettingsPage() {
 
       {message ? <p className="client-q-message">{message}</p> : null}
       {error ? <p className="client-q-error">{error}</p> : null}
+
+      <section className="client-dashboard-card">
+        <h2>Appearance</h2>
+        <ThemePreferenceToggle
+          className="client-theme-row"
+          theme={themePreference}
+          onToggle={handleThemeToggle}
+          disabled={savingByRole.client}
+          title="Theme Color"
+          darkLabel="Dark"
+          lightLabel="Light"
+          ariaLabel="Toggle client theme"
+        />
+      </section>
 
       <section className="client-dashboard-card">
         <h2>Plan Overview</h2>
