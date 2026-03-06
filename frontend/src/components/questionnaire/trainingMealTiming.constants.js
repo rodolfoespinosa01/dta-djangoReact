@@ -28,6 +28,23 @@ export function getValidBeforeMealOptions(mealCount) {
   return Array.from({ length: count }, (_, idx) => idx + 1);
 }
 
+export function getValidTrainingSlots(mealCount) {
+  const count = normalizeMealCount(mealCount, 1);
+  return Array.from({ length: count }, (_, idx) => idx);
+}
+
+export function slotIndexToBeforeMeal(slotIndex) {
+  const parsed = Number(slotIndex);
+  if (!Number.isFinite(parsed)) return 1;
+  return Math.max(1, Math.round(parsed) + 1);
+}
+
+export function beforeMealToSlotIndex(beforeMeal) {
+  const parsed = Number(beforeMeal);
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.max(0, Math.round(parsed) - 1);
+}
+
 export function clampBeforeMeal(beforeMeal, mealCount) {
   const max = normalizeMealCount(mealCount, 1);
   const parsed = Number(beforeMeal);
@@ -35,14 +52,18 @@ export function clampBeforeMeal(beforeMeal, mealCount) {
   return Math.max(1, Math.min(max, Math.round(parsed)));
 }
 
-export function getSharedBeforeMealOptions(trainingDays = [], mealScheduleByDay = {}) {
+export function getSharedValidSlots(trainingDays = [], mealScheduleByDay = {}) {
   const validMealCounts = trainingDays
     .map((dayCode) => normalizeMealCount(mealScheduleByDay?.[dayCode], 0))
     .filter((count) => count > 0);
 
   if (!validMealCounts.length) return [];
   const sharedMax = Math.min(...validMealCounts);
-  return getValidBeforeMealOptions(sharedMax);
+  return getValidTrainingSlots(sharedMax);
+}
+
+export function getSharedBeforeMealOptions(trainingDays = [], mealScheduleByDay = {}) {
+  return getSharedValidSlots(trainingDays, mealScheduleByDay).map(slotIndexToBeforeMeal);
 }
 
 export function normalizeTrainingTimingValue({
@@ -52,14 +73,17 @@ export function normalizeTrainingTimingValue({
 }) {
   const trainingSet = new Set(trainingDays);
   const mode = normalizeTrainingTimingMode(value?.mode);
-  const sharedOptions = getSharedBeforeMealOptions(trainingDays, mealScheduleByDay);
+  const sharedValidSlots = getSharedValidSlots(trainingDays, mealScheduleByDay);
+  const sharedOptions = sharedValidSlots.map(slotIndexToBeforeMeal);
 
   let sameBeforeMeal = Number(value?.sameBeforeMeal);
   if (!Number.isFinite(sameBeforeMeal)) {
     sameBeforeMeal = sharedOptions[0] || null;
   }
-  if (sameBeforeMeal != null && sharedOptions.length) {
-    sameBeforeMeal = clampBeforeMeal(sameBeforeMeal, sharedOptions.length);
+  if (sameBeforeMeal != null && sharedValidSlots.length) {
+    const sameSlot = beforeMealToSlotIndex(sameBeforeMeal);
+    const maxSharedSlot = sharedValidSlots[sharedValidSlots.length - 1];
+    sameBeforeMeal = slotIndexToBeforeMeal(Math.max(0, Math.min(maxSharedSlot, sameSlot)));
   }
 
   const days = TIMING_WEEK_DAYS.reduce((acc, day) => {
@@ -105,6 +129,48 @@ export function buildTrainingMealTimeline({ mealCount, beforeMeal }) {
       type: 'meal',
       label: `Meal ${mealNum}`,
       mealNumber: mealNum,
+    });
+  }
+
+  return items;
+}
+
+export function buildTimelineItems({
+  mealCount,
+  trainingSlotIndex,
+  gender,
+  imagePools = {},
+  daySeed = 0,
+}) {
+  const count = normalizeMealCount(mealCount, 1);
+  const validSlots = getValidTrainingSlots(count);
+  const maxSlot = validSlots.length ? validSlots[validSlots.length - 1] : 0;
+  const slot = Math.max(0, Math.min(maxSlot, Number(trainingSlotIndex) || 0));
+  const mealPool = imagePools?.meal || [];
+  const trainingPool = imagePools?.training || [];
+  const items = [];
+
+  for (let idx = 0; idx < count; idx += 1) {
+    const slotIndex = idx;
+    const mealNumber = idx + 1;
+    const mealImage = mealPool.length ? mealPool[(daySeed + idx) % mealPool.length] : '';
+    const trainingImage = trainingPool.length ? trainingPool[(daySeed + idx) % trainingPool.length] : '';
+
+    items.push({
+      id: `slot-${slotIndex}`,
+      type: 'slot',
+      slotIndex,
+      beforeMeal: slotIndexToBeforeMeal(slotIndex),
+      isTrainingHere: slotIndex === slot,
+      trainingImage,
+      gender,
+    });
+
+    items.push({
+      id: `meal-${mealNumber}`,
+      type: 'meal',
+      mealNumber,
+      image: mealImage,
     });
   }
 
