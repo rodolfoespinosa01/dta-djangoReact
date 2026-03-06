@@ -1,11 +1,10 @@
-          import React, { useEffect, useState } from 'react';
-          import AdminMessagingPage from './pages/admin/AdminMessagingPage';
+import React from 'react';
+import AdminMessagingPage from './pages/admin/AdminMessagingPage';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
-          import { useAuth } from './context/AuthContext';
 import { LanguageProvider } from './context/LanguageContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 import './App.css';
-          import { apiRequest } from './api/client';
 
 // component
 import Navbar from './components/Navbar';
@@ -59,60 +58,24 @@ import ClientProtectedRoute from './routes/ClientProtectedRoute';
 
 function AppLayout() {
   const location = useLocation();
-  const { isAuthenticated, user } = useAuth();
+  const { getTheme } = useTheme();
   const hostAdminSlug = getAdminSlugFromHostname();
-  const [adminTheme, setAdminTheme] = useState(() => {
-    try {
-      const saved = localStorage.getItem('admin_theme_preference');
-      return saved === 'dark' ? 'dark' : 'light';
-    } catch {
-      return 'light';
-    }
-  });
-
   const isAdminRoute = location.pathname.startsWith('/admin');
+  const isClientRoute = location.pathname.startsWith('/client');
+  const adminTheme = getTheme('admin');
+  const clientTheme = getTheme('client');
   const showNavbar =
     isAdminRoute ||
     location.pathname.startsWith('/superadmin');
-
-  useEffect(() => {
-    const onThemeChanged = () => {
-      try {
-        const saved = localStorage.getItem('admin_theme_preference');
-        setAdminTheme(saved === 'dark' ? 'dark' : 'light');
-      } catch {
-        setAdminTheme('light');
-      }
-    };
-
-    window.addEventListener('admin-theme-changed', onThemeChanged);
-    window.addEventListener('storage', onThemeChanged);
-    return () => {
-      window.removeEventListener('admin-theme-changed', onThemeChanged);
-      window.removeEventListener('storage', onThemeChanged);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isAdminRoute || !isAuthenticated || user?.role !== 'admin') return;
-    let ignore = false;
-
-    const syncTheme = async () => {
-      const res = await apiRequest('/api/v1/users/admin/theme_preference/', { auth: true });
-      if (ignore || !res.ok || !res.data?.theme) return;
-      const nextTheme = res.data.theme === 'light' ? 'light' : 'dark';
-      setAdminTheme(nextTheme);
-      try {
-        localStorage.setItem('admin_theme_preference', nextTheme);
-      } catch {}
-    };
-
-    syncTheme();
-    return () => { ignore = true; };
-  }, [isAdminRoute, isAuthenticated, user?.role]);
+  const shellThemeClass = isAdminRoute
+    ? `admin-theme-${adminTheme}`
+    : isClientRoute
+      ? `client-theme-${clientTheme}`
+      : '';
+  const activeTheme = isAdminRoute ? adminTheme : isClientRoute ? clientTheme : null;
 
   return (
-    <div className={`app-shell ${isAdminRoute ? `admin-theme-${adminTheme}` : ''}`}>
+    <div className={`app-shell ${shellThemeClass}`}>
       <LanguageToggle />
       {showNavbar && <Navbar adminTheme={isAdminRoute ? adminTheme : null} />}
       <main className="app-content">
@@ -266,7 +229,7 @@ function AppLayout() {
           <Route path="*" element={<Navigate to="/welcome" replace />} />
         </Routes>
       </main>
-      <Footer adminTheme={isAdminRoute ? adminTheme : null} />
+      <Footer theme={activeTheme} adminTheme={isAdminRoute ? adminTheme : null} />
     </div>
   );
 }
@@ -276,9 +239,11 @@ function App() {
     <Router>
       <LanguageProvider>
         <AuthProvider>
-          <AppErrorBoundary>
-            <AppLayout />
-          </AppErrorBoundary>
+          <ThemeProvider>
+            <AppErrorBoundary>
+              <AppLayout />
+            </AppErrorBoundary>
+          </ThemeProvider>
         </AuthProvider>
       </LanguageProvider>
     </Router>

@@ -724,7 +724,7 @@ function ClientDashboardPage() {
             </>
           )}
           <button type="button" className="client-q-btn secondary" onClick={() => navigate('/client_settings')} disabled={isBlocked}>
-            Manage Plan & Subscription
+            Account Settings
           </button>
         </div>
       </section>
