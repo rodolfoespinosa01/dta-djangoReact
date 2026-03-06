@@ -22,6 +22,12 @@ import {
 } from '../../components/questionnaire/workoutSchedule.constants';
 import maleSignImage from '../../assets/questionnaire/1/malesign.png';
 import femaleSignImage from '../../assets/questionnaire/1/femalesign.png';
+import settingsIcon from '../../assets/misc/settingsicon.png';
+import formEditIcon from '../../assets/misc/formedit.png';
+import trackingIcon from '../../assets/misc/tracking.png';
+import coachingMessagesIcon from '../../assets/misc/coachmessageicon.png';
+import analyticsIcon from '../../assets/misc/analytics';
+import foodIcon from '../../assets/foods_png/Salmon.png';
 import './ClientDashboardPage.css';
 
 const QUESTION_STEPS = [
@@ -710,9 +716,6 @@ function ClientDashboardPage() {
             </button>
           ) : (
             <>
-              <button type="button" className="client-q-btn" onClick={() => navigate('/client_food_preferences')} disabled={isBlocked}>
-                Open Food Preferences / Meal Combos
-              </button>
               {isFoodPreferencesComplete && (
                 <button type="button" className="client-q-btn secondary" onClick={() => navigate('/client_meal_generation')} disabled={isBlocked}>
                   Run Meal Generation
@@ -723,9 +726,6 @@ function ClientDashboardPage() {
               </button>
             </>
           )}
-          <button type="button" className="client-q-btn secondary" onClick={() => navigate('/client_settings')} disabled={isBlocked}>
-            Account Settings
-          </button>
         </div>
       </section>
 
@@ -734,7 +734,53 @@ function ClientDashboardPage() {
         <p className="client-dash-muted">
           Start here. Open only the section you need for this session.
         </p>
-        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+        <div className="client-dashboard-actions">
+          {dashboard?.client?.includes_food_plan && (
+            <button type="button" className="client-q-btn secondary client-dash-action-btn" onClick={() => navigate('/client_food_preferences')} disabled={isBlocked}>
+              <span className="client-dash-action-icon-stack" aria-hidden="true">
+                <img className="client-dash-action-icon client-dash-action-icon-food" src={foodIcon} alt="" />
+                <img className="client-dash-action-icon client-dash-action-icon-overlay" src={settingsIcon} alt="" />
+              </span>
+              <span className="client-dash-action-copy">
+                <span className="client-dash-action-title">Food Preferences</span>
+                <span className="client-dash-action-desc">Customize foods included in your meal plan.</span>
+              </span>
+            </button>
+          )}
+          <button type="button" className="client-q-btn secondary client-dash-action-btn" onClick={() => navigate('/client_settings')} disabled={isBlocked}>
+            <img className="client-dash-action-icon" src={settingsIcon} alt="" aria-hidden="true" />
+            <span className="client-dash-action-copy">
+              <span className="client-dash-action-title">Account Settings</span>
+              <span className="client-dash-action-desc">Manage your account theme and preferences.</span>
+            </span>
+          </button>
+          <button type="button" className="client-q-btn secondary client-dash-action-btn" onClick={handleOpenQuestionnaireEdit} disabled={isBlocked}>
+            <img className="client-dash-action-icon" src={formEditIcon} alt="" aria-hidden="true" />
+            <span className="client-dash-action-copy">
+              <span className="client-dash-action-title">Edit Questionnaire</span>
+              <span className="client-dash-action-desc">Update your goals, body data, and routine answers.</span>
+            </span>
+          </button>
+          <button type="button" className="client-q-btn secondary client-dash-action-btn" onClick={() => navigate('/client_tracking')}>
+            <img className="client-dash-action-icon" src={trackingIcon} alt="" aria-hidden="true" />
+            <span className="client-dash-action-copy">
+              <span className="client-dash-action-title">Tracking</span>
+              <span className="client-dash-action-desc">Track weight, adherence, and check-ins.</span>
+            </span>
+          </button>
+          {dashboard?.client?.includes_coaching && (
+            <button
+              type="button"
+              className="client-q-btn secondary client-dash-action-btn"
+              onClick={() => navigate('/client_coaching')}
+            >
+              <img className="client-dash-action-icon" src={coachingMessagesIcon} alt="" aria-hidden="true" />
+              <span className="client-dash-action-copy">
+                <span className="client-dash-action-title">Coaching Messages</span>
+                <span className="client-dash-action-desc">Message your coach directly from this area.</span>
+              </span>
+            </button>
+          )}
           {isFoodPreferencesComplete && (
             <>
               <button type="button" className="client-q-btn" onClick={() => navigate('/client_meal_generation')} disabled={isBlocked}>
@@ -745,28 +791,21 @@ function ClientDashboardPage() {
               </button>
             </>
           )}
-          <button type="button" className="client-q-btn secondary" onClick={handleOpenQuestionnaireEdit} disabled={isBlocked}>
-            Edit Questionnaire
-          </button>
-          <button type="button" className="client-q-btn secondary" onClick={() => navigate('/client_tracking')}>
-            Tracking
-          </button>
-          {dashboard?.client?.includes_coaching && (
-            <button
-              type="button"
-              className="client-q-btn secondary"
-              onClick={() => navigate('/client_coaching')}
-            >
-              Coaching
-            </button>
-          )}
           <button
             type="button"
-            className="client-q-btn secondary"
+            className="client-q-btn secondary client-dash-action-btn"
             onClick={() => setShowDetailedAnalytics((prev) => !prev)}
             disabled={isBlocked}
           >
-            {showDetailedAnalytics ? 'Hide Detailed Analytics' : 'Show Detailed Analytics'}
+            <img className="client-dash-action-icon" src={analyticsIcon} alt="" aria-hidden="true" />
+            <span className="client-dash-action-copy">
+              <span className="client-dash-action-title">Show Analytics</span>
+              <span className="client-dash-action-desc">
+                {showDetailedAnalytics
+                  ? 'Detailed analytics are currently visible.'
+                  : 'Display macro breakdowns, calorie insights, and performance data.'}
+              </span>
+            </span>
           </button>
         </div>
       </section>
@@ -976,18 +1015,6 @@ function ClientDashboardPage() {
           </div>
         )}
       </section>
-      )}
-
-      {isQuestionnaireComplete && dashboard?.client?.includes_food_plan && (
-        <section className="client-dashboard-card">
-          <h2>Food Preferences & Meal Combos</h2>
-          <p className="client-dash-muted">
-            This is now a separate form after questionnaire completion. Next step: build your default meal templates and customize Sunday-Saturday meals.
-          </p>
-          <button type="button" className="client-q-btn secondary" disabled>
-            Food Preference Form (Use button above)
-          </button>
-        </section>
       )}
 
       {showQuestionnaireModal && (
