@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import './WeightSelector.css';
 
-const MIN_LBS = 80;
-const MAX_LBS = 400;
+const MIN_LBS = 70;
+const MAX_LBS = 420;
 const DEFAULT_LBS = 180;
 const STEP_LBS = 1;
 const TICK_SPACING_PX = 12;
@@ -42,6 +42,11 @@ function formatWeight(valueLbs, unit) {
   return `${Math.round(valueLbs)} lbs`;
 }
 
+function formatScaleEdge(valueLbs, unit) {
+  if (unit === 'kg') return `${Math.round(lbsToKg(valueLbs))} kg`;
+  return `${Math.round(valueLbs)} lbs`;
+}
+
 function WeightSelector({
   value = DEFAULT_LBS,
   onChange,
@@ -53,16 +58,43 @@ function WeightSelector({
   const [isDragging, setIsDragging] = useState(false);
   const dragStateRef = useRef({ pointerId: null, startX: 0, startLbs: liveLbs });
   const selectedUnit = unit === 'kg' ? 'kg' : 'lbs';
+  const minKg = Math.round(lbsToKg(MIN_LBS));
+  const maxKg = Math.round(lbsToKg(MAX_LBS));
+  const liveDisplayValue = selectedUnit === 'kg' ? lbsToKg(liveLbs) : liveLbs;
 
   useEffect(() => {
     if (isDragging) return;
     setLiveLbs(normalizeWeightLbsValue(value));
   }, [value, isDragging]);
 
-  const ticks = useMemo(
-    () => Array.from({ length: ((MAX_LBS - MIN_LBS) / STEP_LBS) + 1 }, (_, i) => MIN_LBS + i),
-    []
-  );
+  const ticks = useMemo(() => {
+    if (selectedUnit === 'kg') {
+      return Array.from({ length: (maxKg - minKg) + 1 }, (_, i) => minKg + i);
+    }
+    return Array.from({ length: ((MAX_LBS - MIN_LBS) / STEP_LBS) + 1 }, (_, i) => MIN_LBS + i);
+  }, [selectedUnit, minKg, maxKg]);
+
+  const decorateTick = (tickLbs) => {
+    if (selectedUnit === 'kg') {
+      const tickKg = Number(tickLbs);
+      const isMajor = tickKg % 10 === 0;
+      const isMid = tickKg % 5 === 0 && !isMajor;
+      const showRangeLabel = tickKg % 5 === 0;
+      return {
+        isMajor,
+        isMid,
+        label: showRangeLabel ? tickKg : null,
+      };
+    }
+
+    const isMajor = tickLbs % 10 === 0;
+    const isMid = tickLbs % 5 === 0;
+    return {
+      isMajor,
+      isMid,
+      label: isMajor ? tickLbs : null,
+    };
+  };
 
   const applyLiveWeight = (nextLbs, shouldEmit = true) => {
     const clamped = clampWeightLbs(nextLbs);
@@ -144,9 +176,9 @@ function WeightSelector({
         className="weightsel-dial"
         role="slider"
         tabIndex={0}
-        aria-valuemin={MIN_LBS}
-        aria-valuemax={MAX_LBS}
-        aria-valuenow={Math.round(liveLbs)}
+        aria-valuemin={selectedUnit === 'kg' ? minKg : MIN_LBS}
+        aria-valuemax={selectedUnit === 'kg' ? maxKg : MAX_LBS}
+        aria-valuenow={selectedUnit === 'kg' ? Number(lbsToKg(liveLbs).toFixed(1)) : Math.round(liveLbs)}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -157,15 +189,16 @@ function WeightSelector({
         <div className={`weightsel-tick-track ${isDragging ? 'is-dragging' : 'is-snapping'}`}>
           <div
             className="weightsel-ticks"
-            style={{ transform: `translateX(${-((liveLbs - MIN_LBS) * TICK_SPACING_PX)}px)` }}
+            style={{
+              transform: `translateX(${-((liveDisplayValue - (selectedUnit === 'kg' ? minKg : MIN_LBS)) * TICK_SPACING_PX)}px)`,
+            }}
           >
             {ticks.map((tickValue) => {
-              const isMajor = tickValue % 10 === 0;
-              const isMid = tickValue % 5 === 0;
+              const { isMajor, isMid, label } = decorateTick(tickValue);
               return (
                 <div key={tickValue} className="weightsel-tick-slot">
                   <span className={`weightsel-tick ${isMajor ? 'major' : isMid ? 'mid' : 'minor'}`} />
-                  {isMajor ? <span className="weightsel-tick-label">{tickValue}</span> : null}
+                  {label !== null ? <span className="weightsel-tick-label">{label}</span> : null}
                 </div>
               );
             })}
@@ -173,8 +206,14 @@ function WeightSelector({
         </div>
         <div className="weightsel-center-indicator" aria-hidden="true" />
       </div>
+      <div className="weightsel-range">
+        <span>{formatScaleEdge(MIN_LBS, selectedUnit)}</span>
+        <span>{formatScaleEdge(MAX_LBS, selectedUnit)}</span>
+      </div>
 
-      <p className="weightsel-hint">Drag left or right to adjust. Snaps to the nearest pound.</p>
+      <p className="weightsel-hint">
+        Drag left or right to adjust. Scale is shown in {selectedUnit === 'kg' ? 'kilograms' : 'pounds'}.
+      </p>
     </section>
   );
 }

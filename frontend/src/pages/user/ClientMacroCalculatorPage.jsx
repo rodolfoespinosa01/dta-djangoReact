@@ -3,6 +3,10 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../../api/client';
 import BodyVisualizationSelector, { normalizeHeightCmValue } from '../../components/questionnaire/BodyVisualizationSelector';
 import WeightSelector, { lbsToKg, normalizeWeightLbsValue } from '../../components/questionnaire/WeightSelector';
+import DOBSelector from '../../components/questionnaire/DOBSelector';
+import GoalSelector from '../../components/questionnaire/GoalSelector';
+import LifestyleSelector, { normalizeLifestyleCode } from '../../components/questionnaire/LifestyleSelector';
+import MealPlanTypeSelector, { normalizeMealPlanTypeCode } from '../../components/questionnaire/MealPlanTypeSelector';
 import maleSignImage from '../../assets/questionnaire/1/malesign.png';
 import femaleSignImage from '../../assets/questionnaire/1/femalesign.png';
 import './ClientDashboardPage.css';
@@ -102,9 +106,10 @@ function ClientMacroCalculatorPage() {
     switch (wizardStep) {
       case 'gender':
       case 'goal':
-      case 'lifestyle':
       case 'meal_plan_type':
-        return typeof value === 'string' && value.length > 0;
+        return normalizeMealPlanTypeCode(value).length > 0;
+      case 'lifestyle':
+        return normalizeLifestyleCode(value).length > 0;
       case 'date_of_birth':
         return typeof value === 'string' && value.length > 0;
       case 'height':
@@ -259,30 +264,29 @@ function ClientMacroCalculatorPage() {
         );
       }
       case 'date_of_birth':
-        return <label className="client-q-single">Birthday<input type="date" value={activeAnswer ?? ''} onChange={(e) => updateAnswer(e.target.value)} /></label>;
+        return <DOBSelector value={activeAnswer ?? ''} gender={answers?.gender === 'female' ? 'female' : 'male'} onChange={(dobIso) => updateAnswer(dobIso)} />;
       case 'goal':
         return (
-          <div className="client-q-card-grid">
-            {[['lose', 'Lose Weight'], ['maintain', 'Maintain'], ['gain', 'Gain Weight']].map(([value, label]) => (
-              <button key={value} type="button" className={`client-q-option-card ${activeAnswer === value ? 'is-active' : ''}`} onClick={() => updateAnswer(value)}><span>{label}</span></button>
-            ))}
-          </div>
+          <GoalSelector
+            value={activeAnswer ?? ''}
+            gender={answers?.gender === 'female' ? 'female' : 'male'}
+            onChange={(goalKey) => updateAnswer(goalKey)}
+          />
         );
       case 'lifestyle':
         return (
-          <div className="client-q-card-grid">
-            {[['low_active', 'Low Active'], ['middle_active', 'Middle Active'], ['high_active', 'Very Active']].map(([value, label]) => (
-              <button key={value} type="button" className={`client-q-option-card ${activeAnswer === value ? 'is-active' : ''}`} onClick={() => updateAnswer(value)}><span>{label}</span></button>
-            ))}
-          </div>
+          <LifestyleSelector
+            value={activeAnswer ?? ''}
+            gender={answers?.gender === 'female' ? 'female' : 'male'}
+            onChange={(lifestyleCode) => updateAnswer(lifestyleCode)}
+          />
         );
       case 'meal_plan_type':
         return (
-          <div className="client-q-card-grid">
-            {[['standard', 'Standard'], ['carb_cycling', 'Carb Cycling'], ['keto', 'Keto']].map(([value, label]) => (
-              <button key={value} type="button" className={`client-q-option-card ${activeAnswer === value ? 'is-active' : ''}`} onClick={() => updateAnswer(value)}><span>{label}</span></button>
-            ))}
-          </div>
+          <MealPlanTypeSelector
+            value={activeAnswer ?? ''}
+            onChange={(mealPlanTypeCode) => updateAnswer(mealPlanTypeCode)}
+          />
         );
       case 'workout_days': {
         const selected = Array.isArray(activeAnswer) ? activeAnswer : [];
