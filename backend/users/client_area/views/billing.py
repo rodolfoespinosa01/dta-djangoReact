@@ -157,6 +157,31 @@ def client_checkout_quote(request):
     return ok({"quote": quote})
 
 
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def client_signup_checkout_debug_link(request):
+    if not getattr(settings, "DEBUG", False):
+        return error("FORBIDDEN", "This endpoint is available only in DEBUG mode.", http_status=403)
+
+    session_id = str(request.GET.get("session_id") or "").strip()
+    if not session_id:
+        return error("MISSING_SESSION_ID", "session_id is required.", http_status=400)
+
+    pending = ClientPendingSignup.objects.filter(stripe_checkout_session_id=session_id).first()
+    if not pending:
+        return ok({"status": "pending"})
+
+    if not (pending.registration_link or "").strip():
+        return ok({"status": "pending"})
+
+    return ok(
+        {
+            "status": "ready",
+            "debug_registration_link": pending.registration_link,
+        }
+    )
+
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def client_start_checkout_session(request):
@@ -526,9 +551,13 @@ def client_stripe_webhook(request):
                 admin = AdminIdentity.objects.filter(subdomain_slug=admin_slug).first()
 
             # Prevent duplicate pending rows from repeated webhook deliveries.
-            existing_pending = ClientPendingSignup.objects.filter(email__iexact=email).first()
+            existing_pending = ClientPendingSignup.objects.filter(
+                email__iexact=email,
+                status=ClientPendingSignup.STATUS_PENDING,
+            ).first()
             if existing_pending:
-                existing_pending.delete()
+                existing_pending.status = ClientPendingSignup.STATUS_SUPERSEDED
+                existing_pending.save(update_fields=["status"])
 
             offer = OFFER_CATALOG[offer_code]
             try:
@@ -544,6 +573,7 @@ def client_stripe_webhook(request):
             includes_coaching = str(metadata.get("includes_coaching") or ("1" if offer.get("includes_coaching") else "0")) in {"1", "true", "True"}
 
             token = get_random_string(64)
+            registration_link = f"{FRONTEND_URL}/client_register?token={token}"
             pending = ClientPendingSignup.objects.create(
                 email=email,
                 token=token,
@@ -555,10 +585,12 @@ def client_stripe_webhook(request):
                 amount_cents=max(0, amount_cents),
                 includes_food_plan=includes_food_plan,
                 includes_coaching=includes_coaching,
+                registration_link=registration_link,
+                status=ClientPendingSignup.STATUS_PENDING,
+                stripe_checkout_session_id=str(session.get("id") or ""),
                 registration_link_printed_at=timezone.now(),
             )
 
-            registration_link = f"{FRONTEND_URL}/client_register?token={pending.token}"
             print("\n" + "=" * 60)
             print("📩 Client registration email (simulated after Stripe checkout):")
             print(f"To: {email}")

@@ -1,11 +1,22 @@
 from django.conf import settings
 from django.db import models
 from django.db.models import Q
+from django.utils import timezone
 
 from users.admin_area.models import AdminIdentity
 
 
 class ClientPendingSignup(models.Model):
+    STATUS_PENDING = "pending"
+    STATUS_COMPLETED = "completed"
+    STATUS_EXPIRED = "expired"
+    STATUS_SUPERSEDED = "superseded"
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "Pending"),
+        (STATUS_COMPLETED, "Completed"),
+        (STATUS_EXPIRED, "Expired"),
+        (STATUS_SUPERSEDED, "Superseded"),
+    ]
     OFFER_CHOICES = [
         ("macro_calculator_free", "Macro Calculator (Free)"),
         ("food_plan_monthly", "Food Plan Monthly"),
@@ -32,6 +43,11 @@ class ClientPendingSignup(models.Model):
     amount_cents = models.PositiveIntegerField(default=0)
     includes_food_plan = models.BooleanField(default=False)
     includes_coaching = models.BooleanField(default=False)
+    registration_link = models.URLField(max_length=2048, blank=True, default="")
+    expires_at = models.DateTimeField(null=True, blank=True)
+    used_at = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING, db_index=True)
+    stripe_checkout_session_id = models.CharField(max_length=128, blank=True, default="", db_index=True)
     registration_link_printed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -42,6 +58,14 @@ class ClientPendingSignup(models.Model):
 
     def __str__(self):
         return f"{self.email} | {self.offer_code}"
+
+    @property
+    def is_used(self):
+        return self.used_at is not None
+
+    @property
+    def is_expired(self):
+        return bool(self.expires_at and self.expires_at <= timezone.now())
 
 
 class ClientMacroAccessLink(models.Model):

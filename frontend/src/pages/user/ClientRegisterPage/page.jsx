@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { apiRequest } from '../../api/client';
-import { useAuth } from '../../context/AuthContext';
-import GoogleSignInButton from '../../components/auth/GoogleSignInButton';
-import './ClientAuthPages.css';
+import { apiRequest } from '../../../api/client';
+import { useAuth } from '../../../context/AuthContext';
+import GoogleSignInButton from '../../../components/auth/GoogleSignInButton';
+import '../../../styles/shared/auth-flow.css';
+import './css.css';
 
 function ClientRegisterPage() {
   const navigate = useNavigate();

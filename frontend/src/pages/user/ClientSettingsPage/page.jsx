@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { apiRequest } from '../../api/client';
-import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
-import ThemePreferenceToggle from '../../components/theme/ThemePreferenceToggle';
-import './ClientDashboardPage.css';
+import { apiRequest } from '../../../api/client';
+import { useAuth } from '../../../context/AuthContext';
+import { useTheme } from '../../../context/ThemeContext';
+import ThemePreferenceToggle from '../../../components/theme/ThemePreferenceToggle';
+import '../../../styles/shared/client-app-shell.css';
+import './css.css';
 
 function normalizeSubdomainLabel(slug) {
   return slug ? `${slug}.dtameals.com` : 'DTA Direct';

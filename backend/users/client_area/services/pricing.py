@@ -106,6 +106,7 @@ def trial_days_for_offer(email: str, offer_code: str) -> int:
         email__iexact=email,
         offer_code__in=PAID_OFFER_CODES,
         trial_days__gt=0,
+        status=ClientPendingSignup.STATUS_PENDING,
     ).exists()
     return 0 if has_used_trial else int(offer.get("trial_days") or 0)
 
