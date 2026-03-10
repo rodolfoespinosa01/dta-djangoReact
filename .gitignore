@@ -16,7 +16,6 @@ backend/venv/  # <-- Add this line
 venv/
 
 # Proprietary meal algorithm
-backend/users/client_area/services/meal_plan_generation/
 backend/users/client_area/services/results_engine.py
 backend/core/services/meal_combo_lookup.py
 backend/algorithmtables/*.csv
