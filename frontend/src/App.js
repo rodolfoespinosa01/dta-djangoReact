@@ -28,20 +28,20 @@ import AdminReactivatePage from './pages/admin/AdminReactivatePage/AdminReactiva
 
 import AdminConfirmTrialPage from './pages/admin/AdminConfirmTrialPage/AdminConfirmTrialPage';
 
-import UserHomePage from './pages/user/UserHomePage';
+import UserHomePage from './pages/user/UserHomePage/page';
 // ...existing code...
-import UserPlanSelectionPage from './pages/user/UserPlanSelectionPage';
-import ClientRegisterPage from './pages/user/ClientRegisterPage';
-import ClientSignupSuccessPage from './pages/user/ClientSignupSuccessPage';
-import ClientLoginPage from './pages/user/ClientLoginPage';
-import ClientDashboardPage from './pages/user/ClientDashboardPage';
-import ClientMacroCalculatorPage from './pages/user/ClientMacroCalculatorPage';
-import ClientSettingsPage from './pages/user/ClientSettingsPage';
-import ClientFoodPreferencesPage from './pages/user/ClientFoodPreferencesPage';
-import ClientMealPlanGenerationPage from './pages/user/ClientMealPlanGenerationPage';
-import ClientExportsPage from './pages/user/ClientExportsPage';
-import ClientTrackingPage from './pages/user/ClientTrackingPage';
-import ClientCoachingPage from './pages/user/ClientCoachingPage';
+import UserPlanSelectionPage from './pages/user/UserPlanSelectionPage/page';
+import ClientRegisterPage from './pages/user/ClientRegisterPage/page';
+import ClientSignupSuccessPage from './pages/user/ClientSignupSuccessPage/page';
+import ClientLoginPage from './pages/user/ClientLoginPage/page';
+import ClientDashboardPage from './pages/user/ClientDashboardPage/page';
+import ClientMacroCalculatorPage from './pages/user/ClientMacroCalculatorPage/page';
+import ClientSettingsPage from './pages/user/ClientSettingsPage/page';
+import ClientFoodPreferencesPage from './pages/user/ClientFoodPreferencesPage/page';
+import ClientMealPlanGenerationPage from './pages/user/ClientMealPlanGenerationPage/page';
+import ClientExportsPage from './pages/user/ClientExportsPage/page';
+import ClientTrackingPage from './pages/user/ClientTrackingPage/page';
+import ClientCoachingPage from './pages/user/ClientCoachingPage/page';
 
 // protected pages
 import AdminDashboard from './pages/admin/AdminDashboard/AdminDashboard';

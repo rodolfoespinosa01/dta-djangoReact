@@ -1,6 +1,7 @@
 import json
 
 from django.contrib import admin
+from django.utils import timezone
 from django.utils.html import format_html
 
 from .models import (
@@ -39,20 +40,114 @@ class DiscountCodeAdmin(admin.ModelAdmin):
     readonly_fields = ("created_at", "updated_at", "redeemed_count")
 
 
+class PendingSignupUsedFilter(admin.SimpleListFilter):
+    title = "used"
+    parameter_name = "used"
+
+    def lookups(self, request, model_admin):
+        return (
+            ("yes", "Used"),
+            ("no", "Not Used"),
+        )
+
+    def queryset(self, request, queryset):
+        if self.value() == "yes":
+            return queryset.filter(used_at__isnull=False)
+        if self.value() == "no":
+            return queryset.filter(used_at__isnull=True)
+        return queryset
+
+
+class PendingSignupExpiredFilter(admin.SimpleListFilter):
+    title = "expired"
+    parameter_name = "expired"
+
+    def lookups(self, request, model_admin):
+        return (
+            ("yes", "Expired"),
+            ("no", "Not Expired"),
+        )
+
+    def queryset(self, request, queryset):
+        now = timezone.now()
+        if self.value() == "yes":
+            return queryset.filter(expires_at__isnull=False, expires_at__lte=now)
+        if self.value() == "no":
+            return queryset.exclude(expires_at__isnull=False, expires_at__lte=now)
+        return queryset
+
+
 @admin.register(ClientPendingSignup)
 class ClientPendingSignupAdmin(admin.ModelAdmin):
     list_display = (
         "email",
+        "status",
+        "used_flag",
+        "expired_flag",
         "offer_code",
         "billing_cycle",
         "trial_days",
         "sale_channel",
         "admin",
+        "stripe_checkout_session_id",
         "created_at",
+        "used_at",
+        "expires_at",
     )
-    list_filter = ("offer_code", "billing_cycle", "sale_channel", "includes_food_plan", "includes_coaching")
-    search_fields = ("email", "token", "admin__admin_email", "admin__subdomain_slug")
-    readonly_fields = ("created_at", "registration_link_printed_at")
+    list_filter = (
+        "status",
+        PendingSignupUsedFilter,
+        PendingSignupExpiredFilter,
+        "offer_code",
+        "billing_cycle",
+        "sale_channel",
+        "includes_food_plan",
+        "includes_coaching",
+    )
+    search_fields = ("email", "token", "registration_link", "stripe_checkout_session_id", "admin__admin_email", "admin__subdomain_slug")
+    readonly_fields = (
+        "email",
+        "token",
+        "registration_link",
+        "status",
+        "used_at",
+        "expires_at",
+        "stripe_checkout_session_id",
+        "created_at",
+        "registration_link_printed_at",
+    )
+    list_select_related = ("admin",)
+    fields = (
+        "email",
+        "token",
+        "registration_link",
+        "status",
+        "used_at",
+        "expires_at",
+        "offer_code",
+        "billing_cycle",
+        "trial_days",
+        "amount_cents",
+        "includes_food_plan",
+        "includes_coaching",
+        "sale_channel",
+        "admin",
+        "stripe_checkout_session_id",
+        "created_at",
+        "registration_link_printed_at",
+    )
+
+    def used_flag(self, obj):
+        return obj.used_at is not None
+
+    used_flag.boolean = True
+    used_flag.short_description = "Used"
+
+    def expired_flag(self, obj):
+        return bool(obj.expires_at and obj.expires_at <= timezone.now())
+
+    expired_flag.boolean = True
+    expired_flag.short_description = "Expired"
 
 
 @admin.register(ClientProfile)

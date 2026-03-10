@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { apiRequest } from '../../api/client';
-import { useAuth } from '../../context/AuthContext';
-import './ClientDashboardPage.css';
+import { apiRequest } from '../../../api/client';
+import { useAuth } from '../../../context/AuthContext';
+import '../../../styles/shared/client-app-shell.css';
+import './css.css';
 
 function todayIsoDate() {
   const now = new Date();

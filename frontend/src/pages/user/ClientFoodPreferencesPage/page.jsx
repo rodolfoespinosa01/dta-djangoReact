@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { apiRequest } from '../../api/client';
-import MealComboBuilderStep from '../../components/MealComboBuilderStep';
-import { useAuth } from '../../context/AuthContext';
-import './ClientDashboardPage.css';
+import { apiRequest } from '../../../api/client';
+import MealComboBuilderStep from '../../../components/MealComboBuilderStep';
+import { useAuth } from '../../../context/AuthContext';
+import '../../../styles/shared/client-app-shell.css';
+import './css.css';
 
 function normalizeSubdomainLabel(slug) {
   return slug ? `${slug}.dtameals.com` : 'DTA Direct';

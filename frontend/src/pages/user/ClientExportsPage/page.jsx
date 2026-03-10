@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { apiRequest } from '../../api/client';
-import { openPrintPdfWindow, renderPrintTable, escapeHtml } from '../../utils/printPdf';
-import './ClientDashboardPage.css';
+import { useAuth } from '../../../context/AuthContext';
+import { apiRequest } from '../../../api/client';
+import { openPrintPdfWindow, renderPrintTable, escapeHtml } from '../../../utils/printPdf';
+import '../../../styles/shared/client-app-shell.css';
+import './css.css';
 
 const WEEK_DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
