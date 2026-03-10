@@ -21,6 +21,7 @@ from users.client_area.views.google_login import client_google_login
 from users.client_area.views.theme_preference import client_theme_preference
 from users.client_area.views.billing import (
     client_checkout_quote,
+    client_signup_checkout_debug_link,
     client_checkout_sync,
     client_start_checkout_session,
     client_start_queued_checkout_session,
@@ -61,6 +62,7 @@ urlpatterns = [
     path('app/settings/', client_settings_view, name='client_app_settings'),
     path('app/theme_preference/', client_theme_preference, name='client_app_theme_preference'),
     path('app/settings/checkout-quote/', client_checkout_quote, name='client_app_settings_checkout_quote'),
+    path('signup/checkout-debug-link/', client_signup_checkout_debug_link, name='client_signup_checkout_debug_link'),
     path('app/settings/start-checkout/', client_start_checkout_session, name='client_app_settings_start_checkout'),
     path('app/settings/start-queued-checkout/', client_start_queued_checkout_session, name='client_app_settings_start_queued_checkout'),
     path('app/settings/checkout-sync/', client_checkout_sync, name='client_app_settings_checkout_sync'),

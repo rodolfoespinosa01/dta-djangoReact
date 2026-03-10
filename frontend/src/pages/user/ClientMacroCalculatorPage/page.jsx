@@ -1,16 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { apiRequest } from '../../api/client';
-import BodyVisualizationSelector, { normalizeHeightCmValue } from '../../components/questionnaire/BodyVisualizationSelector';
-import WeightSelector, { lbsToKg, normalizeWeightLbsValue } from '../../components/questionnaire/WeightSelector';
-import DOBSelector from '../../components/questionnaire/DOBSelector';
-import GoalSelector from '../../components/questionnaire/GoalSelector';
-import LifestyleSelector, { normalizeLifestyleCode } from '../../components/questionnaire/LifestyleSelector';
-import MealPlanTypeSelector, { normalizeMealPlanTypeCode } from '../../components/questionnaire/MealPlanTypeSelector';
-import maleSignImage from '../../assets/questionnaire/1/malesign.png';
-import femaleSignImage from '../../assets/questionnaire/1/femalesign.png';
-import './ClientDashboardPage.css';
-import './ClientAuthPages.css';
+import { apiRequest } from '../../../api/client';
+import BodyVisualizationSelector, { normalizeHeightCmValue } from '../../../components/questionnaire/BodyVisualizationSelector';
+import WeightSelector, { lbsToKg, normalizeWeightLbsValue } from '../../../components/questionnaire/WeightSelector';
+import DOBSelector from '../../../components/questionnaire/DOBSelector';
+import GoalSelector from '../../../components/questionnaire/GoalSelector';
+import LifestyleSelector, { normalizeLifestyleCode } from '../../../components/questionnaire/LifestyleSelector';
+import MealPlanTypeSelector, { normalizeMealPlanTypeCode } from '../../../components/questionnaire/MealPlanTypeSelector';
+import maleSignImage from '../../../assets/questionnaire/1/malesign.png';
+import femaleSignImage from '../../../assets/questionnaire/1/femalesign.png';
+import '../../../styles/shared/client-app-shell.css';
+import '../../../styles/shared/auth-flow.css';
+import './css.css';
 
 const QUESTION_STEPS = [
   'gender',
@@ -97,7 +98,32 @@ function ClientMacroCalculatorPage() {
   const isLastStep = stepIndex === QUESTION_STEPS.length - 1;
 
   const updateAnswer = (value) => {
-    setAnswers((prev) => ({ ...prev, [wizardStep]: value }));
+    setAnswers((prev) => {
+      const nextAnswers = { ...prev, [wizardStep]: value };
+      if (wizardStep === 'workout_days') {
+        const selectedDays = new Set(Array.isArray(value) ? value : []);
+        const existingTraining = nextAnswers.training_schedule && typeof nextAnswers.training_schedule === 'object'
+          ? nextAnswers.training_schedule
+          : {};
+        nextAnswers.training_schedule = Object.fromEntries(
+          Object.entries(existingTraining).filter(([day]) => selectedDays.has(day))
+        );
+      }
+      if (wizardStep === 'meal_schedule') {
+        const mealDays = value?.days || {};
+        const existingTraining = nextAnswers.training_schedule && typeof nextAnswers.training_schedule === 'object'
+          ? nextAnswers.training_schedule
+          : {};
+        nextAnswers.training_schedule = Object.fromEntries(
+          Object.entries(existingTraining).filter(([day, timing]) => {
+            const mealCount = Number(mealDays[day] || 0);
+            const match = /^before_meal_(\d+)$/.exec(String(timing || ''));
+            return Boolean(match) && Number(match[1]) <= mealCount;
+          })
+        );
+      }
+      return nextAnswers;
+    });
     setWizardMessage('');
   };
 
@@ -175,7 +201,12 @@ function ClientMacroCalculatorPage() {
   const handleBack = async () => {
     if (!canGoBack) return;
     const prevStep = QUESTION_STEPS[stepIndex - 1];
-    await saveDraft(wizardStep, answers[wizardStep], prevStep);
+    if (activeStepValid) {
+      await saveDraft(wizardStep, answers[wizardStep], prevStep);
+      return;
+    }
+    setWizardStep(prevStep);
+    setWizardMessage('');
   };
 
   const handleSubmitQuestionnaire = async () => {

@@ -147,7 +147,10 @@ def _admin_trial_client_stats(admin_identity: AdminIdentity | None):
         }
 
     active_clients = ClientProfile.objects.filter(associated_admin=admin_identity).count()
-    pending_signups = ClientPendingSignup.objects.filter(admin=admin_identity).count()
+    pending_signups = ClientPendingSignup.objects.filter(
+        admin=admin_identity,
+        status=ClientPendingSignup.STATUS_PENDING,
+    ).count()
     return {
         "trial_active": True,
         "active_clients": active_clients,
@@ -551,9 +554,13 @@ def start_signup(request):
     if User.objects.filter(email=email).exists():
         return error("EMAIL_ALREADY_REGISTERED", "This email already has an account.", http_status=409)
 
-    existing_pending = ClientPendingSignup.objects.filter(email=email).first()
+    existing_pending = ClientPendingSignup.objects.filter(
+        email__iexact=email,
+        status=ClientPendingSignup.STATUS_PENDING,
+    ).first()
     if existing_pending:
-        existing_pending.delete()
+        existing_pending.status = ClientPendingSignup.STATUS_SUPERSEDED
+        existing_pending.save(update_fields=["status"])
 
     if admin and offer_code != "macro_calculator_free":
         trial_stats = _admin_trial_client_stats(admin)
@@ -693,6 +700,7 @@ def start_signup(request):
         )
 
     token = get_random_string(64)
+    registration_link = f"{FRONTEND_URL}/client_register?token={token}"
     pending = ClientPendingSignup.objects.create(
         email=email,
         token=token,
@@ -704,10 +712,11 @@ def start_signup(request):
         amount_cents=pending_amount_cents,
         includes_food_plan=pending_includes_food_plan,
         includes_coaching=pending_includes_coaching,
+        registration_link=registration_link,
+        status=ClientPendingSignup.STATUS_PENDING,
         registration_link_printed_at=timezone.now(),
     )
 
-    registration_link = f"{FRONTEND_URL}/client_register?token={pending.token}"
     print("\n" + "=" * 60)
     print("📩 Client registration email (simulated):")
     print(f"To: {email}")
@@ -715,17 +724,18 @@ def start_signup(request):
     print(f"➡️ Click to register:\n{registration_link}")
     print("=" * 60 + "\n")
 
-    return ok(
-        {
-            "message": "Signup started (DEV). Registration link created.",
-            "registration_link": registration_link,
-            "offer": {"code": offer_code, **offer, "trial_days": applied_trial_days},
-            "quote": quote_payload,
-            "sale_channel": sale_channel,
-            "admin_slug": admin_slug or None,
-        },
-        http_status=201,
-    )
+    response_payload = {
+        "message": "Signup started (DEV). Registration link created.",
+        "registration_link": registration_link,
+        "offer": {"code": offer_code, **offer, "trial_days": applied_trial_days},
+        "quote": quote_payload,
+        "sale_channel": sale_channel,
+        "admin_slug": admin_slug or None,
+    }
+    if getattr(settings, "DEBUG", False):
+        response_payload["debug_registration_link"] = registration_link
+
+    return ok(response_payload, http_status=201)
 
 
 @api_view(["POST"])
@@ -756,7 +766,10 @@ def register_client(request):
         if google_email != email:
             return error("EMAIL_TOKEN_MISMATCH", "Google account email does not match this registration link.", http_status=400)
 
-    pending = ClientPendingSignup.objects.filter(token=token).first()
+    pending = ClientPendingSignup.objects.filter(
+        token=token,
+        status=ClientPendingSignup.STATUS_PENDING,
+    ).first()
     if not pending:
         return error("INVALID_TOKEN", "Invalid or expired registration token.", http_status=404)
     if pending.email != email:
@@ -808,7 +821,9 @@ def register_client(request):
         answers_json={},
     )
 
-    pending.delete()
+    pending.used_at = timezone.now()
+    pending.status = ClientPendingSignup.STATUS_COMPLETED
+    pending.save(update_fields=["used_at", "status"])
 
     refresh = RefreshToken.for_user(user)
     refresh["email"] = user.email
@@ -830,7 +845,10 @@ def register_client(request):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def pending_signup_preview(request, token):
-    pending = ClientPendingSignup.objects.filter(token=token).first()
+    pending = ClientPendingSignup.objects.filter(
+        token=token,
+        status=ClientPendingSignup.STATUS_PENDING,
+    ).first()
     if not pending:
         return error("INVALID_TOKEN", "Invalid or expired registration token.", http_status=404)
     return ok(

@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { apiRequest } from '../../api/client';
-import './ClientDashboardPage.css';
-import MessagingPortal from '../../components/MessagingPortal';
+import { useAuth } from '../../../context/AuthContext';
+import { apiRequest } from '../../../api/client';
+import '../../../styles/shared/client-app-shell.css';
+import './css.css';
+import MessagingPortal from '../../../components/MessagingPortal';
 
 function ClientCoachingPage() {
   const navigate = useNavigate();

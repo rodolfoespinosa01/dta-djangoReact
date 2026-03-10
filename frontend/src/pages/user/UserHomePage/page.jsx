@@ -1,15 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import './UserHomePage.css';
-import { useLanguage } from '../../context/LanguageContext';
-import dtaLogo from '../../assets/dta_brand_content/DTA_Logo.png';
-import foodMeasuringTape from '../../assets/misc/foodmeasuringtape.png';
-import foodScale from '../../assets/misc/foodscale.png';
-import calculationTools from '../../assets/misc/calculationtools.png';
-import girlMealPlan from '../../assets/misc/girlmealplan.png';
-import noAi from '../../assets/misc/noai.png';
+import './css.css';
+import { useLanguage } from '../../../context/LanguageContext';
+import dtaLogo from '../../../assets/dta_brand_content/DTA_Logo.png';
+import foodMeasuringTape from '../../../assets/misc/foodmeasuringtape.png';
+import foodScale from '../../../assets/misc/foodscale.png';
+import calculationTools from '../../../assets/misc/calculationtools.png';
+import girlMealPlan from '../../../assets/misc/girlmealplan.png';
+import noAi from '../../../assets/misc/noai.png';
 
-const foodImagesContext = require.context('../../assets/foods_png', false, /\.(png|jpe?g|webp)$/i);
+const foodImagesContext = require.context('../../../assets/foods_png', false, /\.(png|jpe?g|webp)$/i);
 
 const foodSlides = foodImagesContext.keys().map((key) => {
   const src = foodImagesContext(key);

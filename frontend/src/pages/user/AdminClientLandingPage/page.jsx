@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { apiRequest } from '../../api/client';
-import './AdminClientLandingPage.css';
+import { apiRequest } from '../../../api/client';
+import './css.css';
 
 function AdminClientLandingPage() {
   const { adminSlug } = useParams();

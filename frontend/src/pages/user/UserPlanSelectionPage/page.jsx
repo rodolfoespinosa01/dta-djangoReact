@@ -1,14 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { apiRequest } from '../../api/client';
-import { getAdminSlugFromHostname } from '../../utils/branding';
-import './UserPlanSelectionPage.css';
-import calcImg from '../../assets/misc/calculationtools.png';
-import tapeImg from '../../assets/misc/foodmeasuringtape.png';
-import mealplanImg from '../../assets/misc/nutritionist_mealplan.png';
-import aiImg from '../../assets/misc/ailogo.png';
-import messagingImg from '../../assets/misc/messagingbubbles.png';
-import trainerImg from '../../assets/misc/personaltrainer.png';
+import { apiRequest } from '../../../api/client';
+import { getAdminSlugFromHostname } from '../../../utils/branding';
+import './css.css';
+import calcImg from '../../../assets/misc/calculationtools.png';
+import tapeImg from '../../../assets/misc/foodmeasuringtape.png';
+import mealplanImg from '../../../assets/misc/nutritionist_mealplan.png';
+import aiImg from '../../../assets/misc/ailogo.png';
+import messagingImg from '../../../assets/misc/messagingbubbles.png';
+import trainerImg from '../../../assets/misc/personaltrainer.png';
 
 const DTA_DIRECT_PAGE = {
   admin_page: {
@@ -286,6 +286,15 @@ function UserPlanSelectionPage() {
       .then((res) => {
         if (!res.ok) {
           throw new Error(res.data?.error?.message || 'Unable to start signup.');
+        }
+        console.log('Signup response:', res);
+        const debugRegistrationLink =
+          res?.data?.debug_registration_link ||
+          res?.data?.registration_link ||
+          res?.debug_registration_link ||
+          res?.registration_link;
+        if (debugRegistrationLink) {
+          console.log('Registration Link:', debugRegistrationLink);
         }
         if (res.data?.checkout_url) {
           window.location.href = res.data.checkout_url;

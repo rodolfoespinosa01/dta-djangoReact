@@ -1,13 +1,14 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { apiRequest } from '../../api/client';
-import { useAuth } from '../../context/AuthContext';
-import { getFoodImageUrl } from '../../utils/foodImageLookup';
-import { escapeHtml, openPrintPdfWindow, renderPrintTable } from '../../utils/printPdf';
-import aiLogo from '../../assets/misc/ailogo.png';
+import { apiRequest } from '../../../api/client';
+import { useAuth } from '../../../context/AuthContext';
+import { getFoodImageUrl } from '../../../utils/foodImageLookup';
+import { escapeHtml, openPrintPdfWindow, renderPrintTable } from '../../../utils/printPdf';
+import aiLogo from '../../../assets/misc/ailogo.png';
 
-import './ClientDashboardPage.css';
+import '../../../styles/shared/client-app-shell.css';
+import './css.css';
 
 
 const WEEK_DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
