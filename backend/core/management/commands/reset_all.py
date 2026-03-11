@@ -18,15 +18,38 @@ from users.admin_area.models import (
     Profile,
     TransactionLog,
 )
+from core.models import Message, MessageAttachment
 from users.client_area.models import (
+    ClientFoodPreferenceChangeLog,
+    ClientMealComboSelection,
+    ClientMealPlanGeneratedMeal,
+    ClientMealPlanGenerationJob,
+    ClientMealPlanGenerationStep1Row,
     ClientMacroAccessLink,
     ClientPendingSignup,
+    ClientProfile,
+    ClientProgressPhoto,
+    ClientQuestionnaireProgress,
+    ClientQueuedPlanChange,
+    ClientWeightEntry,
     DiscountCode as ClientDiscountCode,
 )
 
 SUPERADMIN_USERNAME = "dta_user"
 TEST_ADMIN_EMAIL = "admin@dta.com"
 TEST_ADMIN_PASSWORD = "test1234"
+STALE_V2_TABLES = [
+    "client_area_clientgeneratedmealcomponentv2",
+    "client_area_clientmealtemplatecomponentoverridev2",
+    "client_area_clientmealtemplatemealoverridev2",
+    "client_area_clientmealplantemplateselectionv2",
+    "client_area_clientmealtemplateselectionv2",
+    "client_area_mealtemplateconstraintv2",
+    "client_area_mealtemplatecomponentv2",
+    "client_area_mealplantemplatemealv2",
+    "client_area_mealplantemplatev2",
+    "client_area_mealtemplatev2",
+]
 
 
 class Command(BaseCommand):
@@ -53,6 +76,25 @@ class Command(BaseCommand):
             with transaction.atomic():
                 queryset.delete()
             self.stdout.write(self.style.WARNING(label))
+        except (ProgrammingError, DatabaseError) as exc:
+            self.stdout.write(
+                self.style.WARNING(f"Skipping {label} (table unavailable: {exc.__class__.__name__}).")
+            )
+
+    def _table_name_exists(self, table_name):
+        with connection.cursor() as cursor:
+            return table_name in connection.introspection.table_names(cursor)
+
+    def _safe_delete_stale_table(self, table_name, label):
+        if not self._table_name_exists(table_name):
+            return
+        try:
+            with transaction.atomic():
+                with connection.cursor() as cursor:
+                    cursor.execute(f'DELETE FROM "{table_name}"')
+                    deleted_count = cursor.rowcount or 0
+            if deleted_count > 0:
+                self.stdout.write(self.style.WARNING(f"{label} ({deleted_count} rows)."))
         except (ProgrammingError, DatabaseError) as exc:
             self.stdout.write(
                 self.style.WARNING(f"Skipping {label} (table unavailable: {exc.__class__.__name__}).")
@@ -128,8 +170,24 @@ class Command(BaseCommand):
 
         with transaction.atomic():
             superadmin = user_model.objects.filter(username=SUPERADMIN_USERNAME).first()
+            # Delete child/user-dependent rows before deleting users.
+            self._safe_delete_all(ClientMealPlanGenerationStep1Row.objects.all(), "Client meal plan step1 rows deleted.")
+            self._safe_delete_all(ClientMealPlanGeneratedMeal.objects.all(), "Client generated meals deleted.")
+            self._safe_delete_all(ClientMealPlanGenerationJob.objects.all(), "Client meal plan generation jobs deleted.")
+            self._safe_delete_all(ClientMealComboSelection.objects.all(), "Client meal combo selections deleted.")
+            self._safe_delete_all(ClientFoodPreferenceChangeLog.objects.all(), "Client food preference change logs deleted.")
+            self._safe_delete_all(ClientQueuedPlanChange.objects.all(), "Client queued plan changes deleted.")
+            self._safe_delete_all(ClientProgressPhoto.objects.all(), "Client progress photos deleted.")
+            self._safe_delete_all(ClientWeightEntry.objects.all(), "Client weight entries deleted.")
+            self._safe_delete_all(ClientQuestionnaireProgress.objects.all(), "Client questionnaire progress deleted.")
+            self._safe_delete_all(ClientProfile.objects.all(), "Client profiles deleted.")
+            self._safe_delete_all(MessageAttachment.objects.all(), "Message attachments deleted.")
+            self._safe_delete_all(Message.objects.all(), "Messages deleted.")
 
-            user_model.objects.exclude(username=SUPERADMIN_USERNAME).delete()
+            # Stale V2 tables may still exist in local DB even when main no longer has their model classes.
+            for table_name in STALE_V2_TABLES:
+                label = f"Stale table {table_name} deleted"
+                self._safe_delete_stale_table(table_name, label)
 
             self._safe_delete_all(PasswordResetToken.objects.all(), "Password reset tokens deleted.")
             self._safe_delete_all(PreCheckout.objects.all(), "Pre-checkout rows deleted.")
@@ -149,8 +207,22 @@ class Command(BaseCommand):
             self._safe_delete_all(AdminIdentity.objects.all(), "Admin identities deleted.")
             self._safe_delete_all(TransactionLog.objects.all(), "Transaction logs deleted.")
 
+            user_model.objects.exclude(username=SUPERADMIN_USERNAME).delete()
+
             models_to_reset = [
                 user_model,
+                ClientMealPlanGenerationStep1Row,
+                ClientMealPlanGeneratedMeal,
+                ClientMealPlanGenerationJob,
+                ClientMealComboSelection,
+                ClientFoodPreferenceChangeLog,
+                ClientQueuedPlanChange,
+                ClientProgressPhoto,
+                ClientWeightEntry,
+                ClientQuestionnaireProgress,
+                ClientProfile,
+                MessageAttachment,
+                Message,
                 PasswordResetToken,
                 PreCheckout,
                 PendingSignup,
