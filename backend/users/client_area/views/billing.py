@@ -37,31 +37,6 @@ def _coaching_label(coaching_term: str) -> str:
     }.get(coaching_term, "Coaching Add-On")
 
 
-def _stripe_once_discount_from_quote(quote):
-    discount = (quote or {}).get("discount") or {}
-    amounts = (quote or {}).get("amounts") or {}
-    discount_cents = int(amounts.get("discount_cents") or 0)
-    if not discount or discount_cents <= 0:
-        return None
-
-    coupon_kwargs = {
-        "duration": "once",
-        "name": f"App Discount {discount.get('code') or ''}".strip(),
-        "metadata": {
-            "source": "app_discount_code",
-            "code": str(discount.get("code") or ""),
-        },
-    }
-    if str(discount.get("discount_type") or "") == "percent" and discount.get("percent_off") is not None:
-        coupon_kwargs["percent_off"] = float(discount.get("percent_off"))
-    else:
-        coupon_kwargs["amount_off"] = discount_cents
-        coupon_kwargs["currency"] = "usd"
-
-    coupon = stripe.Coupon.create(**coupon_kwargs)
-    return {"coupon": coupon.id}
-
-
 def _validate_checkout_choice(offer_code: str, coaching_term: str):
     if offer_code not in PAID_OFFER_CODES:
         return "INVALID_OFFER"
@@ -77,15 +52,13 @@ def _quote_error_response(exc: QuoteError):
     return error(exc.code, exc.message, http_status=400)
 
 
-def _build_client_quote(profile: ClientProfile, *, email: str, offer_code: str, coaching_term: str, discount_code: str, purchase_mode: str):
+def _build_client_quote(profile: ClientProfile, *, email: str, offer_code: str, coaching_term: str, purchase_mode: str):
     return build_client_purchase_quote(
         email=email,
         offer_code=offer_code,
         coaching_term=coaching_term,
         sale_channel=profile.sale_channel,
         purchase_mode=purchase_mode,
-        associated_admin_id=profile.associated_admin_id,
-        discount_code=discount_code,
         trial_eligible=profile.offer_code == "macro_calculator_free" and purchase_mode == "subscription",
     )
 
@@ -139,7 +112,6 @@ def client_checkout_quote(request):
     payload = request.data or {}
     offer_code = str(payload.get("offer_code") or "").strip()
     coaching_term = str(payload.get("coaching_term") or "none").strip()
-    discount_code = str(payload.get("discount_code") or "").strip()
     purchase_mode = str(payload.get("purchase_mode") or "subscription").strip().lower()
 
     try:
@@ -148,7 +120,6 @@ def client_checkout_quote(request):
             email=request.user.email,
             offer_code=offer_code,
             coaching_term=coaching_term,
-            discount_code=discount_code,
             purchase_mode=purchase_mode,
         )
     except QuoteError as exc:
@@ -199,7 +170,6 @@ def client_start_checkout_session(request):
     payload = request.data or {}
     offer_code = str(payload.get("offer_code") or "").strip()
     coaching_term = str(payload.get("coaching_term") or "none").strip()
-    discount_code = str(payload.get("discount_code") or "").strip()
     validation_error = _validate_checkout_choice(offer_code, coaching_term)
     if validation_error == "INVALID_OFFER":
         return error("INVALID_OFFER", "Select a valid paid plan.", http_status=400)
@@ -212,7 +182,6 @@ def client_start_checkout_session(request):
             email=request.user.email,
             offer_code=offer_code,
             coaching_term=coaching_term,
-            discount_code=discount_code,
             purchase_mode="subscription",
         )
     except QuoteError as exc:
@@ -220,13 +189,6 @@ def client_start_checkout_session(request):
 
     offer = OFFER_CATALOG[offer_code]
     trial_days = int(quote["trial_days"])
-    if int((quote.get("amounts") or {}).get("total_cents") or 0) <= 0:
-        return error(
-            "UNSUPPORTED_ZERO_AMOUNT_SUBSCRIPTION",
-            "This discount reduces the first checkout charge to $0.00, which is not supported in the current checkout flow.",
-            http_status=400,
-        )
-
     # Find or create Stripe customer for this client
     customer = None
     if profile.stripe_customer_id:
@@ -246,8 +208,6 @@ def client_start_checkout_session(request):
         profile.stripe_customer_id = customer.id
         profile.save(update_fields=["stripe_customer_id", "updated_at"])
 
-    stripe_discount = _stripe_once_discount_from_quote(quote)
-    allow_promotion_codes = not bool(stripe_discount)
     stripe_price_id = str(offer.get("stripe_price_id") or "").strip()
     if not stripe_price_id:
         return error("STRIPE_PRICE_NOT_CONFIGURED", "Stripe price is not configured for this plan.", http_status=500)
@@ -275,8 +235,6 @@ def client_start_checkout_session(request):
             "coaching_term": coaching_term,
             "sale_channel": profile.sale_channel,
             "associated_admin_id": str(profile.associated_admin_id or ""),
-            "discount_code": (quote.get("discount") or {}).get("code", ""),
-            "discount_cents": str((quote.get("amounts") or {}).get("discount_cents") or 0),
         }
     }
     if trial_days > 0:
@@ -286,7 +244,7 @@ def client_start_checkout_session(request):
         mode="subscription",
         payment_method_types=["card"],
         customer=customer.id,
-        allow_promotion_codes=allow_promotion_codes,
+        allow_promotion_codes=True,
         line_items=line_items,
         subscription_data=subscription_data,
         metadata={
@@ -295,13 +253,10 @@ def client_start_checkout_session(request):
             "client_profile_id": str(profile.id),
             "offer_code": offer_code,
             "coaching_term": coaching_term,
-            "discount_code": (quote.get("discount") or {}).get("code", ""),
         },
         success_url=f"{FRONTEND_URL}/client_settings?checkout=success&session_id={{CHECKOUT_SESSION_ID}}",
         cancel_url=f"{FRONTEND_URL}/client_settings?checkout=cancel",
     )
-    if stripe_discount:
-        session_kwargs["discounts"] = [stripe_discount]
 
     session = stripe.checkout.Session.create(**session_kwargs)
 
@@ -416,7 +371,6 @@ def client_start_queued_checkout_session(request):
     payload = request.data or {}
     offer_code = str(payload.get("offer_code") or "").strip()
     coaching_term = str(payload.get("coaching_term") or "none").strip()
-    discount_code = str(payload.get("discount_code") or "").strip()
     validation_error = _validate_checkout_choice(offer_code, coaching_term)
     if validation_error == "INVALID_OFFER":
         return error("INVALID_OFFER", "Select a valid paid plan.", http_status=400)
@@ -430,7 +384,6 @@ def client_start_queued_checkout_session(request):
             email=request.user.email,
             offer_code=offer_code,
             coaching_term=coaching_term,
-            discount_code=discount_code,
             purchase_mode="payment",
         )
     except QuoteError as exc:
@@ -439,12 +392,6 @@ def client_start_queued_checkout_session(request):
     plan_line_amount = int((quote.get("amounts") or {}).get("plan_final_cents") or 0)
     coaching_amount = int((quote.get("amounts") or {}).get("coaching_addon_final_cents") or 0)
     total_amount = int((quote.get("amounts") or {}).get("total_cents") or 0)
-    if total_amount <= 0:
-        return error(
-            "UNSUPPORTED_ZERO_AMOUNT_CHECKOUT",
-            "This discount reduces the checkout total to $0.00, which is not supported in the current checkout flow.",
-            http_status=400,
-        )
     queued_for = _get_current_period_end(profile)
 
     customer = None
@@ -496,8 +443,6 @@ def client_start_queued_checkout_session(request):
                 "client_profile_id": str(profile.id),
                 "offer_code": offer_code,
                 "coaching_term": coaching_term,
-                "discount_code": (quote.get("discount") or {}).get("code", ""),
-                "discount_cents": str((quote.get("amounts") or {}).get("discount_cents") or 0),
                 "queued_for_period_end_at": queued_for.isoformat() if queued_for else "",
             },
         success_url=f"{FRONTEND_URL}/client_settings?queued_checkout=success&session_id={{CHECKOUT_SESSION_ID}}",

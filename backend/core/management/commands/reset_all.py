@@ -9,7 +9,6 @@ from django.db import DatabaseError, ProgrammingError
 from django.db import connection, transaction
 
 from users.admin_area.models import (
-    AdminDiscountCode,
     AdminIdentity,
     EventTracker,
     PasswordResetToken,
@@ -32,7 +31,6 @@ from users.client_area.models import (
     ClientQuestionnaireProgress,
     ClientQueuedPlanChange,
     ClientWeightEntry,
-    DiscountCode as ClientDiscountCode,
 )
 
 SUPERADMIN_USERNAME = "dta_user"
@@ -200,10 +198,8 @@ class Command(BaseCommand):
 
             self._safe_delete_all(PendingSignup.objects.all(), "Pending signup rows deleted.")
             self._safe_delete_all(EventTracker.objects.all(), "Event tracker rows deleted.")
-            self._safe_delete_all(ClientDiscountCode.objects.all(), "Client discount codes deleted.")
             self._safe_delete_all(ClientPendingSignup.objects.all(), "Client pending signups deleted.")
             self._safe_delete_all(ClientMacroAccessLink.objects.all(), "Client macro access links deleted.")
-            self._safe_delete_all(AdminDiscountCode.objects.all(), "Admin discount codes deleted.")
             self._safe_delete_all(AdminIdentity.objects.all(), "Admin identities deleted.")
             self._safe_delete_all(TransactionLog.objects.all(), "Transaction logs deleted.")
 
@@ -227,10 +223,8 @@ class Command(BaseCommand):
                 PreCheckout,
                 PendingSignup,
                 EventTracker,
-                ClientDiscountCode,
                 ClientPendingSignup,
                 ClientMacroAccessLink,
-                AdminDiscountCode,
                 AdminIdentity,
                 TransactionLog,
                 Profile,
