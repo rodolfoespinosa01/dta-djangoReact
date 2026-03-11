@@ -20,7 +20,7 @@ class PricingServiceTests(SimpleTestCase):
         self.assertTrue(entitlements["includes_coaching"])
         self.assertTrue(entitlements["has_premium_dashboard"])
 
-    def test_quote_without_discount_subscription(self):
+    def test_quote_subscription_uses_offer_amounts(self):
         quote = build_client_purchase_quote(
             email="dev@example.com",
             offer_code="food_plan_monthly",
@@ -30,7 +30,7 @@ class PricingServiceTests(SimpleTestCase):
             trial_eligible=False,
         )
         self.assertEqual(quote["amounts"]["subtotal_cents"], 1500)
-        self.assertEqual(quote["amounts"]["discount_cents"], 0)
+        self.assertEqual(quote["amounts"]["plan_final_cents"], 1500)
         self.assertEqual(quote["amounts"]["total_cents"], 1500)
 
     def test_invalid_purchase_mode_raises(self):

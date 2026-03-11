@@ -75,30 +75,13 @@ function QuoteChip({ quote }) {
   if (!quote) return null;
   const amounts = quote.amounts || {};
   const entitlements = quote.entitlements_preview || {};
-  const hasDiscount = Number(amounts.discount_cents || 0) > 0;
-  const originalTotal = Number(amounts.subtotal_cents || 0) / 100;
-  const discountedTotal = Number(amounts.total_cents || 0) / 100;
+  const total = Number(amounts.total_cents || 0) / 100;
   return (
     <div style={{ marginTop: '0.6rem', border: '1px solid rgba(20,40,74,0.10)', borderRadius: 10, padding: '0.55rem' }}>
       <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }}>
-        {hasDiscount ? (
-          <>
-            <span className="user-plan-trial is-free" style={{ textDecoration: 'line-through', opacity: 0.75 }}>
-              ${originalTotal.toFixed(2)}
-            </span>
-            <span className="user-plan-trial">Now ${discountedTotal.toFixed(2)}</span>
-          </>
-        ) : (
-          <span className="user-plan-trial is-free">Total ${discountedTotal.toFixed(2)}</span>
-        )}
-        {hasDiscount ? <span className="user-plan-trial">Discount -${(Number(amounts.discount_cents || 0) / 100).toFixed(2)}</span> : null}
+        <span className="user-plan-trial is-free">Total ${total.toFixed(2)}</span>
         {quote.trial_days > 0 ? <span className="user-plan-trial">{quote.trial_days}-day trial</span> : null}
       </div>
-      {quote.discount?.code ? (
-        <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem' }}>
-          Special applied: <strong>{quote.discount.code}</strong>
-        </p>
-      ) : null}
       {entitlements.has_premium_dashboard ? (
         <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem' }}>Includes premium coaching dashboard.</p>
       ) : null}
@@ -122,7 +105,6 @@ function UserPlanSelectionPage() {
   const [signupEmail, setSignupEmail] = useState('');
   const [ctaMessage, setCtaMessage] = useState('');
   const [startingOfferCode, setStartingOfferCode] = useState('');
-  const [discountCode, setDiscountCode] = useState('');
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [paidQuote, setPaidQuote] = useState(null);
   const [includeCoaching, setIncludeCoaching] = useState(false);
@@ -223,22 +205,15 @@ function UserPlanSelectionPage() {
         email: signupEmail.trim(),
         offer_code: selectedPaidOffer.code,
         admin_slug: effectiveAdminSlug || null,
-        discount_code: discountCode.trim(),
       },
     })
       .then((res) => {
         if (ignore) return;
         if (!res.ok) {
           setPaidQuote(null);
-          if (discountCode.trim()) {
-            setCtaMessage(res.data?.error?.message || 'Unable to apply discount code.');
-          }
           return;
         }
         setPaidQuote(res.data?.quote || null);
-        if (discountCode.trim()) {
-          setCtaMessage('');
-        }
       })
       .catch((err) => {
         if (ignore) return;
@@ -250,7 +225,7 @@ function UserPlanSelectionPage() {
       });
 
     return () => { ignore = true; };
-  // Intentionally re-run on plan toggles/admin page changes; discount code is applied on field blur.
+  // Intentionally re-run on plan toggles/admin page changes.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPaidOffer, effectiveAdminSlug, includeCoaching]);
 
@@ -280,7 +255,6 @@ function UserPlanSelectionPage() {
         email: signupEmail.trim(),
         offer_code: offer.code,
         admin_slug: effectiveAdminSlug || null,
-        discount_code: discountCode.trim(),
       },
     })
       .then((res) => {
@@ -377,45 +351,6 @@ function UserPlanSelectionPage() {
             ref={emailInputRef}
           />
         </label>
-        {hasUnlockedPaidOffers ? (
-          <label className="user-plan-email-field">
-            Discount Code (optional)
-            <input
-              type="text"
-              value={discountCode}
-              onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
-              onBlur={() => {
-                // Re-run quote after editing the discount field
-                if (!selectedPaidOffer) return;
-                setQuoteLoading(true);
-                apiRequest('/api/v1/users/client/signup/quote/', {
-                  method: 'POST',
-                  body: {
-                    email: signupEmail.trim(),
-                    offer_code: selectedPaidOffer.code,
-                    admin_slug: effectiveAdminSlug || null,
-                    discount_code: discountCode.trim(),
-                  },
-                })
-                  .then((res) => {
-                    if (!res.ok) {
-                      setPaidQuote(null);
-                      setCtaMessage(res.data?.error?.message || 'Unable to apply discount code.');
-                      return;
-                    }
-                    setPaidQuote(res.data?.quote || null);
-                    setCtaMessage('');
-                  })
-                  .catch((err) => {
-                    console.error(err);
-                    setCtaMessage('Unable to apply discount code.');
-                  })
-                  .finally(() => setQuoteLoading(false));
-              }}
-              placeholder="SUMMER20"
-            />
-          </label>
-        ) : null}
         {paidOffersLocked ? (
           <p className="user-plan-inline-message">
             {paidOfferLockReason || 'Paid plans are currently unavailable for this coach account. Please continue with the free macro calculator option.'}

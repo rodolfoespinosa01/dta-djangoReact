@@ -37,7 +37,6 @@ function QuoteSummary({ quote }) {
         {(amounts.coaching_addon_final_cents || 0) > 0 ? (
           <li>Coaching add-on: ${((amounts.coaching_addon_final_cents || 0) / 100).toFixed(2)}</li>
         ) : null}
-        <li>Discount: -${((amounts.discount_cents || 0) / 100).toFixed(2)} {quote.discount?.code ? `(${quote.discount.code})` : ''}</li>
         <li>Premium dashboard: {entitlements.has_premium_dashboard ? 'Included' : 'Not included'}</li>
       </ul>
     </div>
@@ -56,13 +55,11 @@ function ClientSettingsPage() {
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutOfferCode, setCheckoutOfferCode] = useState('food_plan_monthly');
   const [checkoutCoachingTerm, setCheckoutCoachingTerm] = useState('none');
-  const [checkoutDiscountCode, setCheckoutDiscountCode] = useState('');
   const [checkoutQuoteBusy, setCheckoutQuoteBusy] = useState(false);
   const [checkoutQuote, setCheckoutQuote] = useState(null);
   const [queuedCheckoutBusy, setQueuedCheckoutBusy] = useState(false);
   const [queuedCheckoutOfferCode, setQueuedCheckoutOfferCode] = useState('food_plan_monthly');
   const [queuedCheckoutCoachingTerm, setQueuedCheckoutCoachingTerm] = useState('none');
-  const [queuedCheckoutDiscountCode, setQueuedCheckoutDiscountCode] = useState('');
   const [queuedCheckoutQuoteBusy, setQueuedCheckoutQuoteBusy] = useState(false);
   const [queuedCheckoutQuote, setQueuedCheckoutQuote] = useState(null);
   const themePreference = getTheme('client');
@@ -181,7 +178,6 @@ function ClientSettingsPage() {
     const isQueued = purchaseMode === 'payment';
     const offerCode = isQueued ? queuedCheckoutOfferCode : checkoutOfferCode;
     const coachingTerm = isQueued ? queuedCheckoutCoachingTerm : checkoutCoachingTerm;
-    const discountCode = isQueued ? queuedCheckoutDiscountCode : checkoutDiscountCode;
     const setBusy = isQueued ? setQueuedCheckoutQuoteBusy : setCheckoutQuoteBusy;
     const setQuote = isQueued ? setQueuedCheckoutQuote : setCheckoutQuote;
 
@@ -194,7 +190,6 @@ function ClientSettingsPage() {
         body: {
           offer_code: offerCode,
           coaching_term: coachingTerm,
-          discount_code: discountCode,
           purchase_mode: purchaseMode,
         },
       });
@@ -227,7 +222,6 @@ function ClientSettingsPage() {
         body: {
           offer_code: checkoutOfferCode,
           coaching_term: checkoutCoachingTerm,
-          discount_code: checkoutDiscountCode.trim(),
         },
       });
       if (!res.ok) {
@@ -258,7 +252,6 @@ function ClientSettingsPage() {
         body: {
           offer_code: queuedCheckoutOfferCode,
           coaching_term: queuedCheckoutCoachingTerm,
-          discount_code: queuedCheckoutDiscountCode.trim(),
         },
       });
       if (!res.ok) {
@@ -368,16 +361,6 @@ function ClientSettingsPage() {
                 <option value="food_plan_monthly_premium">Monthly Premium Coaching ($35/month)</option>
               </select>
             </label>
-            <label>
-              Discount Code
-              <input
-                type="text"
-                value={checkoutDiscountCode}
-                onChange={(e) => setCheckoutDiscountCode(e.target.value.toUpperCase())}
-                placeholder="Optional code"
-                disabled={checkoutBusy}
-              />
-            </label>
           </div>
           <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
             <button type="button" className="client-q-btn secondary" onClick={() => fetchCheckoutQuote('subscription')} disabled={checkoutQuoteBusy || checkoutBusy}>
@@ -407,16 +390,6 @@ function ClientSettingsPage() {
                 <option value="food_plan_monthly">Monthly ($15/month)</option>
                 <option value="food_plan_monthly_premium">Monthly Premium Coaching ($35/month)</option>
               </select>
-            </label>
-            <label>
-              Discount Code
-              <input
-                type="text"
-                value={queuedCheckoutDiscountCode}
-                onChange={(e) => setQueuedCheckoutDiscountCode(e.target.value.toUpperCase())}
-                placeholder="Optional code"
-                disabled={queuedCheckoutBusy}
-              />
             </label>
           </div>
           <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
