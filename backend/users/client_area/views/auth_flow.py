@@ -66,32 +66,6 @@ QUESTIONNAIRE_REQUIRES_REGEN_FIELDS = {
 
 TRIAL_ADMIN_CLIENT_LIMIT = 5
 
-
-def _stripe_once_discount_from_quote(quote_payload):
-    discount = (quote_payload or {}).get("discount") or {}
-    amounts = (quote_payload or {}).get("amounts") or {}
-    discount_cents = int(amounts.get("discount_cents") or 0)
-    if not discount or discount_cents <= 0:
-        return None
-
-    discount_type = str(discount.get("discount_type") or "").strip()
-    coupon_kwargs = {
-        "duration": "once",
-        "name": f"App Discount {discount.get('code') or ''}".strip(),
-        "metadata": {
-            "source": "app_discount_code",
-            "code": str(discount.get("code") or ""),
-        },
-    }
-    if discount_type == "percent" and discount.get("percent_off") is not None:
-        coupon_kwargs["percent_off"] = float(discount.get("percent_off"))
-    else:
-        coupon_kwargs["amount_off"] = discount_cents
-        coupon_kwargs["currency"] = "usd"
-
-    coupon = stripe.Coupon.create(**coupon_kwargs)
-    return {"coupon": coupon.id}
-
 def _is_gmail_email(value):
     email = (value or "").strip().lower()
     return email.endswith("@gmail.com") or email.endswith("@googlemail.com")
@@ -453,7 +427,6 @@ def public_signup_quote(request):
     email = (payload.get("email") or "").strip().lower()
     offer_code = (payload.get("offer_code") or "").strip()
     admin_slug = (payload.get("admin_slug") or "").strip().lower()
-    discount_code = (payload.get("discount_code") or "").strip()
     coaching_term = (payload.get("coaching_term") or "none").strip()
 
     if not offer_code:
@@ -492,12 +465,10 @@ def public_signup_quote(request):
                         "plan_base_cents": int(offer.get("amount_cents") or 0),
                         "coaching_addon_base_cents": 0,
                         "subtotal_cents": int(offer.get("amount_cents") or 0),
-                        "discount_cents": 0,
                         "plan_final_cents": int(offer.get("amount_cents") or 0),
                         "coaching_addon_final_cents": 0,
                         "total_cents": int(offer.get("amount_cents") or 0),
                     },
-                    "discount": None,
                 }
             }
         )
@@ -509,8 +480,6 @@ def public_signup_quote(request):
             coaching_term=coaching_term,
             sale_channel=sale_channel,
             purchase_mode="subscription",
-            associated_admin_id=admin.id if admin else None,
-            discount_code=discount_code,
             trial_eligible=bool(email),
         )
     except QuoteError as exc:
@@ -533,8 +502,6 @@ def start_signup(request):
     email = (payload.get("email") or "").strip().lower()
     offer_code = (payload.get("offer_code") or "").strip()
     admin_slug = (payload.get("admin_slug") or "").strip().lower()
-    discount_code = (payload.get("discount_code") or "").strip()
-
     if not email or not offer_code:
         return error("MISSING_FIELDS", "Email and offer_code are required.", http_status=400)
     if offer_code not in OFFER_CATALOG:
@@ -594,8 +561,6 @@ def start_signup(request):
                 coaching_term="none",
                 sale_channel=sale_channel,
                 purchase_mode="subscription",
-                associated_admin_id=admin.id if admin else None,
-                discount_code=discount_code,
                 trial_eligible=True,
             )
         except QuoteError as exc:
@@ -606,13 +571,6 @@ def start_signup(request):
         ent = quote_payload.get("entitlements_preview") or {}
         pending_includes_food_plan = bool(ent.get("includes_food_plan", offer["includes_food_plan"]))
         pending_includes_coaching = bool(ent.get("includes_coaching", offer["includes_coaching"]))
-        if pending_amount_cents <= 0:
-            return error(
-                "UNSUPPORTED_ZERO_AMOUNT_SUBSCRIPTION",
-                "This discount reduces the checkout total to $0.00, which is not supported in the current checkout flow.",
-                http_status=400,
-            )
-
         customer = stripe.Customer.create(
             email=email,
             metadata={
@@ -623,8 +581,6 @@ def start_signup(request):
             },
         )
 
-        discount = quote_payload.get("discount") or {}
-        discount_code_clean = str(discount.get("code") or "").strip()
         stripe_price_id = str(offer.get("stripe_price_id") or "").strip()
         if not stripe_price_id:
             return error("STRIPE_PRICE_NOT_CONFIGURED", "Stripe price is not configured for this plan.", http_status=500)
@@ -643,7 +599,6 @@ def start_signup(request):
                 "admin_slug": admin_slug or "",
                 "admin_id": str(admin.id if admin else ""),
                 "offer_code": offer_code,
-                "discount_code": discount_code_clean,
                 "trial_days": str(applied_trial_days),
                 "amount_cents": str(pending_amount_cents),
                 "includes_food_plan": "1" if pending_includes_food_plan else "0",
@@ -653,13 +608,11 @@ def start_signup(request):
         if applied_trial_days > 0:
             subscription_data["trial_period_days"] = int(applied_trial_days)
 
-        stripe_discount = _stripe_once_discount_from_quote(quote_payload)
-        allow_promotion_codes = not bool(stripe_discount)
         session_kwargs = dict(
             mode="subscription",
             payment_method_types=["card"],
             customer=customer.id,
-            allow_promotion_codes=allow_promotion_codes,
+            allow_promotion_codes=True,
             line_items=[
                 {
                     "price": stripe_price_id,
@@ -674,15 +627,12 @@ def start_signup(request):
                 "admin_slug": admin_slug or "",
                 "admin_id": str(admin.id if admin else ""),
                 "offer_code": offer_code,
-                "discount_code": discount_code_clean,
                 "trial_days": str(applied_trial_days),
                 "amount_cents": str(pending_amount_cents),
             },
             success_url=f"{FRONTEND_URL}{success_path}?{success_query}",
             cancel_url=f"{FRONTEND_URL}{cancel_path}?signup_checkout=cancel",
         )
-        if stripe_discount:
-            session_kwargs["discounts"] = [stripe_discount]
 
         session = stripe.checkout.Session.create(**session_kwargs)
 
