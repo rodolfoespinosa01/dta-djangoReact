@@ -4,9 +4,12 @@ from django.utils.crypto import get_random_string
 from django.contrib.auth import get_user_model
 from datetime import timedelta
 
-from users.admin_area.models import AdminIdentity, AdminParameterSettings, Plan
+from users.admin_area.models import AdminIdentity, Plan
+from users.admin_area.services.admin_parameter_tables import (
+    admin_parameter_state,
+    reset_admin_parameter_payload_to_defaults,
+)
 from users.admin_area.utils.log_Profile import log_Profile
-from users.admin_area.configs.admin_parameter_defaults import get_admin_parameter_defaults_v1
 
 
 class Command(BaseCommand):
@@ -74,16 +77,10 @@ class Command(BaseCommand):
             is_canceled=False,
         )
 
-        param_state = {"exists": False, "initialized": False}
+        param_state = admin_parameter_state(identity)
         if initialize:
-            settings_obj, _ = AdminParameterSettings.objects.get_or_create(admin=identity)
-            param_state["exists"] = True
-            defaults = get_admin_parameter_defaults_v1()
-            settings_obj.parameters_json = defaults
-            settings_obj.defaults_version_applied = defaults.get("version", "v1")
-            settings_obj.initialized = True
-            settings_obj.save(update_fields=["parameters_json", "defaults_version_applied", "initialized", "updated_at"])
-            param_state["initialized"] = True
+            reset_admin_parameter_payload_to_defaults(identity, version=param_state.get("defaults_version_applied") or "v1")
+            param_state = admin_parameter_state(identity)
 
         self.stdout.write(self.style.SUCCESS(f"✅ Admin created: {email}"))
         self.stdout.write(f"admin_email: {email}")

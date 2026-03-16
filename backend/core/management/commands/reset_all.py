@@ -3,13 +3,19 @@ import shutil
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.core.management.color import no_style
 from django.db import DatabaseError, ProgrammingError
 from django.db import connection, transaction
 
 from users.admin_area.models import (
+    AdminCarbCyclingSettings,
     AdminIdentity,
+    AdminKetoSettings,
+    AdminParameterSettingsChangeLog,
+    AdminStandardSettings,
+    AdminTDEESettings,
     EventTracker,
     PasswordResetToken,
     PendingSignup,
@@ -226,6 +232,11 @@ class Command(BaseCommand):
                 ClientPendingSignup,
                 ClientMacroAccessLink,
                 AdminIdentity,
+                AdminTDEESettings,
+                AdminStandardSettings,
+                AdminKetoSettings,
+                AdminCarbCyclingSettings,
+                AdminParameterSettingsChangeLog,
                 TransactionLog,
                 Profile,
             ]
@@ -267,6 +278,11 @@ class Command(BaseCommand):
                                 if hasattr(prof, f)
                             ]
                         )
+
+            # Seed the master core defaults before the DTA admin identity is
+            # created below. The AdminIdentity post_save signal copies those
+            # rows into the business-to-consumer admin_area tables.
+            call_command("seed_admin_parameter_defaults")
 
             self._ensure_test_admin(user_model)
 

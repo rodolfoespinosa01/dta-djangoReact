@@ -12,13 +12,6 @@ class AdminParameterSettingsChangeLog(models.Model):
         on_delete=models.CASCADE,
         related_name="parameter_settings_change_logs",
     )
-    parameter_settings = models.ForeignKey(
-        "AdminParameterSettings",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="change_logs",
-    )
     action = models.CharField(max_length=32, choices=ACTION_CHOICES, db_index=True)
     changed_paths = models.JSONField(default=list, blank=True)
     before_json = models.JSONField(null=True, blank=True)

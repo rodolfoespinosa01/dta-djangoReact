@@ -21,8 +21,8 @@ class FoodLibraryItem(models.Model):
 
     class Meta:
         ordering = ("source_food_id",)
-        verbose_name = "Food Library Item"
-        verbose_name_plural = "Food Library Items"
+        verbose_name = "Food Library Default"
+        verbose_name_plural = "Food Library Defaults"
 
     def __str__(self):
         return f"{self.name} [{self.category}]"
@@ -50,8 +50,8 @@ class MealComboTemplate(models.Model):
 
     class Meta:
         ordering = ("combo_id",)
-        verbose_name = "Meal Combo Template"
-        verbose_name_plural = "Meal Combo Templates"
+        verbose_name = "Meal Combo Default"
+        verbose_name_plural = "Meal Combo Defaults"
         indexes = [
             models.Index(
                 fields=[

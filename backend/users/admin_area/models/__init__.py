@@ -7,8 +7,13 @@ from .PreCheckout import PreCheckout
 from .TransactionLog import TransactionLog
 from .EventTracker import EventTracker 
 from .AdminAccountHistory import AdminAccountHistory
-from .AdminParameterSettings import AdminParameterSettings
 from .AdminParameterSettingsChangeLog import AdminParameterSettingsChangeLog
+from .AdminParameterTableSettings import (
+    AdminCarbCyclingSettings,
+    AdminKetoSettings,
+    AdminStandardSettings,
+    AdminTDEESettings,
+)
 __all__ = [
     'Plan',
     'Profile',
@@ -19,6 +24,9 @@ __all__ = [
     'AdminIdentity',
     'EventTracker',
     'AdminAccountHistory',
-    'AdminParameterSettings',
     'AdminParameterSettingsChangeLog',
+    'AdminTDEESettings',
+    'AdminStandardSettings',
+    'AdminKetoSettings',
+    'AdminCarbCyclingSettings',
 ]

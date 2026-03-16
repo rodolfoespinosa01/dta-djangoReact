@@ -1,10 +1,14 @@
 from django.contrib import admin  # 👉 provides access to django’s admin interface tools
 from django.contrib.auth.admin import UserAdmin  # 👉 base admin class for managing users in the admin panel
 from core.models import (
+    CarbCyclingDefault,
     ComboMacroErrorLookup,
     CustomUser,
     FoodLibraryItem,
+    KetoDefault,
     MealComboTemplate,
+    StandardDefault,
+    TDEEDefault,
 )  # 👉 imports the custom user model to customize how it appears in the admin
 
 
@@ -68,6 +72,69 @@ class ComboMacroErrorLookupAdmin(admin.ModelAdmin):
     list_display = ('error_code', 'protein_error', 'carbs_error', 'fats_error')
     search_fields = ('error_code',)
     ordering = ('error_code',)
+
+
+@admin.register(TDEEDefault)
+class TDEEDefaultAdmin(admin.ModelAdmin):
+    list_display = (
+        'version',
+        'lose_weight_percent',
+        'maintain_weight_percent',
+        'gain_weight_percent',
+        'updated_at',
+    )
+    readonly_fields = ('created_at', 'updated_at')
+    ordering = ('version',)
+
+
+@admin.register(StandardDefault)
+class StandardDefaultAdmin(admin.ModelAdmin):
+    list_display = (
+        'version',
+        'goal',
+        'protein_factor_value',
+        'carb_percent',
+        'fat_percent',
+        'updated_at',
+    )
+    list_filter = ('version', 'goal')
+    search_fields = ('goal',)
+    readonly_fields = ('created_at', 'updated_at')
+    ordering = ('version', 'created_at')
+
+
+@admin.register(KetoDefault)
+class KetoDefaultAdmin(admin.ModelAdmin):
+    list_display = (
+        'version',
+        'goal',
+        'protein_factor_value',
+        'carb_percent',
+        'fat_percent',
+        'updated_at',
+    )
+    list_filter = ('version', 'goal')
+    search_fields = ('goal',)
+    readonly_fields = ('created_at', 'updated_at')
+    ordering = ('version', 'created_at')
+
+
+@admin.register(CarbCyclingDefault)
+class CarbCyclingDefaultAdmin(admin.ModelAdmin):
+    list_display = (
+        'version',
+        'goal',
+        'protein_factor_value',
+        'low_day_carb_percent',
+        'low_day_fat_percent',
+        'high_day_carb_percent',
+        'high_day_fat_percent',
+        'updated_at',
+    )
+    list_filter = ('version', 'goal')
+    search_fields = ('goal',)
+    readonly_fields = ('created_at', 'updated_at')
+    ordering = ('version', 'created_at')
 
 # 👉 summary:
 # extends the django admin panel to support the custom user model.
