@@ -1,8 +1,6 @@
 import json
 
 from django.contrib import admin
-from django.template.response import TemplateResponse
-from django.urls import path
 from django.utils.html import format_html
 from users.admin_area.models import (
     Plan,
@@ -14,10 +12,12 @@ from users.admin_area.models import (
     AdminIdentity,
     EventTracker,
     AdminAccountHistory,
-    AdminParameterSettings,
     AdminParameterSettingsChangeLog,
+    AdminTDEESettings,
+    AdminStandardSettings,
+    AdminKetoSettings,
+    AdminCarbCyclingSettings,
 )
-from users.admin_area.configs.admin_parameter_defaults import get_admin_parameter_defaults_v1
 
 # ✅ Core admin models
 admin.site.register(Plan)
@@ -27,6 +27,13 @@ admin.site.register(PreCheckout)
 admin.site.register(TransactionLog)
 
 
+def _pretty_json(value, *, max_height=360):
+    pretty = json.dumps(value, indent=2)
+    return format_html(
+        '<pre style="max-height:{}px; overflow:auto; background:#111827; color:#e5e7eb; padding:12px; border-radius:8px;">{}</pre>',
+        max_height,
+        pretty,
+    )
 @admin.register(EventTracker)
 class EventTrackerAdmin(admin.ModelAdmin):
     list_display = ('admin_id_column', 'event_type', 'timestamp')
@@ -95,19 +102,27 @@ class AdminAccountHistoryAdmin(admin.ModelAdmin):
     admin_email.short_description = "Admin Email"
 
 
-@admin.register(AdminParameterSettings)
-class AdminParameterSettingsAdmin(admin.ModelAdmin):
+@admin.register(AdminTDEESettings)
+class AdminTDEESettingsAdmin(admin.ModelAdmin):
     list_display = (
         "admin_email",
         "initialized",
         "defaults_version_applied",
+        "lose_weight_percent",
+        "maintain_weight_percent",
+        "gain_weight_percent",
         "updated_at",
-        "created_at",
     )
-    list_filter = ("initialized", "defaults_version_applied", "updated_at", "created_at")
-    search_fields = ("admin__admin_email", "admin__adminID")
-    readonly_fields = ("created_at", "updated_at", "parameters_json_pretty")
+    list_filter = ("initialized", "defaults_version_applied", "updated_at")
+    search_fields = ("admin__admin_email",)
     autocomplete_fields = ("admin",)
+    readonly_fields = (
+        "created_at",
+        "updated_at",
+        "category_multipliers_pretty",
+        "category_mapping_pretty",
+        "weekly_splits_pretty",
+    )
     fieldsets = (
         (
             None,
@@ -116,13 +131,24 @@ class AdminParameterSettingsAdmin(admin.ModelAdmin):
                     "admin",
                     "initialized",
                     "defaults_version_applied",
+                    "lose_weight_percent",
+                    "maintain_weight_percent",
+                    "gain_weight_percent",
                     "created_at",
                     "updated_at",
                 )
             },
         ),
-        ("Parameters (JSON)", {"fields": ("parameters_json",)}),
-        ("Pretty View (Read-only)", {"fields": ("parameters_json_pretty",)}),
+        ("TDEE JSON", {"fields": (
+            "category_multipliers_json",
+            "category_mapping_by_lifestyle_and_training_days_json",
+            "weekly_day_multiplier_splits_json",
+        )}),
+        ("Pretty View (Read-only)", {"fields": (
+            "category_multipliers_pretty",
+            "category_mapping_pretty",
+            "weekly_splits_pretty",
+        )}),
     )
 
     def admin_email(self, obj):
@@ -131,14 +157,145 @@ class AdminParameterSettingsAdmin(admin.ModelAdmin):
     admin_email.short_description = "Admin Email"
     admin_email.admin_order_field = "admin__admin_email"
 
-    def parameters_json_pretty(self, obj):
-        pretty = json.dumps(obj.parameters_json, indent=2)
-        return format_html(
-            '<pre style="max-height:520px; overflow:auto; background:#111827; color:#e5e7eb; padding:12px; border-radius:8px;">{}</pre>',
-            pretty,
-        )
+    def category_multipliers_pretty(self, obj):
+        return _pretty_json(obj.category_multipliers_json, max_height=180)
 
-    parameters_json_pretty.short_description = "Formatted JSON"
+    category_multipliers_pretty.short_description = "Category Multipliers"
+
+    def category_mapping_pretty(self, obj):
+        return _pretty_json(obj.category_mapping_by_lifestyle_and_training_days_json, max_height=220)
+
+    category_mapping_pretty.short_description = "Lifestyle / Training Day Mapping"
+
+    def weekly_splits_pretty(self, obj):
+        return _pretty_json(obj.weekly_day_multiplier_splits_json, max_height=320)
+
+    weekly_splits_pretty.short_description = "Weekly Day Multiplier Splits"
+
+
+class _AdminMacroSettingsBase(admin.ModelAdmin):
+    readonly_fields = ("created_at", "updated_at", "meal_macro_distribution_pretty")
+    autocomplete_fields = ("admin",)
+
+    def admin_email(self, obj):
+        return obj.admin.admin_email
+
+    admin_email.short_description = "Admin Email"
+    admin_email.admin_order_field = "admin__admin_email"
+
+    def meal_macro_distribution_pretty(self, obj):
+        return _pretty_json(obj.meal_macro_distribution_json, max_height=360)
+
+    meal_macro_distribution_pretty.short_description = "Meal Macro Distribution"
+
+
+@admin.register(AdminStandardSettings)
+class AdminStandardSettingsAdmin(_AdminMacroSettingsBase):
+    list_display = (
+        "admin_email",
+        "goal",
+        "defaults_version_applied",
+        "protein_factor_value",
+        "carb_percent",
+        "fat_percent",
+        "updated_at",
+    )
+    list_filter = ("goal", "defaults_version_applied", "updated_at")
+    search_fields = ("admin__admin_email", "goal")
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": (
+                    "admin",
+                    "goal",
+                    "defaults_version_applied",
+                    "protein_factor_unit",
+                    "protein_factor_value",
+                    "carb_percent",
+                    "fat_percent",
+                    "created_at",
+                    "updated_at",
+                )
+            },
+        ),
+        ("Meal Macro Distribution", {"fields": ("meal_macro_distribution_json",)}),
+        ("Pretty View (Read-only)", {"fields": ("meal_macro_distribution_pretty",)}),
+    )
+
+
+@admin.register(AdminKetoSettings)
+class AdminKetoSettingsAdmin(_AdminMacroSettingsBase):
+    list_display = (
+        "admin_email",
+        "goal",
+        "defaults_version_applied",
+        "protein_factor_value",
+        "carb_percent",
+        "fat_percent",
+        "updated_at",
+    )
+    list_filter = ("goal", "defaults_version_applied", "updated_at")
+    search_fields = ("admin__admin_email", "goal")
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": (
+                    "admin",
+                    "goal",
+                    "defaults_version_applied",
+                    "protein_factor_unit",
+                    "protein_factor_value",
+                    "carb_percent",
+                    "fat_percent",
+                    "created_at",
+                    "updated_at",
+                )
+            },
+        ),
+        ("Meal Macro Distribution", {"fields": ("meal_macro_distribution_json",)}),
+        ("Pretty View (Read-only)", {"fields": ("meal_macro_distribution_pretty",)}),
+    )
+
+
+@admin.register(AdminCarbCyclingSettings)
+class AdminCarbCyclingSettingsAdmin(_AdminMacroSettingsBase):
+    list_display = (
+        "admin_email",
+        "goal",
+        "defaults_version_applied",
+        "protein_factor_value",
+        "low_day_carb_percent",
+        "low_day_fat_percent",
+        "high_day_carb_percent",
+        "high_day_fat_percent",
+        "updated_at",
+    )
+    list_filter = ("goal", "defaults_version_applied", "updated_at")
+    search_fields = ("admin__admin_email", "goal")
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": (
+                    "admin",
+                    "goal",
+                    "defaults_version_applied",
+                    "protein_factor_unit",
+                    "protein_factor_value",
+                    "low_day_carb_percent",
+                    "low_day_fat_percent",
+                    "high_day_carb_percent",
+                    "high_day_fat_percent",
+                    "created_at",
+                    "updated_at",
+                )
+            },
+        ),
+        ("Meal Macro Distribution", {"fields": ("meal_macro_distribution_json",)}),
+        ("Pretty View (Read-only)", {"fields": ("meal_macro_distribution_pretty",)}),
+    )
 
 
 @admin.register(AdminParameterSettingsChangeLog)
@@ -148,16 +305,15 @@ class AdminParameterSettingsChangeLogAdmin(admin.ModelAdmin):
     search_fields = ("admin__admin_email",)
     readonly_fields = (
         "admin",
-        "parameter_settings",
         "action",
         "changed_paths_pretty",
         "before_json_pretty",
         "after_json_pretty",
         "created_at",
     )
-    autocomplete_fields = ("admin", "parameter_settings")
+    autocomplete_fields = ("admin",)
     fieldsets = (
-        (None, {"fields": ("admin", "parameter_settings", "action", "created_at")}),
+        (None, {"fields": ("admin", "action", "created_at")}),
         ("Changed Paths", {"fields": ("changed_paths_pretty",)}),
         ("Before", {"fields": ("before_json_pretty",)}),
         ("After", {"fields": ("after_json_pretty",)}),
@@ -175,74 +331,16 @@ class AdminParameterSettingsChangeLogAdmin(admin.ModelAdmin):
     changed_paths_count.short_description = "Changed Paths"
 
     def changed_paths_pretty(self, obj):
-        pretty = json.dumps(obj.changed_paths or [], indent=2)
-        return format_html(
-            '<pre style="max-height:240px; overflow:auto; background:#111827; color:#e5e7eb; padding:12px; border-radius:8px;">{}</pre>',
-            pretty,
-        )
+        return _pretty_json(obj.changed_paths or [], max_height=240)
 
     changed_paths_pretty.short_description = "Changed Paths"
 
     def before_json_pretty(self, obj):
-        pretty = json.dumps(obj.before_json, indent=2)
-        return format_html(
-            '<pre style="max-height:360px; overflow:auto; background:#111827; color:#e5e7eb; padding:12px; border-radius:8px;">{}</pre>',
-            pretty,
-        )
+        return _pretty_json(obj.before_json, max_height=360)
 
     before_json_pretty.short_description = "Before"
 
     def after_json_pretty(self, obj):
-        pretty = json.dumps(obj.after_json, indent=2)
-        return format_html(
-            '<pre style="max-height:360px; overflow:auto; background:#111827; color:#e5e7eb; padding:12px; border-radius:8px;">{}</pre>',
-            pretty,
-        )
+        return _pretty_json(obj.after_json, max_height=360)
 
     after_json_pretty.short_description = "After"
-
-
-def admin_parameter_defaults_view(request):
-    defaults = get_admin_parameter_defaults_v1()
-    meal_plans = defaults.get("meal_plans", {})
-    context = {
-        **admin.site.each_context(request),
-        "title": "Admin Parameter Defaults (DTA v1)",
-        "defaults_version": defaults.get("version", "unknown"),
-        "global_defaults_json": json.dumps(
-            {
-                "version": defaults.get("version"),
-                "goal_calorie_adjustments": defaults.get("goal_calorie_adjustments", {}),
-                "tdee": defaults.get("tdee", {}),
-            },
-            indent=2,
-        ),
-        "standard_defaults_json": json.dumps(meal_plans.get("standard", {}), indent=2),
-        "keto_defaults_json": json.dumps(meal_plans.get("keto", {}), indent=2),
-        "carb_cycling_defaults_json": json.dumps(meal_plans.get("carb_cycling", {}), indent=2),
-        "full_defaults_json": json.dumps(defaults, indent=2),
-    }
-    return TemplateResponse(
-        request,
-        "admin/users_admin_area/admin_parameter_defaults.html",
-        context,
-    )
-
-
-def _custom_admin_urls():
-    return [
-        path(
-            "users/admin-parameter-defaults/",
-            admin.site.admin_view(admin_parameter_defaults_view),
-            name="users_admin_parameter_defaults",
-        ),
-    ]
-
-
-if not hasattr(admin.site, "_dta_original_get_urls"):
-    admin.site._dta_original_get_urls = admin.site.get_urls
-
-    def _get_urls():
-        return _custom_admin_urls() + admin.site._dta_original_get_urls()
-
-    admin.site.get_urls = _get_urls
