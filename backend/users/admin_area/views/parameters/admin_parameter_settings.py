@@ -6,11 +6,16 @@ from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 
-from users.admin_area.configs.admin_parameter_defaults import get_admin_parameter_defaults_v1
 from users.admin_area.models import (
     AdminIdentity,
-    AdminParameterSettings,
     AdminParameterSettingsChangeLog,
+)
+from users.admin_area.services.admin_parameter_tables import (
+    apply_admin_parameter_payload,
+    admin_parameter_state,
+    ensure_admin_parameter_tables,
+    get_admin_parameter_payload,
+    reset_admin_parameter_payload_to_defaults,
 )
 from users.admin_area.views.api_contract import error, ok, require_admin
 
@@ -33,8 +38,7 @@ def _identity_for_request_user(user):
 
 def _settings_for_request_user(user):
     identity = _identity_for_request_user(user)
-    settings_obj, _ = AdminParameterSettings.objects.get_or_create(admin=identity)
-    return settings_obj
+    return ensure_admin_parameter_tables(identity)
 
 
 def _subdomain_status(identity):
@@ -116,14 +120,13 @@ def _json_diff_paths(before, after, prefix=""):
     return []
 
 
-def _record_change_log(*, settings_obj, action, before_json, after_json):
+def _record_change_log(*, admin_identity, action, before_json, after_json):
     changed_paths = _json_diff_paths(before_json, after_json)
     if not changed_paths:
         return []
 
     AdminParameterSettingsChangeLog.objects.create(
-        admin=settings_obj.admin,
-        parameter_settings=settings_obj,
+        admin=admin_identity,
         action=action,
         changed_paths=changed_paths,
         before_json=before_json,
@@ -140,19 +143,19 @@ def parameter_settings_status(request):
         return auth_error
 
     identity = _identity_for_request_user(request.user)
-    settings_obj = AdminParameterSettings.objects.filter(admin=identity).first()
-    initialized = bool(settings_obj and settings_obj.initialized)
+    state = ensure_admin_parameter_tables(identity)
+    initialized = bool(state.get("initialized"))
     subdomain = _subdomain_status(identity)
     setup_completed = initialized and subdomain["locked"]
 
     return ok(
         {
             "parameter_settings": {
-                "exists": bool(settings_obj),
+                "exists": bool(state.get("exists")),
                 "initialized": initialized,
                 "setup_completed": setup_completed,
-                "defaults_version_applied": getattr(settings_obj, "defaults_version_applied", None),
-                "updated_at": getattr(settings_obj, "updated_at", None),
+                "defaults_version_applied": state.get("defaults_version_applied"),
+                "updated_at": state.get("updated_at"),
             }
             ,
             "subdomain": subdomain,
@@ -168,7 +171,7 @@ def parameter_settings_use_defaults(request):
         return auth_error
 
     identity = _identity_for_request_user(request.user)
-    settings_obj = AdminParameterSettings.objects.get_or_create(admin=identity)[0]
+    state = ensure_admin_parameter_tables(identity)
     subdomain_slug, subdomain_error = _set_subdomain_once(identity, (request.data or {}).get("subdomain_slug"))
     if subdomain_error:
         return error(
@@ -176,27 +179,27 @@ def parameter_settings_use_defaults(request):
             message=subdomain_error,
             http_status=400,
         )
-    before_json = copy.deepcopy(settings_obj.parameters_json)
-    defaults = get_admin_parameter_defaults_v1()
-    settings_obj.parameters_json = defaults
-    settings_obj.defaults_version_applied = defaults.get("version", "v1")
-    settings_obj.initialized = True
-    settings_obj.save(update_fields=["parameters_json", "defaults_version_applied", "initialized", "updated_at"])
+    before_json = copy.deepcopy(get_admin_parameter_payload(identity))
+    state = reset_admin_parameter_payload_to_defaults(
+        identity,
+        version=state.get("defaults_version_applied") or "v1",
+    )
+    after_json = copy.deepcopy(get_admin_parameter_payload(identity))
     changed_paths = _record_change_log(
-        settings_obj=settings_obj,
+        admin_identity=identity,
         action="use_defaults",
         before_json=before_json,
-        after_json=settings_obj.parameters_json,
+        after_json=after_json,
     )
 
     return ok(
         {
             "message": "Default admin parameter settings applied.",
             "parameter_settings": {
-                "initialized": settings_obj.initialized,
+                "initialized": bool(state.get("initialized")),
                 "setup_completed": True,
-                "defaults_version_applied": settings_obj.defaults_version_applied,
-                "updated_at": settings_obj.updated_at,
+                "defaults_version_applied": state.get("defaults_version_applied"),
+                "updated_at": state.get("updated_at"),
                 "changed_paths_count": len(changed_paths),
             },
             "subdomain": _subdomain_status(identity),
@@ -212,18 +215,19 @@ def parameter_settings_detail(request):
         return auth_error
 
     identity = _identity_for_request_user(request.user)
-    settings_obj = AdminParameterSettings.objects.get_or_create(admin=identity)[0]
+    state = ensure_admin_parameter_tables(identity)
 
     if request.method == "GET":
+        parameters_json = get_admin_parameter_payload(identity)
         return ok(
             {
                 "parameter_settings": {
-                    "initialized": settings_obj.initialized,
-                    "setup_completed": bool(settings_obj.initialized and identity.subdomain_slug and identity.subdomain_locked_at),
-                    "defaults_version_applied": settings_obj.defaults_version_applied,
-                    "created_at": settings_obj.created_at,
-                    "updated_at": settings_obj.updated_at,
-                    "parameters_json": settings_obj.parameters_json,
+                    "initialized": bool(state.get("initialized")),
+                    "setup_completed": bool(state.get("initialized") and identity.subdomain_slug and identity.subdomain_locked_at),
+                    "defaults_version_applied": state.get("defaults_version_applied"),
+                    "created_at": state.get("created_at"),
+                    "updated_at": state.get("updated_at"),
+                    "parameters_json": parameters_json,
                 },
                 "subdomain": _subdomain_status(identity),
             }
@@ -248,27 +252,25 @@ def parameter_settings_detail(request):
                 http_status=400,
             )
 
-    before_json = copy.deepcopy(settings_obj.parameters_json)
-    settings_obj.parameters_json = params
-    settings_obj.defaults_version_applied = params.get("version") or settings_obj.defaults_version_applied or "v1"
-    settings_obj.initialized = requested_initialized
-    settings_obj.save(update_fields=["parameters_json", "defaults_version_applied", "initialized", "updated_at"])
+    before_json = copy.deepcopy(get_admin_parameter_payload(identity))
+    state = apply_admin_parameter_payload(identity, params, initialized=requested_initialized)
+    after_json = copy.deepcopy(get_admin_parameter_payload(identity))
     changed_paths = _record_change_log(
-        settings_obj=settings_obj,
+        admin_identity=identity,
         action="manual_save",
         before_json=before_json,
-        after_json=settings_obj.parameters_json,
+        after_json=after_json,
     )
 
     return ok(
         {
             "message": "Admin parameter settings saved.",
             "parameter_settings": {
-                "initialized": settings_obj.initialized,
-                "setup_completed": bool(settings_obj.initialized and identity.subdomain_slug and identity.subdomain_locked_at),
-                "defaults_version_applied": settings_obj.defaults_version_applied,
-                "updated_at": settings_obj.updated_at,
-                "parameters_json": settings_obj.parameters_json,
+                "initialized": bool(state.get("initialized")),
+                "setup_completed": bool(state.get("initialized") and identity.subdomain_slug and identity.subdomain_locked_at),
+                "defaults_version_applied": state.get("defaults_version_applied"),
+                "updated_at": state.get("updated_at"),
+                "parameters_json": after_json,
                 "changed_paths_count": len(changed_paths),
                 "changed_paths_preview": changed_paths[:20],
             },

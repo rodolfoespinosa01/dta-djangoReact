@@ -8,8 +8,11 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from users.admin_area.configs.admin_parameter_defaults import get_admin_parameter_defaults_v1
-from users.admin_area.models import AdminIdentity, AdminParameterSettings, Plan
+from users.admin_area.models import AdminIdentity, Plan
+from users.admin_area.services.admin_parameter_tables import (
+    admin_parameter_state,
+    reset_admin_parameter_payload_to_defaults,
+)
 from users.admin_area.utils.log_Profile import log_Profile
 from users.admin_area.views.api_contract import error, ok
 
@@ -83,7 +86,7 @@ def create_test_admin(request):
     user.subscription_status = subscription_status
     user.save()
 
-    AdminIdentity.objects.get_or_create(admin_email=email)
+    identity, _ = AdminIdentity.objects.get_or_create(admin_email=email)
 
     now = timezone.now()
     trial_start = now if make_trial else None
@@ -103,20 +106,10 @@ def create_test_admin(request):
         is_active=True,
     )
 
-    parameter_state = {"exists": False, "initialized": False}
-    if initialize_parameters:
-        identity = AdminIdentity.objects.get(admin_email=email)
-        settings_obj, _ = AdminParameterSettings.objects.get_or_create(admin=identity)
-        parameter_state["exists"] = True
-        if use_default_parameters:
-            defaults = get_admin_parameter_defaults_v1()
-            settings_obj.parameters_json = defaults
-            settings_obj.defaults_version_applied = defaults.get("version", "v1")
-            settings_obj.initialized = True
-            settings_obj.save(update_fields=["parameters_json", "defaults_version_applied", "initialized", "updated_at"])
-            parameter_state["initialized"] = True
-        else:
-            parameter_state["initialized"] = bool(settings_obj.initialized)
+    parameter_state = admin_parameter_state(identity)
+    if initialize_parameters and use_default_parameters:
+        reset_admin_parameter_payload_to_defaults(identity, version=parameter_state.get("defaults_version_applied") or "v1")
+        parameter_state = admin_parameter_state(identity)
 
     refresh = RefreshToken.for_user(user)
     refresh["email"] = user.email
