@@ -14,6 +14,9 @@ pip install -r requirements.txt
 echo "🗄 Applying database migrations..."
 python manage.py migrate
 
+echo "🥗 Seeding food library defaults from table_defaults..."
+python manage.py refresh_food_library_from_root
+
 # Frontend dependencies
 cd ../frontend
 

@@ -43,6 +43,9 @@ def food_library_browser(request):
 
     if mode == "foods":
         qs = FoodLibraryItem.objects.all().order_by("source_food_id")
+        macro = (request.query_params.get("macro") or "").strip()
+        if macro:
+            qs = qs.filter(macro=macro)
         category = (request.query_params.get("category") or "").strip()
         if category:
             qs = qs.filter(category=category)
@@ -53,6 +56,7 @@ def food_library_browser(request):
         items = [
             {
                 "id": row.source_food_id,
+                "macro": row.macro,
                 "category": row.category,
                 "name": row.name,
                 "measurement_unit": row.measurement_unit,

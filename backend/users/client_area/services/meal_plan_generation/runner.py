@@ -21,6 +21,7 @@ from .pipeline import run_steps_2_to_10_for_day
 
 
 WEEK_DAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
+MEAL_SLOT_KEYS = ("protein_1", "protein_2", "carbs_1", "carbs_2", "fats_1", "fats_2")
 
 
 @dataclass
@@ -95,12 +96,34 @@ def _find_day_payload(results: dict[str, Any], day: str):
     return None
 
 
-def _seed_job_input_snapshot(*, day_payload, results, progress, note: str):
+def _extract_day_selected_slot_foods_from_answers(answers: dict[str, Any], day: str) -> dict[str, dict[str, str]]:
+    food_preferences = ((answers or {}).get("food_preferences") or {}) if isinstance(answers, dict) else {}
+    weekly_days = food_preferences.get("weekly_days") if isinstance(food_preferences, dict) else {}
+    day_rows = weekly_days.get(day) if isinstance(weekly_days, dict) else None
+    if not isinstance(day_rows, list):
+        return {}
+
+    output: dict[str, dict[str, str]] = {}
+    for index, meal in enumerate(day_rows, start=1):
+        if not isinstance(meal, dict):
+            continue
+        slot_values = {}
+        for slot_key in MEAL_SLOT_KEYS:
+            value = str(meal.get(slot_key) or "").strip()
+            if value:
+                slot_values[slot_key] = value
+        if slot_values:
+            output[str(index)] = slot_values
+    return output
+
+
+def _seed_job_input_snapshot(*, day_payload, results, progress, answers, day: str, note: str):
     return {
         "day_payload": day_payload,
         "profile": results.get("profile") or {},
         "core_calculations": results.get("core_calculations") or {},
         "parameter_settings": results.get("parameter_settings") or {},
+        "day_selected_slot_foods": _extract_day_selected_slot_foods_from_answers(answers or {}, day),
         "generated_at": results.get("generated_at"),
         "questionnaire_completed_at": progress.completed_at.isoformat() if progress.completed_at else None,
         "implementation_note": note,
@@ -135,6 +158,8 @@ def run_step1_for_day(user, day_of_week: str | None = None) -> Step1RunResult:
             day_payload=day_payload,
             results=results,
             progress=progress,
+            answers=progress.answers_json or {},
+            day=day,
             note="Only Step1 is currently ported from the WordPress meal generation pipeline.",
         ),
     )
@@ -192,6 +217,8 @@ def run_full_generation_for_day(
                 day_payload=day_payload,
                 results=results,
                 progress=progress,
+                answers=progress.answers_json or {},
+                day=day,
                 note="Running full WP-style meal generation port (Steps 1-10).",
             ),
             batch_id=batch_id,
@@ -459,6 +486,14 @@ def get_generated_meal_day_detail(user, day_of_week: str | None = None, job_id: 
 
     day_payload = ((job.input_snapshot_json or {}).get("day_payload") or {})
     training_time = day_payload.get("training_before_meal") or "none"
+    day_selected_slot_foods = ((job.input_snapshot_json or {}).get("day_selected_slot_foods") or {})
+
+    def selected_name_for_slot(meal_number: int, slot_key: str, fallback_name: str) -> str:
+        row = day_selected_slot_foods.get(str(meal_number)) or day_selected_slot_foods.get(meal_number) or {}
+        if not isinstance(row, dict):
+            row = {}
+        selected = str(row.get(slot_key) or "").strip()
+        return selected or (fallback_name or "-")
 
     def _slot_payload(name: str, amount):
         amount_oz = float(amount or 0)
@@ -477,12 +512,12 @@ def get_generated_meal_day_detail(user, day_of_week: str | None = None, job_id: 
                 "combo_id": row.combo_template_id,
                 "error_code": row.error_code,
                 "slots": {
-                    "protein_1": _slot_payload(combo.protein_slot_1, row.protein1_total),
-                    "protein_2": _slot_payload(combo.protein_slot_2, row.protein2_total),
-                    "carbs_1": _slot_payload(combo.carb_slot_1, row.carbs1_total),
-                    "carbs_2": _slot_payload(combo.carb_slot_2, row.carbs2_total),
-                    "fats_1": _slot_payload(combo.fat_slot_1, row.fats1_total),
-                    "fats_2": _slot_payload(combo.fat_slot_2, row.fats2_total),
+                    "protein_1": _slot_payload(selected_name_for_slot(row.meal_number, "protein_1", combo.protein_slot_1), row.protein1_total),
+                    "protein_2": _slot_payload(selected_name_for_slot(row.meal_number, "protein_2", combo.protein_slot_2), row.protein2_total),
+                    "carbs_1": _slot_payload(selected_name_for_slot(row.meal_number, "carbs_1", combo.carb_slot_1), row.carbs1_total),
+                    "carbs_2": _slot_payload(selected_name_for_slot(row.meal_number, "carbs_2", combo.carb_slot_2), row.carbs2_total),
+                    "fats_1": _slot_payload(selected_name_for_slot(row.meal_number, "fats_1", combo.fat_slot_1), row.fats1_total),
+                    "fats_2": _slot_payload(selected_name_for_slot(row.meal_number, "fats_2", combo.fat_slot_2), row.fats2_total),
                 },
             }
         )

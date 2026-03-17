@@ -32,6 +32,7 @@ class FoodLibraryItemAdmin(admin.ModelAdmin):
     list_display = (
         'source_food_id',
         'name',
+        'macro',
         'category',
         'measurement_unit',
         'protein',
@@ -39,8 +40,8 @@ class FoodLibraryItemAdmin(admin.ModelAdmin):
         'fats',
         'is_placeholder',
     )
-    list_filter = ('category', 'measurement_unit', 'is_placeholder')
-    search_fields = ('name', 'source_food_id')
+    list_filter = ('macro', 'category', 'measurement_unit', 'is_placeholder')
+    search_fields = ('name', 'category', 'source_food_id')
     ordering = ('source_food_id',)
 
 
