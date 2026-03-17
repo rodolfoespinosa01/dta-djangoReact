@@ -30,6 +30,7 @@ RESERVED_SUBDOMAIN_SLUGS = {
     "mail",
     "static",
 }
+DTA_HOUSE_ADMIN_EMAIL = "admin@dta.com"
 
 
 def _identity_for_request_user(user):
@@ -41,10 +42,27 @@ def _settings_for_request_user(user):
     return ensure_admin_parameter_tables(identity)
 
 
+def _is_dta_house_admin_email(value):
+    return (value or "").strip().lower() == DTA_HOUSE_ADMIN_EMAIL
+
+
+def _is_subdomain_required(identity):
+    return not _is_dta_house_admin_email(getattr(identity, "admin_email", ""))
+
+
+def _is_setup_completed(identity, initialized):
+    if not initialized:
+        return False
+    if not _is_subdomain_required(identity):
+        return True
+    return bool(identity.subdomain_slug and identity.subdomain_locked_at)
+
+
 def _subdomain_status(identity):
     slug = (identity.subdomain_slug or "").strip() or None
     return {
         "slug": slug,
+        "required": _is_subdomain_required(identity),
         "locked": bool(slug and identity.subdomain_locked_at),
         "locked_at": identity.subdomain_locked_at,
         "preview_url": f"{slug}.lvh.me:3000" if slug else None,
@@ -70,16 +88,25 @@ def _validate_subdomain_slug(raw_slug):
 
 
 def _set_subdomain_once(identity, raw_slug):
+    normalized_raw = None if raw_slug is None else str(raw_slug).strip()
+
     if identity.subdomain_slug:
+        if not normalized_raw:
+            return identity.subdomain_slug, None
         existing = (identity.subdomain_slug or "").strip().lower()
-        incoming, err = _validate_subdomain_slug(raw_slug)
+        incoming, err = _validate_subdomain_slug(normalized_raw)
         if err:
             return None, err
         if incoming != existing:
             return None, "Subdomain is locked and can only be set once."
         return identity.subdomain_slug, None
 
-    slug, err = _validate_subdomain_slug(raw_slug)
+    if not normalized_raw:
+        if _is_subdomain_required(identity):
+            return None, "Subdomain is required."
+        return None, None
+
+    slug, err = _validate_subdomain_slug(normalized_raw)
     if err:
         return None, err
 
@@ -146,7 +173,7 @@ def parameter_settings_status(request):
     state = ensure_admin_parameter_tables(identity)
     initialized = bool(state.get("initialized"))
     subdomain = _subdomain_status(identity)
-    setup_completed = initialized and subdomain["locked"]
+    setup_completed = _is_setup_completed(identity, initialized)
 
     return ok(
         {
@@ -172,7 +199,7 @@ def parameter_settings_use_defaults(request):
 
     identity = _identity_for_request_user(request.user)
     state = ensure_admin_parameter_tables(identity)
-    subdomain_slug, subdomain_error = _set_subdomain_once(identity, (request.data or {}).get("subdomain_slug"))
+    _, subdomain_error = _set_subdomain_once(identity, (request.data or {}).get("subdomain_slug"))
     if subdomain_error:
         return error(
             code="INVALID_SUBDOMAIN_SLUG",
@@ -197,7 +224,7 @@ def parameter_settings_use_defaults(request):
             "message": "Default admin parameter settings applied.",
             "parameter_settings": {
                 "initialized": bool(state.get("initialized")),
-                "setup_completed": True,
+                "setup_completed": _is_setup_completed(identity, bool(state.get("initialized"))),
                 "defaults_version_applied": state.get("defaults_version_applied"),
                 "updated_at": state.get("updated_at"),
                 "changed_paths_count": len(changed_paths),
@@ -223,7 +250,7 @@ def parameter_settings_detail(request):
             {
                 "parameter_settings": {
                     "initialized": bool(state.get("initialized")),
-                    "setup_completed": bool(state.get("initialized") and identity.subdomain_slug and identity.subdomain_locked_at),
+                    "setup_completed": _is_setup_completed(identity, bool(state.get("initialized"))),
                     "defaults_version_applied": state.get("defaults_version_applied"),
                     "created_at": state.get("created_at"),
                     "updated_at": state.get("updated_at"),
@@ -267,7 +294,7 @@ def parameter_settings_detail(request):
             "message": "Admin parameter settings saved.",
             "parameter_settings": {
                 "initialized": bool(state.get("initialized")),
-                "setup_completed": bool(state.get("initialized") and identity.subdomain_slug and identity.subdomain_locked_at),
+                "setup_completed": _is_setup_completed(identity, bool(state.get("initialized"))),
                 "defaults_version_applied": state.get("defaults_version_applied"),
                 "updated_at": state.get("updated_at"),
                 "parameters_json": after_json,
