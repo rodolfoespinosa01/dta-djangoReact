@@ -9,8 +9,9 @@ function normalizeSubdomain(value) {
   return String(value || '').trim().toLowerCase().replace(/\s+/g, '');
 }
 
-function validateSubdomainSlug(value) {
+function validateSubdomainSlug(value, { required = true } = {}) {
   const slug = normalizeSubdomain(value);
+  if (!slug && !required) return '';
   if (!slug) return 'Subdomain is required.';
   if (slug.length < 3 || slug.length > 40) return 'Subdomain must be between 3 and 40 characters.';
   if (!SUBDOMAIN_RE.test(slug)) return 'Use only letters and hyphens (no spaces, numbers, or underscores).';
@@ -233,7 +234,21 @@ function AdminParameterSettingsPage() {
     return totals;
   }, [mealEditorCurrentScenario, mealEditorMealKeys]);
 
+  const normalizedSubdomain = normalizeSubdomain(subdomainInput);
+  const currentSubdomainLocked = Boolean(subdomainInfo?.locked);
+  const isSubdomainRequired = subdomainInfo?.required !== false;
+
   const handleUseDefaults = async () => {
+    const clientSubdomainError = currentSubdomainLocked
+      ? ''
+      : validateSubdomainSlug(subdomainInput, { required: isSubdomainRequired });
+    if (clientSubdomainError) {
+      setSaveStatus('error');
+      setSubdomainError(clientSubdomainError);
+      setMessage(clientSubdomainError);
+      return;
+    }
+
     try {
       setSaveStatus('saving');
       setMessage('');
@@ -241,7 +256,7 @@ function AdminParameterSettingsPage() {
         method: 'POST',
         auth: true,
         body: {
-          subdomain_slug: normalizeSubdomain(subdomainInput),
+          subdomain_slug: normalizedSubdomain || null,
         },
       });
       if (res.status === 401) {
@@ -271,6 +286,7 @@ function AdminParameterSettingsPage() {
         setSubdomainInfo(nextSubdomain);
         setSavedSubdomainSlug(nextSubdomain?.slug || '');
         setSubdomainInput(nextSubdomain?.slug || '');
+        setSubdomainError('');
         const loadedSettings = payload.parameters_json || {};
         setParsedSettings(loadedSettings);
         setSavedSettingsSnapshot(loadedSettings);
@@ -293,6 +309,16 @@ function AdminParameterSettingsPage() {
       return;
     }
 
+    const clientSubdomainError = currentSubdomainLocked
+      ? ''
+      : validateSubdomainSlug(subdomainInput, { required: isSubdomainRequired });
+    if (clientSubdomainError) {
+      setSaveStatus('error');
+      setSubdomainError(clientSubdomainError);
+      setMessage(clientSubdomainError);
+      return;
+    }
+
     try {
       setSaveStatus('saving');
       setMessage('');
@@ -302,7 +328,7 @@ function AdminParameterSettingsPage() {
         body: {
           parameters_json: parsed,
           initialized: true,
-          subdomain_slug: normalizeSubdomain(subdomainInput),
+          subdomain_slug: normalizedSubdomain || null,
         },
       });
       if (res.status === 401) {
@@ -331,8 +357,8 @@ function AdminParameterSettingsPage() {
       }));
       const returnedSubdomain = res.data?.subdomain || null;
       setSubdomainInfo(returnedSubdomain);
-      setSavedSubdomainSlug(returnedSubdomain?.slug || normalizeSubdomain(subdomainInput));
-      setSubdomainInput(returnedSubdomain?.slug || normalizeSubdomain(subdomainInput));
+      setSavedSubdomainSlug(returnedSubdomain?.slug || normalizedSubdomain);
+      setSubdomainInput(returnedSubdomain?.slug || normalizedSubdomain);
       setSubdomainError('');
       setSaveStatus('success');
       const changedCount = typeof payload.changed_paths_count === 'number' ? payload.changed_paths_count : null;
@@ -369,11 +395,12 @@ function AdminParameterSettingsPage() {
     }
   }, [parsedSettings, savedSettingsSnapshot, subdomainInput, savedSubdomainSlug, subdomainInfo]);
   const requiresInitialApproval = Boolean(metadata && !metadata.setupCompleted);
-  const showFloatingAction = requiresInitialApproval || hasUnsavedChanges;
-
-  const normalizedSubdomain = normalizeSubdomain(subdomainInput);
-  const currentSubdomainLocked = Boolean(subdomainInfo?.locked);
-  const effectiveSubdomainError = currentSubdomainLocked ? '' : (subdomainError || validateSubdomainSlug(subdomainInput));
+  const hasPendingAction = requiresInitialApproval || hasUnsavedChanges;
+  const clientSubdomainValidationError = currentSubdomainLocked
+    ? ''
+    : validateSubdomainSlug(subdomainInput, { required: isSubdomainRequired });
+  const effectiveSubdomainError = subdomainError || clientSubdomainValidationError;
+  const saveButtonDisabled = saveStatus === 'saving' || !hasPendingAction || Boolean(effectiveSubdomainError);
 
   const handleMealBreakdownCellChange = (mealKey, macroKey, rawValue) => {
     const parsed = Number(rawValue);
@@ -443,7 +470,7 @@ function AdminParameterSettingsPage() {
     return (
       <div className="admin-params-page">
         <p className="admin-params-error">{message || 'Unable to load admin parameter settings.'}</p>
-        <button className="admin-params-btn" onClick={() => navigate('/admin_dashboard')}>Back to Dashboard</button>
+        <button className="admin-params-btn" onClick={() => navigate('/admin_dashboard')} type="button">Back to Dashboard</button>
       </div>
     );
   }
@@ -471,11 +498,24 @@ function AdminParameterSettingsPage() {
             className="admin-params-btn"
             onClick={handleUseDefaults}
             disabled={saveStatus === 'saving'}
+            type="button"
           >
             Use DTA Defaults
           </button>
-          <button className="admin-params-btn" onClick={() => navigate('/admin_dashboard')}>
+          <button className="admin-params-btn" onClick={() => navigate('/admin_dashboard')} type="button">
             Back to Dashboard
+          </button>
+          <button
+            className="admin-params-btn admin-params-btn-primary"
+            onClick={handleSave}
+            disabled={saveButtonDisabled}
+            type="button"
+          >
+            {saveStatus === 'saving'
+              ? (requiresInitialApproval ? 'Approving…' : 'Updating…')
+              : (hasPendingAction
+                  ? (requiresInitialApproval ? 'Approve Parameters' : 'Update Parameters')
+                  : 'No Pending Changes')}
           </button>
         </div>
         {message && (
@@ -488,12 +528,37 @@ function AdminParameterSettingsPage() {
       <section className="admin-params-card">
         <h2 className="admin-params-section-title">Subdomain</h2>
         <p className="admin-params-muted">
-          Your branded subdomain is collected during signup and locked after registration.
+          {isSubdomainRequired
+            ? 'Your branded subdomain is required and locks after it is first saved.'
+            : 'Subdomain is optional for this admin account type.'}
         </p>
         <div className="admin-params-form-panel admin-params-form-panel-wide">
+          {!currentSubdomainLocked && (
+            <label>
+              Subdomain slug {isSubdomainRequired ? '(required)' : '(optional)'}
+              <div className="admin-params-subdomain-row">
+                <input
+                  type="text"
+                  value={subdomainInput}
+                  onChange={(e) => {
+                    setSubdomainInput(e.target.value);
+                    setSubdomainError('');
+                  }}
+                  placeholder={isSubdomainRequired ? 'your-brand' : 'optional'}
+                  autoComplete="off"
+                  spellCheck={false}
+                  maxLength={40}
+                />
+                <span className="admin-params-subdomain-suffix">.dtameals.com</span>
+              </div>
+            </label>
+          )}
           <p className="admin-params-muted">Subdomain slug: {normalizedSubdomain || '—'}</p>
           <p className="admin-params-muted">Dev preview: {normalizedSubdomain ? `${normalizedSubdomain}.lvh.me:3000` : '—'}</p>
           <p className="admin-params-muted">Production: {normalizedSubdomain ? `${normalizedSubdomain}.dtameals.com` : '—'}</p>
+          {!currentSubdomainLocked && effectiveSubdomainError && (
+            <p className="admin-params-error">{effectiveSubdomainError}</p>
+          )}
           {currentSubdomainLocked && (
             <p className="admin-params-success">
               Subdomain locked on {subdomainInfo?.locked_at ? new Date(subdomainInfo.locked_at).toLocaleString() : 'setup'}.
@@ -501,25 +566,6 @@ function AdminParameterSettingsPage() {
           )}
         </div>
       </section>
-
-      {showFloatingAction && (
-        <div className="admin-params-floating-update" role="region" aria-label="Unsaved parameter changes">
-          <div className="admin-params-floating-status">
-            <span className="admin-params-floating-dot" aria-hidden="true" />
-            {requiresInitialApproval ? 'Approval required' : 'Pending changes'}
-          </div>
-          <button
-            className="admin-params-btn admin-params-btn-primary admin-params-floating-btn"
-            onClick={handleSave}
-            disabled={saveStatus === 'saving'}
-            type="button"
-          >
-            {saveStatus === 'saving'
-              ? (requiresInitialApproval ? 'Approving…' : 'Updating…')
-              : (requiresInitialApproval ? 'Approve Parameters' : 'Update Parameters')}
-          </button>
-        </div>
-      )}
 
       <section className="admin-params-card">
         <h2 className="admin-params-section-title">Core Editable Parameters (v1)</h2>
