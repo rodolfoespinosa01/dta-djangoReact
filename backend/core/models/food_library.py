@@ -2,14 +2,16 @@ from django.db import models
 
 
 class FoodLibraryItem(models.Model):
-    class Category(models.TextChoices):
+    class Macro(models.TextChoices):
         PROTEIN = "Protein", "Protein"
         CARBS = "Carbs", "Carbs"
         FATS = "Fats", "Fats"
         NONE = "-", "-"
 
     source_food_id = models.IntegerField(unique=True, db_index=True)
-    category = models.CharField(max_length=20, choices=Category.choices)
+    macro = models.CharField(max_length=20, choices=Macro.choices, default=Macro.NONE, db_index=True)
+    # Canonical meal-combo category bridge (example: "Ground Beef STANDARD").
+    category = models.CharField(max_length=120, default="-", db_index=True)
     name = models.CharField(max_length=120, db_index=True)
     measurement_unit = models.CharField(max_length=16, blank=True, default="oz")
     protein = models.DecimalField(max_digits=12, decimal_places=5, default=0)

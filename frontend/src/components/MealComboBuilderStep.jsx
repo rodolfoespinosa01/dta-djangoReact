@@ -568,15 +568,25 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
         {SLOT_KEYS.map((slotKey) => (
           <label key={`${scopeLabel}-${mealIndex}-${slotKey}`}>
             {SLOT_LABELS[slotKey]}
-            <select
-              value={isSecondSlotDisabled(slotKey, scopeLabel, mealIndex) ? '-' : (meal[slotKey] || '-')}
-              onChange={(e) => onSlotChange(mealIndex, slotKey, e.target.value)}
-              disabled={isSecondSlotDisabled(slotKey, scopeLabel, mealIndex)}
-            >
-              {(slotOptions?.[slotKey] || ['-']).map((opt) => (
-                <option key={`${slotKey}-${opt}`} value={opt}>{opt}</option>
-              ))}
-            </select>
+            {(() => {
+              const disabled = isSecondSlotDisabled(slotKey, scopeLabel, mealIndex);
+              const currentValue = meal[slotKey] || '-';
+              const baseOptions = slotOptions?.[slotKey] || ['-'];
+              const mergedOptions = baseOptions.includes(currentValue)
+                ? baseOptions
+                : [currentValue, ...baseOptions];
+              return (
+                <select
+                  value={disabled ? '-' : currentValue}
+                  onChange={(e) => onSlotChange(mealIndex, slotKey, e.target.value)}
+                  disabled={disabled}
+                >
+                  {mergedOptions.map((opt) => (
+                    <option key={`${slotKey}-${opt}`} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              );
+            })()}
             {(() => {
               const mealSplit = getReferenceMealSplit(scopeLabel, mealIndex);
               const gramsKey = slotKey.startsWith('protein') ? 'protein_g' : slotKey.startsWith('carbs') ? 'carbs_g' : 'fats_g';

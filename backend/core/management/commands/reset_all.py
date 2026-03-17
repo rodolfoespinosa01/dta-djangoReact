@@ -279,6 +279,10 @@ class Command(BaseCommand):
                             ]
                         )
 
+            # Rebuild core food/combo/error tables from CSV defaults so local
+            # resets always restore the latest seeded food/category mapping.
+            call_command("refresh_food_library_from_root")
+
             # Seed the master core defaults before the DTA admin identity is
             # created below. The AdminIdentity post_save signal copies those
             # rows into the business-to-consumer admin_area tables.

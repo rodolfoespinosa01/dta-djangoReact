@@ -1,5 +1,6 @@
 import csv
 from decimal import Decimal
+import re
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
@@ -9,6 +10,22 @@ from core.models import ComboMacroErrorLookup, FoodLibraryItem, MealComboTemplat
 
 def _str_or_default(value, default=""):
     return (value or "").strip() if value is not None else default
+
+
+def _clean_header(value):
+    text = (value or "").strip().lower()
+    # Some spreadsheet exports include embedded newlines/spaces in header names.
+    return re.sub(r"\s+", "", text)
+
+
+def _normalize_row_keys(row):
+    normalized = {}
+    for key, value in (row or {}).items():
+        clean_key = _clean_header(key)
+        if not clean_key:
+            continue
+        normalized[clean_key] = value
+    return normalized
 
 
 def _decimal_or_none(value):
@@ -25,9 +42,42 @@ def _decimal_or_zero(value):
 def _read_csv_rows(path):
     try:
         with open(path, "r", encoding="utf-8-sig", newline="") as fh:
-            reader = csv.DictReader(fh)
-            rows = list(reader)
-            return reader.fieldnames or [], rows
+            reader = csv.reader(fh)
+            raw_rows = list(reader)
+            if not raw_rows:
+                return set(), []
+
+            header = [_clean_header(col) for col in (raw_rows[0] or [])]
+            data_start_index = 1
+
+            # Some exported combo CSVs split the header across two physical lines
+            # (for example: ...,p2, then next line starts with c1,c2,f1,f2).
+            if len(raw_rows) > 1:
+                second_row = [_clean_header(col) for col in (raw_rows[1] or [])]
+                if second_row:
+                    looks_like_header_tail = all(
+                        value and not any(ch.isdigit() for ch in value)
+                        for value in second_row
+                    )
+                    if looks_like_header_tail and any(value not in header for value in second_row):
+                        header = [value for value in header if value] + [value for value in second_row if value]
+                        data_start_index = 2
+
+            cleaned_header = [value for value in header if value]
+            rows = []
+            for raw_row in raw_rows[data_start_index:]:
+                if not any(str(cell or "").strip() for cell in raw_row):
+                    continue
+                values = list(raw_row or [])
+                if len(values) < len(cleaned_header):
+                    values.extend([""] * (len(cleaned_header) - len(values)))
+                row = {
+                    cleaned_header[idx]: values[idx] if idx < len(values) else ""
+                    for idx in range(len(cleaned_header))
+                }
+                rows.append(_normalize_row_keys(row))
+
+            return set(cleaned_header), rows
     except OSError as exc:
         raise CommandError(f"Unable to read CSV file {path}: {exc}") from exc
 
@@ -68,7 +118,7 @@ class Command(BaseCommand):
         if combo_errors_csv:
             error_headers, error_rows = _read_csv_rows(combo_errors_csv)
 
-        required_food = {"food_id", "macro", "name", "measurement", "protein", "carbs", "fats"}
+        required_food = {"food_id", "name", "measurement", "protein", "carbs", "fats"}
         required_combos = {
             "c1_id",
             "c1_protein_1",
@@ -102,18 +152,24 @@ class Command(BaseCommand):
 
         food_objects = []
         for row in food_rows:
-            category = _str_or_default(row.get("macro"), "-")
+            macro = _str_or_default(row.get("macro"), "-")
             name = _str_or_default(row.get("name"), "-")
+            raw_category = _str_or_default(row.get("category"), "")
+            category = raw_category
+            if not raw_category:
+                category = name or "-"
+            is_category_reference_row = bool(raw_category) and name.lower() == category.lower()
             food_objects.append(
                 FoodLibraryItem(
                     source_food_id=int(_str_or_default(row.get("food_id"), "0")),
+                    macro=macro,
                     category=category,
                     name=name,
                     measurement_unit=_str_or_default(row.get("measurement"), "oz"),
                     protein=_decimal_or_zero(row.get("protein")),
                     carbs=_decimal_or_zero(row.get("carbs")),
                     fats=_decimal_or_zero(row.get("fats")),
-                    is_placeholder=(category == "-" or name == "-"),
+                    is_placeholder=(name == "-" or category == "-" or is_category_reference_row),
                 )
             )
 
@@ -123,6 +179,7 @@ class Command(BaseCommand):
             update_conflicts=True,
             unique_fields=["source_food_id"],
             update_fields=[
+                "macro",
                 "category",
                 "name",
                 "measurement_unit",
