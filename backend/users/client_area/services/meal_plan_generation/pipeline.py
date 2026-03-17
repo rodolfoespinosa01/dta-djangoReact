@@ -59,14 +59,70 @@ class FullPipelineRunResult:
     note: str
 
 
+def _selected_foods_by_meal_from_snapshot(job) -> dict[int, dict[str, str]]:
+    snapshot = job.input_snapshot_json or {}
+    raw = snapshot.get("day_selected_slot_foods")
+    if not isinstance(raw, dict):
+        return {}
+
+    output: dict[int, dict[str, str]] = {}
+    for meal_key, slot_map in raw.items():
+        try:
+            meal_number = int(meal_key)
+        except (TypeError, ValueError):
+            continue
+        if meal_number < 1 or not isinstance(slot_map, dict):
+            continue
+
+        normalized = {}
+        for slot_key in ("protein_1", "protein_2", "carbs_1", "carbs_2", "fats_1", "fats_2"):
+            value = _norm_food_name(slot_map.get(slot_key))
+            if value:
+                normalized[slot_key] = value
+        if normalized:
+            output[meal_number] = normalized
+
+    return output
+
+
 def _slot_definitions(combo: MealComboTemplate) -> dict[str, dict[str, Any]]:
     return {
-        "protein1": {"name": combo.protein_slot_1, "split": _d(combo.protein_split_1), "driver_macro": "protein"},
-        "protein2": {"name": combo.protein_slot_2, "split": _d(combo.protein_split_2), "driver_macro": "protein"},
-        "carbs1": {"name": combo.carb_slot_1, "split": _d(combo.carb_split_1), "driver_macro": "carbs"},
-        "carbs2": {"name": combo.carb_slot_2, "split": _d(combo.carb_split_2), "driver_macro": "carbs"},
-        "fats1": {"name": combo.fat_slot_1, "split": _d(combo.fat_split_1), "driver_macro": "fats"},
-        "fats2": {"name": combo.fat_slot_2, "split": _d(combo.fat_split_2), "driver_macro": "fats"},
+        "protein1": {
+            "category_name": combo.protein_slot_1,
+            "selected_key": "protein_1",
+            "split": _d(combo.protein_split_1),
+            "driver_macro": "protein",
+        },
+        "protein2": {
+            "category_name": combo.protein_slot_2,
+            "selected_key": "protein_2",
+            "split": _d(combo.protein_split_2),
+            "driver_macro": "protein",
+        },
+        "carbs1": {
+            "category_name": combo.carb_slot_1,
+            "selected_key": "carbs_1",
+            "split": _d(combo.carb_split_1),
+            "driver_macro": "carbs",
+        },
+        "carbs2": {
+            "category_name": combo.carb_slot_2,
+            "selected_key": "carbs_2",
+            "split": _d(combo.carb_split_2),
+            "driver_macro": "carbs",
+        },
+        "fats1": {
+            "category_name": combo.fat_slot_1,
+            "selected_key": "fats_1",
+            "split": _d(combo.fat_split_1),
+            "driver_macro": "fats",
+        },
+        "fats2": {
+            "category_name": combo.fat_slot_2,
+            "selected_key": "fats_2",
+            "split": _d(combo.fat_split_2),
+            "driver_macro": "fats",
+        },
     }
 
 
@@ -74,12 +130,28 @@ def _food_macros_by_name(names: list[str]) -> dict[str, FoodLibraryItem]:
     normalized = sorted({_food_key(name) for name in names if _norm_food_name(name) and _norm_food_name(name) != "-"})
     if not normalized:
         return {}
-    rows = FoodLibraryItem.objects.all().order_by("source_food_id")
+    rows = list(FoodLibraryItem.objects.all().order_by("is_placeholder", "source_food_id"))
     by_name: dict[str, FoodLibraryItem] = {}
+
+    # 1) Direct food-name matches take priority.
     for row in rows:
+        if row.is_placeholder:
+            continue
         key = _food_key(row.name)
         if key in normalized and key not in by_name:
             by_name[key] = row
+
+    # 2) Backward compatibility: category tokens (combo slot values) map to
+    # the first real food found for that category.
+    unresolved = {key for key in normalized if key not in by_name}
+    if unresolved:
+        for row in rows:
+            if row.is_placeholder:
+                continue
+            category_key = _food_key(row.category)
+            if category_key in unresolved and category_key not in by_name:
+                by_name[category_key] = row
+
     return by_name
 
 
@@ -113,7 +185,13 @@ def _meal_targets_from_day_payload(day_payload: dict[str, Any]) -> dict[int, dic
     return targets
 
 
-def _evaluate_candidate(step1_row, combo: MealComboTemplate, foods_by_name: dict[str, FoodLibraryItem], targets: dict[str, Decimal]):
+def _evaluate_candidate(
+    step1_row,
+    combo: MealComboTemplate,
+    foods_by_name: dict[str, FoodLibraryItem],
+    targets: dict[str, Decimal],
+    selected_foods_for_meal: dict[str, str] | None = None,
+):
     # Step2
     slot_defs = _slot_definitions(combo)
     slot_negatives = {
@@ -128,13 +206,17 @@ def _evaluate_candidate(step1_row, combo: MealComboTemplate, foods_by_name: dict
     # Step3 (food amounts, same shape as final Step10 payload)
     amounts = {}
     for slot_key, slot_cfg in slot_defs.items():
-        food = foods_by_name.get(_food_key(slot_cfg["name"]))
+        selected_name = _norm_food_name((selected_foods_for_meal or {}).get(slot_cfg["selected_key"]))
+        effective_name = selected_name or _norm_food_name(slot_cfg["category_name"])
+        food = foods_by_name.get(_food_key(effective_name))
         amounts[slot_key] = _step3_amount(slot_negatives[slot_key], food, slot_cfg["driver_macro"])
 
     # Step4 + Step5 (macro recomposition and aggregation)
     complete = {"protein": ZERO, "carbs": ZERO, "fats": ZERO}
     for slot_key, slot_cfg in slot_defs.items():
-        food = foods_by_name.get(_food_key(slot_cfg["name"]))
+        selected_name = _norm_food_name((selected_foods_for_meal or {}).get(slot_cfg["selected_key"]))
+        effective_name = selected_name or _norm_food_name(slot_cfg["category_name"])
+        food = foods_by_name.get(_food_key(effective_name))
         amt = amounts[slot_key]
         complete["protein"] += _slot_macro_contrib(amt, food, "protein")
         complete["carbs"] += _slot_macro_contrib(amt, food, "carbs")
@@ -181,12 +263,16 @@ def run_steps_2_to_10_for_day(*, job, day_payload: dict[str, Any]) -> FullPipeli
     if not targets_by_meal:
         raise ValueError(f"No meal macro targets found for {day}.")
 
+    selected_foods_by_meal = _selected_foods_by_meal_from_snapshot(job)
+
     missing_combo_meals = sorted(set(targets_by_meal.keys()) - set(combo_by_meal.keys()))
     if missing_combo_meals:
         raise ValueError(f"Missing combo selections for meals: {missing_combo_meals}.")
 
     referenced_food_names: list[str] = []
-    for combo in combo_by_meal.values():
+    for meal_number, combo in combo_by_meal.items():
+        selected_slot_foods = selected_foods_by_meal.get(meal_number) or {}
+        referenced_food_names.extend(list(selected_slot_foods.values()))
         referenced_food_names.extend(
             [
                 combo.protein_slot_1,
@@ -206,7 +292,13 @@ def run_steps_2_to_10_for_day(*, job, day_payload: dict[str, Any]) -> FullPipeli
         target = targets_by_meal.get(meal_number)
         if not combo or not target:
             continue
-        candidate = _evaluate_candidate(row, combo, foods_by_name, target)
+        candidate = _evaluate_candidate(
+            row,
+            combo,
+            foods_by_name,
+            target,
+            selected_foods_for_meal=selected_foods_by_meal.get(meal_number),
+        )
         current = winners_by_meal.get(meal_number)
         if not current:
             winners_by_meal[meal_number] = candidate

@@ -1,0 +1,87 @@
+food_id,macro,name,Category,measurement,protein,carbs,fats
+1,Protein,Ground Beef 95/5,Ground Beef STANDARD,oz,6,0,1.683
+2,Protein,Ground Beef 93/7,Ground Beef STANDARD,oz,5.9,0,2
+3,Protein,Ground Beef 90/10,Ground Beef STANDARD,oz,5.8,0,2.8
+4,Protein,Ground Beef 85/15,Ground Beef STANDARD,oz,5.3,0,4.3
+5,Protein,Ground Beef 80/20,Ground Beef STANDARD,oz,7.7,0,4.9
+6,Protein,Bison,Bison,oz,6.6,0,0.7
+7,Protein,Black Beans,Beans STANDARD,oz,6.48,17.82,0
+8,Protein,Kidney Beans,Beans STANDARD,oz,6.7,17,0.2
+9,Protein,Catfish,,oz,4.6,0,0.8
+10,Protein,Chicken Breast,Chicken Breast,oz,6.55,0,1
+11,Protein,Chickpeas,Beans STANDARD,oz,5,17,1
+12,Protein,Cod,,oz,5,0,0.2
+13,Protein,Cottage Cheese (Low-Fat 1% Milkfat),,oz,3.5,0.76,0.28
+14,Protein,Egg Whites,Egg Whites,oz,3.09,0,0
+15,Protein,High Protein Greek Yogurt,,oz,2.75,1.35,0
+16,Protein,Lamb,Lamb,oz,4.8,0,6.1
+17,Protein,Ground Turkey 93/7,Ground Turkey STANDARD,oz,5.3,0,2.4
+18,Protein,Ground Turkey 85/15,Ground Turkey STANDARD,oz,4.8,0,3.6
+19,Protein,Lentils,Lentils,oz,7.3,17,0.3
+20,Protein,Mahi Mahi Dolphin Fish,,oz,5.24,0,0.2
+21,Protein,Merluza Hake (flesh only),,oz,5.1,0,0.6
+22,Protein,Salmon,Salmon,oz,5.6,0,3.1
+23,Protein,Seitan,,oz,7,1.5,0.16
+24,Protein,Shrimp,,oz,5.8,0.3,0.5
+25,Protein,Tempeh,,oz,5.3,2.7,3.1
+26,Protein,Tilapia,Tilapia,oz,5.69,0,0.5
+27,Protein,Tofu,,oz,2.83,0.342,1.49
+28,Protein,Sirloin Steak (lean),Steak STANDARD,oz,6.8,0,0.9
+29,Protein,Tuna Yellowfin,Tuna STANDARD,oz,6.6,0,0.3
+30,Protein,Tuna Bluefin,Tuna STANDARD,oz,6.6,0,1.4
+31,Protein,Eggs,Eggs,oz,6.3,0.6,5.3
+32,Protein,Beef Filet - Ribeye - Roast (lean),Steak STANDARD,oz,6.4,0,1.3
+33,Protein,Pork Tenderloin,Pork Tenderloin,oz,6,0,1
+34,Protein,Edamame (Green Soybeans),Beans STANDARD,oz,3.7,3.1,1.9
+35,Protein,Ham (11% fat),,oz,4.7,1.1,2.4
+36,Protein,Turkey Slices,,oz,4.6,0.7,0.7
+37,Carbs,Banana,Banana,oz,0.312325,6.48675,0.0961
+38,Carbs,Blueberries,,oz,0.211538,4.115368,0.096153
+39,Carbs,Brown Rice,Brown Rice,oz,2.43,21.64,0.85
+40,Carbs,Ezekiel Bread,,oz,3.333333,11.666667,0.416667
+41,Carbs,Green Apple,,oz,0.077883,3.894162,0.04673
+42,Carbs,White Rice,White Rice,oz,2,22.7,0.2
+43,Carbs,Oats,,oz,4.79,18.79,1.96
+44,Carbs,Quinoa,Quinoa,oz,3.71,19.53,1.64
+45,Carbs,Strawberries,,oz,0.19,2.18,0.09
+46,Carbs,Sweet Potatoe,Sweet Potatoe,oz,0.45,5.7,0.01
+47,Carbs,Whole Wheat Bread,,oz,3.685435,11.623295,0.963883
+48,Carbs,Whole Wheat Pasta,Whole Wheat Pasta,oz,3.5,20.5,0.5
+49,Carbs,Yam,,oz,0.43,7.9,0.05
+50,Carbs,Grape Fruit (pink and Red),,oz,0.22,3.02,0.04
+51,Carbs,Rice Cake,,un,1,7,0
+52,Carbs,Kiwi,,oz,0.32,4.16,0.15
+53,Carbs,White Potatoe,White Potatoe,oz,0.48,4.45,0.03
+54,Carbs,Apple,,oz,0.1,3.9,0.1
+55,Carbs,Pineapple,,oz,0.2,3.7,0.05
+56,Carbs,White Bread,,oz,2.551455,13.891255,0.907184
+57,Carbs,Grapes,,oz,0.170097,4.819415,1.13398
+58,Carbs,Oranges,,oz,0.20106,3.277283,0.060318
+59,Carbs,Watermelon,,oz,0.165679,2.135417,0.036818
+60,Carbs,Peaches,,oz,0.25,2.703125,0.0625
+61,Carbs,Cantaloupe,,oz,0.226796,2.26796,0.056699
+62,Carbs,Pears,,oz,0.11493,4.38651,0.03831
+63,Carbs,Mangoes,,oz,0.226796,4.252425,0.113398
+64,Carbs,Rasberries,,oz,0.340194,3.40194,0.198447
+65,Carbs,Blackberries,,oz,0.396893,2.83495,0.141748
+66,Carbs,Plums,,oz,0.206178,3.230125,0.085908
+67,Carbs,Tangerine,,oz,0.2,3.8,0.1
+68,Carbs,Plain Pasta,Plain Pasta,oz,3.7,21.2,0.4
+69,Fats,Almond Butter,Nuts STANDARD,oz,4.28,6.02,16.75
+70,Fats,Almonds,Nuts STANDARD,oz,6.03,5.6,14.36
+71,Fats,Avocado,Avocado,oz,0.6,2.42,4.16
+72,Fats,Cashews,Nuts STANDARD,oz,5.17,8.56,12.43
+73,Fats,Coconut Oil,Oil STANDARD,oz,0,0,28.35
+74,Fats,Oil STANDARD,Oil STANDARD,oz,0,0,28.35
+75,Fats,Peanut Butter,Nuts STANDARD,oz,7.11,5.55,14.29
+76,Fats,Pistachios,Nuts STANDARD,oz,5.84,7.9,12.6
+77,Fats,Walnuts,Nuts STANDARD,oz,4.32,3.89,18.49
+78,Fats,Chia Seed,Nuts STANDARD,oz,6.5,10.9,9.8
+79,Fats,Peanut Butter,Nuts STANDARD,oz,6.2,6.2,14.2
+80,Carbs,Beans STANDARD,Beans STANDARD,oz,6.48,17.82,0
+81,Protein,Ground Beef STANDARD,Ground Beef STANDARD,oz,6,0,1.683
+82,Protein,Ground Turkey STANDARD,Ground Turkey STANDARD,oz,5.3,0,2.4
+83,Protein,Steak STANDARD,Steak STANDARD,oz,6.8,0,0.9
+84,Fats,Nuts STANDARD,,oz,5.17,8.56,12.43
+85,Carbs,Fruit,,oz,0.312325,6.48675,0.0961
+86,-,-,,oz,0,0,0

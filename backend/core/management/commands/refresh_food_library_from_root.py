@@ -7,7 +7,8 @@ from django.core.management.base import BaseCommand, CommandError
 
 class Command(BaseCommand):
     help = (
-        "Refresh the global food library from CSV files in backend/algorithmtables. "
+        "Refresh the global food library from CSV files in table_defaults (preferred) "
+        "or backend/algorithmtables (legacy fallback). "
         "This deletes current food library/combo data and reloads from CSVs."
     )
 
@@ -16,7 +17,25 @@ class Command(BaseCommand):
             "--tables-dir",
             type=str,
             default=None,
-            help="Optional override for algorithm tables directory (defaults to backend/algorithmtables).",
+            help="Optional override for CSV directory (defaults to table_defaults, fallback backend/algorithmtables).",
+        )
+        parser.add_argument(
+            "--food-csv",
+            type=str,
+            default=None,
+            help="Optional specific food CSV filename/path.",
+        )
+        parser.add_argument(
+            "--combos-csv",
+            type=str,
+            default=None,
+            help="Optional specific combo CSV filename/path.",
+        )
+        parser.add_argument(
+            "--errors-csv",
+            type=str,
+            default=None,
+            help="Optional specific combo-error CSV filename/path.",
         )
         parser.add_argument(
             "--skip-error-table",
@@ -24,40 +43,75 @@ class Command(BaseCommand):
             help="Skip importing combo error lookup CSV if not needed.",
         )
 
+    def _first_existing(self, base_dir: Path, candidates: list[str]) -> Path | None:
+        for candidate in candidates:
+            if not candidate:
+                continue
+            path = Path(candidate)
+            if not path.is_absolute():
+                path = base_dir / candidate
+            if path.exists():
+                return path
+        return None
+
     def handle(self, *args, **options):
-        tables_dir = (
-            Path(options["tables_dir"]).resolve()
-            if options.get("tables_dir")
-            else Path(settings.BASE_DIR).resolve() / "algorithmtables"
+        if options.get("tables_dir"):
+            tables_dir = Path(options["tables_dir"]).resolve()
+        else:
+            backend_dir = Path(settings.BASE_DIR).resolve()
+            project_root = backend_dir.parent
+            preferred = project_root / "table_defaults"
+            legacy = backend_dir / "algorithmtables"
+            tables_dir = preferred if preferred.exists() else legacy
+
+        food_csv = self._first_existing(
+            tables_dir,
+            [
+                options.get("food_csv"),
+                "MYSQL_food_lib.csv",
+                "food_macros.csv",
+            ],
+        )
+        combos_csv = self._first_existing(
+            tables_dir,
+            [
+                options.get("combos_csv"),
+                "c_1_new.csv",
+                "meal_combo_templates.csv",
+            ],
+        )
+        errors_csv = self._first_existing(
+            tables_dir,
+            [
+                options.get("errors_csv"),
+                "errorid_453030.csv",
+                "combo_macro_error_lookup.csv",
+            ],
         )
 
-        food_csv = tables_dir / "food_macros.csv"
-        combos_csv = tables_dir / "meal_combo_templates.csv"
-        errors_csv = tables_dir / "combo_macro_error_lookup.csv"
-
         missing = []
-        if not food_csv.exists():
-            missing.append(str(food_csv))
-        if not combos_csv.exists():
-            missing.append(str(combos_csv))
-        if not options["skip_error_table"] and not errors_csv.exists():
-            missing.append(str(errors_csv))
+        if not food_csv:
+            missing.append("food CSV (tried: MYSQL_food_lib.csv, food_macros.csv)")
+        if not combos_csv:
+            missing.append("combo CSV (tried: c_1_new.csv, meal_combo_templates.csv)")
+        if not options["skip_error_table"] and not errors_csv:
+            missing.append("error CSV (tried: errorid_453030.csv, combo_macro_error_lookup.csv)")
 
         if missing:
             raise CommandError(
                 "Missing required CSV file(s) in project root:\n- "
                 + "\n- ".join(missing)
-                + "\n\nExpected files in backend/algorithmtables (or --tables-dir):\n"
-                + "- food_macros.csv\n"
-                + "- meal_combo_templates.csv\n"
-                + "- combo_macro_error_lookup.csv (optional with --skip-error-table)"
+                + "\n\nExpected files in table_defaults (or --tables-dir):\n"
+                + "- MYSQL_food_lib.csv (or food_macros.csv)\n"
+                + "- c_1_new.csv (or meal_combo_templates.csv)\n"
+                + "- errorid_453030.csv (or combo_macro_error_lookup.csv, optional with --skip-error-table)"
             )
 
         self.stdout.write(f"Refreshing global food library from: {tables_dir}")
         kwargs = {
             "truncate": True,
         }
-        if not options["skip_error_table"]:
+        if not options["skip_error_table"] and errors_csv:
             kwargs["combo_errors_csv"] = str(errors_csv)
 
         call_command("import_food_library_csv", str(food_csv), str(combos_csv), **kwargs)

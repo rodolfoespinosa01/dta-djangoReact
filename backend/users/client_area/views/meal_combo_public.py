@@ -2,7 +2,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from django.db.models import Q
 
-from core.models import MealComboTemplate
+from core.models import FoodLibraryItem, MealComboTemplate
 from core.services.meal_combo_lookup import find_meal_combo_id_by_slots
 from users.client_area.views.api_contract import error, ok
 
@@ -95,19 +95,66 @@ def _distinct_values(field_name):
     return values
 
 
+def _slot_food_options(field_name):
+    categories = _distinct_values(field_name)
+    non_placeholder_categories = [value for value in categories if value != "-"]
+
+    names = list(
+        FoodLibraryItem.objects.filter(category__in=non_placeholder_categories, is_placeholder=False)
+        .exclude(name="-")
+        .values_list("name", flat=True)
+        .distinct()
+        .order_by("name")
+    )
+
+    # Backward compatibility: if no category-linked foods exist yet, fall back
+    # to the original combo slot category values.
+    if not names:
+        names = non_placeholder_categories
+
+    if "-" in categories:
+        return ["-", *names]
+    return names
+
+
+def _preferred_food_name_by_category(categories):
+    if not categories:
+        return {}
+    rows = (
+        FoodLibraryItem.objects.filter(category__in=categories, is_placeholder=False)
+        .exclude(name="-")
+        .order_by("source_food_id")
+    )
+    by_category = {}
+    for row in rows:
+        if row.category not in by_category:
+            by_category[row.category] = row.name
+    return by_category
+
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def meal_combo_slot_options(request):
+    slot_categories = {
+        "protein_1": _distinct_values("protein_slot_1"),
+        "protein_2": _distinct_values("protein_slot_2"),
+        "carbs_1": _distinct_values("carb_slot_1"),
+        "carbs_2": _distinct_values("carb_slot_2"),
+        "fats_1": _distinct_values("fat_slot_1"),
+        "fats_2": _distinct_values("fat_slot_2"),
+    }
+
     return ok(
         {
             "slot_options": {
-                "protein_1": _distinct_values("protein_slot_1"),
-                "protein_2": _distinct_values("protein_slot_2"),
-                "carbs_1": _distinct_values("carb_slot_1"),
-                "carbs_2": _distinct_values("carb_slot_2"),
-                "fats_1": _distinct_values("fat_slot_1"),
-                "fats_2": _distinct_values("fat_slot_2"),
-            }
+                "protein_1": _slot_food_options("protein_slot_1"),
+                "protein_2": _slot_food_options("protein_slot_2"),
+                "carbs_1": _slot_food_options("carb_slot_1"),
+                "carbs_2": _slot_food_options("carb_slot_2"),
+                "fats_1": _slot_food_options("fat_slot_1"),
+                "fats_2": _slot_food_options("fat_slot_2"),
+            },
+            "slot_category_options": slot_categories,
         }
     )
 
@@ -135,14 +182,31 @@ def meal_combo_lookup(request):
 
 
 def _combo_to_payload(combo):
+    category_to_food = _preferred_food_name_by_category(
+        [
+            combo.protein_slot_1,
+            combo.protein_slot_2,
+            combo.carb_slot_1,
+            combo.carb_slot_2,
+            combo.fat_slot_1,
+            combo.fat_slot_2,
+        ]
+    )
+
+    def slot_value(raw):
+        raw_normalized = (raw or "-").strip() or "-"
+        if raw_normalized == "-":
+            return "-"
+        return category_to_food.get(raw_normalized, raw_normalized)
+
     return {
         "combo_id": combo.combo_id,
-        "protein_1": combo.protein_slot_1 or "-",
-        "protein_2": combo.protein_slot_2 or "-",
-        "carbs_1": combo.carb_slot_1 or "-",
-        "carbs_2": combo.carb_slot_2 or "-",
-        "fats_1": combo.fat_slot_1 or "-",
-        "fats_2": combo.fat_slot_2 or "-",
+        "protein_1": slot_value(combo.protein_slot_1),
+        "protein_2": slot_value(combo.protein_slot_2),
+        "carbs_1": slot_value(combo.carb_slot_1),
+        "carbs_2": slot_value(combo.carb_slot_2),
+        "fats_1": slot_value(combo.fat_slot_1),
+        "fats_2": slot_value(combo.fat_slot_2),
         "combo_match": "matched",
     }
 

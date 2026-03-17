@@ -32,7 +32,7 @@ from users.client_area.services.pricing import (
 from users.client_area.views.api_contract import error, ok, require_client
 from core.services.google_oauth import verify_google_id_token
 from core.services.meal_combo_lookup import find_meal_combo_id_by_slots
-from core.models import MealComboTemplate
+from core.models import FoodLibraryItem, MealComboTemplate
 from users.client_area.services.results_engine import BuildResultsContext, build_questionnaire_results
 from core.services.theme_preferences import normalize_theme
 
@@ -238,23 +238,62 @@ def _serialize_food_preference_builder(progress: ClientQuestionnaireProgress):
     return food_pref or {}
 
 
+def _preferred_food_name_by_category(categories):
+    non_placeholder = sorted({(value or "").strip() for value in categories if (value or "").strip() and (value or "").strip() != "-"})
+    if not non_placeholder:
+        return {}
+
+    rows = (
+        FoodLibraryItem.objects.filter(category__in=non_placeholder, is_placeholder=False)
+        .exclude(name="-")
+        .order_by("source_food_id")
+    )
+    by_category = {}
+    for row in rows:
+        if row.category not in by_category:
+            by_category[row.category] = row.name
+    return by_category
+
+
 def _serialize_saved_weekly_combo_rows(user):
     rows = (
         ClientMealComboSelection.objects.filter(user=user)
         .select_related("combo_template")
         .order_by("day_of_week", "meal_number")
     )
+
+    categories = []
+    for row in rows:
+        combo = row.combo_template
+        categories.extend(
+            [
+                combo.protein_slot_1,
+                combo.protein_slot_2,
+                combo.carb_slot_1,
+                combo.carb_slot_2,
+                combo.fat_slot_1,
+                combo.fat_slot_2,
+            ]
+        )
+    preferred_food_by_category = _preferred_food_name_by_category(categories)
+
+    def to_display_food(slot_category):
+        normalized = (slot_category or "-").strip() or "-"
+        if normalized == "-":
+            return "-"
+        return preferred_food_by_category.get(normalized, normalized)
+
     weekly = {day: [] for day in WEEK_DAYS}
     for row in rows:
         combo = row.combo_template
         weekly[row.day_of_week].append(
             {
-                "protein_1": combo.protein_slot_1,
-                "protein_2": combo.protein_slot_2,
-                "carbs_1": combo.carb_slot_1,
-                "carbs_2": combo.carb_slot_2,
-                "fats_1": combo.fat_slot_1,
-                "fats_2": combo.fat_slot_2,
+                "protein_1": to_display_food(combo.protein_slot_1),
+                "protein_2": to_display_food(combo.protein_slot_2),
+                "carbs_1": to_display_food(combo.carb_slot_1),
+                "carbs_2": to_display_food(combo.carb_slot_2),
+                "fats_1": to_display_food(combo.fat_slot_1),
+                "fats_2": to_display_food(combo.fat_slot_2),
                 "combo_id": combo.combo_id,
                 "combo_match": "matched",
             }
