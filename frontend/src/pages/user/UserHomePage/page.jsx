@@ -136,9 +136,6 @@ function UserHomePage() {
             <button type="button" className="user-home-button" onClick={() => navigate('/welcome')}>
               Back to Main Page
             </button>
-            <button type="button" className="user-home-button" onClick={() => navigate('/admin_homepage')}>
-              Admin Access
-            </button>
           </div>
         </div>
       </section>
