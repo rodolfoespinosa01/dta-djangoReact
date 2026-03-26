@@ -1,6 +1,6 @@
 from .plan import Plan
 from .AdminIdentity import AdminIdentity
-from .Profile import Profile
+from .profile import Profile
 from .PendingSignup import PendingSignup
 from .PasswordResetToken import PasswordResetToken
 from .PreCheckout import PreCheckout
