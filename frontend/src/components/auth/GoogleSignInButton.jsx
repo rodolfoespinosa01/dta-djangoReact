@@ -28,7 +28,13 @@ function loadGoogleScript() {
 
 function GoogleSignInButton({ onCredential, disabled = false, label = 'Continue with Google' }) {
   const btnRef = useRef(null);
+  const onCredentialRef = useRef(onCredential);
+  const initializedRef = useRef(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    onCredentialRef.current = onCredential;
+  }, [onCredential]);
 
   useEffect(() => {
     let mounted = true;
@@ -37,20 +43,23 @@ function GoogleSignInButton({ onCredential, disabled = false, label = 'Continue 
       try {
         await loadGoogleScript();
         if (!mounted || !window.google?.accounts?.id) return;
-        window.google.accounts.id.initialize({
-          client_id: GOOGLE_CLIENT_ID,
-          callback: (response) => {
-            if (!mounted) return;
-            if (!response?.credential) {
-              setError('Google sign-in did not return a credential.');
-              return;
-            }
-            setError('');
-            onCredential?.(response.credential);
-          },
-          auto_select: false,
-          cancel_on_tap_outside: true,
-        });
+        if (!initializedRef.current) {
+          window.google.accounts.id.initialize({
+            client_id: GOOGLE_CLIENT_ID,
+            callback: (response) => {
+              if (!mounted) return;
+              if (!response?.credential) {
+                setError('Google sign-in did not return a credential.');
+                return;
+              }
+              setError('');
+              onCredentialRef.current?.(response.credential);
+            },
+            auto_select: false,
+            cancel_on_tap_outside: true,
+          });
+          initializedRef.current = true;
+        }
         const buttonMount = btnRef.current;
         if (!buttonMount) return;
         buttonMount.innerHTML = '';
@@ -68,7 +77,7 @@ function GoogleSignInButton({ onCredential, disabled = false, label = 'Continue 
     };
     render();
     return () => { mounted = false; };
-  }, [onCredential]);
+  }, [disabled]);
 
   if (!GOOGLE_CLIENT_ID) {
     return null;

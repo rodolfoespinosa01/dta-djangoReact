@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import adultFemaleImage from '../../assets/questionnaire/3/adult-female.png';
 import adultMaleImage from '../../assets/questionnaire/3/adult-male.png';
 import teenFemaleImage from '../../assets/questionnaire/3/teen-female.png';
@@ -136,6 +136,13 @@ function DOBSelector({
   const [selectedYear, setSelectedYear] = useState(initial.year);
   const [selectedMonth, setSelectedMonth] = useState(initial.month);
   const [selectedDay, setSelectedDay] = useState(initial.day);
+  const onChangeRef = useRef(onChange);
+  const onMetaChangeRef = useRef(onMetaChange);
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+    onMetaChangeRef.current = onMetaChange;
+  }, [onChange, onMetaChange]);
 
   useEffect(() => {
     const parsedValue = parseDOBValue(value);
@@ -191,9 +198,9 @@ function DOBSelector({
   useEffect(() => {
     const normalized = sanitizeYearMonthDay(selectedYear, selectedMonth, selectedDay);
     const iso = toISODate(normalized.year, normalized.month, normalized.day);
-    if (onChange) onChange(iso);
-    if (onMetaChange) onMetaChange({ age, stage: getAgeStage(age) });
-  }, [selectedYear, selectedMonth, selectedDay, onChange, onMetaChange, age]);
+    if (iso !== value && onChangeRef.current) onChangeRef.current(iso);
+    if (onMetaChangeRef.current) onMetaChangeRef.current({ age, stage: getAgeStage(age) });
+  }, [selectedYear, selectedMonth, selectedDay, age, value]);
 
   const selectYear = (year) => {
     const normalized = sanitizeYearMonthDay(year, selectedMonth, selectedDay);
