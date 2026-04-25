@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { apiRequest } from '../../../api/client';
 import { useAuth } from '../../../context/AuthContext';
 import { openPrintPdfWindow, renderPrintTable, escapeHtml } from '../../../utils/printPdf';
-import MessagingPortal from '../../../components/MessagingPortal';
 import BodyVisualizationSelector, { normalizeHeightCmValue } from '../../../components/questionnaire/BodyVisualizationSelector';
 import WeightSelector, { lbsToKg, normalizeWeightLbsValue } from '../../../components/questionnaire/WeightSelector';
 import DOBSelector from '../../../components/questionnaire/DOBSelector';
@@ -68,6 +67,23 @@ function prettyDay(day) {
 function formatTrainingLabel(value) {
   if (!value) return 'No training';
   return value.replace('before_meal_', 'Before Meal ');
+}
+
+function hasCompletedFoodPreferences(questionnaire) {
+  const foodPreferences = questionnaire?.answers?.food_preferences;
+  return Boolean(
+    questionnaire?.status === 'completed'
+    && foodPreferences
+    && typeof foodPreferences === 'object'
+    && Object.keys(foodPreferences).length > 0
+  );
+}
+
+function shouldCollectFoodPreferences(client, questionnaire, onboarding) {
+  const requiresFoodPreferences = onboarding?.requires_food_preferences ?? Boolean(client?.includes_food_plan);
+  const questionnaireCompleted = onboarding?.questionnaire_completed ?? questionnaire?.status === 'completed';
+  const foodPreferencesCompleted = onboarding?.food_preferences_completed ?? hasCompletedFoodPreferences(questionnaire);
+  return Boolean(requiresFoodPreferences && questionnaireCompleted && !foodPreferencesCompleted);
 }
 
 function toWorkoutCodeDays(value) {
@@ -261,6 +277,10 @@ function ClientDashboardPage() {
           return;
         }
         const data = res.data || {};
+        if (shouldCollectFoodPreferences(data.client, data.questionnaire, data.onboarding)) {
+          navigate('/client_food_preferences', { replace: true });
+          return;
+        }
         setDashboard(data);
         const q = data.questionnaire || {};
         setAnswers(q.answers || {});
@@ -473,10 +493,14 @@ function ClientDashboardPage() {
         return;
       }
       const q = res.data?.questionnaire || {};
-      setDashboard((prev) => (prev ? { ...prev, questionnaire: q, results: res.data?.results || prev.results } : prev));
+      setDashboard((prev) => (prev ? { ...prev, questionnaire: q, onboarding: res.data?.onboarding || prev.onboarding, results: res.data?.results || prev.results } : prev));
       setWizardMessage(isEditingQuestionnaire ? 'Questionnaire updates saved successfully.' : 'Questionnaire submitted successfully.');
       if (isEditingQuestionnaire) {
         setIsEditingQuestionnaire(false);
+      }
+      if (shouldCollectFoodPreferences(dashboard?.client, q, res.data?.onboarding)) {
+        navigate('/client_food_preferences', { replace: true });
+        return;
       }
       setSubmitState('success');
     } catch (err) {
