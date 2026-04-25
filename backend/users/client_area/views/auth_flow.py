@@ -86,6 +86,30 @@ def _questionnaire_payload(progress):
     }
 
 
+def _food_preferences_completed(progress):
+    answers = progress.answers_json or {}
+    food_preferences = answers.get("food_preferences")
+    return isinstance(food_preferences, dict) and bool(food_preferences)
+
+
+def _onboarding_payload(profile, progress):
+    requires_food_preferences = bool(profile and profile.includes_food_plan)
+    questionnaire_completed = progress.status == "completed"
+    food_preferences_completed = _food_preferences_completed(progress)
+    next_step = "dashboard"
+    if not questionnaire_completed:
+        next_step = "questionnaire"
+    elif requires_food_preferences and not food_preferences_completed:
+        next_step = "food_preferences"
+
+    return {
+        "questionnaire_completed": questionnaire_completed,
+        "requires_food_preferences": requires_food_preferences,
+        "food_preferences_completed": food_preferences_completed,
+        "next_step": next_step,
+    }
+
+
 def _macro_link_questionnaire_payload(link):
     return {
         "status": link.questionnaire_status,
@@ -989,6 +1013,7 @@ def client_dashboard(request):
                 "associated_admin_user_id": admin_user_id,
             },
             "questionnaire": _questionnaire_payload(progress),
+            "onboarding": _onboarding_payload(profile, progress),
             "results": build_questionnaire_results(
                 BuildResultsContext(
                     answers=progress.answers_json or {},
@@ -1299,6 +1324,7 @@ def questionnaire_submit(request):
         {
             "message": "Questionnaire submitted." if not already_completed else "Questionnaire updates saved.",
             "questionnaire": _questionnaire_payload(progress),
+            "onboarding": _onboarding_payload(profile, progress),
             "results": build_questionnaire_results(
                 BuildResultsContext(
                     answers=progress.answers_json or {},
