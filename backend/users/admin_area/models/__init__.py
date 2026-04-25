@@ -1,4 +1,4 @@
-from .plan import Plan
+from .Plan import Plan
 from .AdminIdentity import AdminIdentity
 from .Profile import Profile
 from .PendingSignup import PendingSignup

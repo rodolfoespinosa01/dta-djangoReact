@@ -82,13 +82,20 @@ TEMPLATE_SPECS = [
 
 
 def _distinct_values(field_name):
-    values = (
+    rows = (
         MealComboTemplate.objects.exclude(**{field_name: ""})
         .values_list(field_name, flat=True)
         .distinct()
         .order_by(field_name)
     )
-    values = [str(v).strip() for v in values if str(v).strip()]
+    seen = set()
+    values = []
+    for row in rows:
+        value = str(row or "").strip()
+        if not value or value in seen:
+            continue
+        seen.add(value)
+        values.append(value)
     # Keep placeholder first if present.
     if "-" in values:
         values = ["-"] + [v for v in values if v != "-"]
