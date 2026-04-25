@@ -11,6 +11,9 @@ __pycache__/
 node_modules/
 build/
 
+# Redis
+dump.rdb
+
 # Virtual environments
 backend/venv/  # <-- Add this line
 venv/

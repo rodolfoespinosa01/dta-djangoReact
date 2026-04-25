@@ -31,8 +31,12 @@ from users.client_area.services.pricing import (
 )
 from users.client_area.views.api_contract import error, ok, require_client
 from core.services.google_oauth import verify_google_id_token
-from core.services.meal_combo_lookup import find_meal_combo_id_by_slots
-from core.models import FoodLibraryItem, MealComboTemplate
+from core.services.meal_combo_lookup import (
+    find_meal_combo_id_by_slots,
+    get_supported_combo_slot_values,
+    normalize_slots_to_supported_combo_values,
+)
+from core.models import MealComboTemplate
 from users.client_area.services.results_engine import BuildResultsContext, build_questionnaire_results
 from core.services.theme_preferences import normalize_theme
 
@@ -52,6 +56,7 @@ QUESTIONNAIRE_STEPS = [
     "training_schedule",
 ]
 WEEK_DAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
+MEAL_COMBO_SLOT_KEYS = ["protein_1", "protein_2", "carbs_1", "carbs_2", "fats_1", "fats_2"]
 QUESTIONNAIRE_IMMUTABLE_AFTER_COMPLETION = {"gender", "height"}
 QUESTIONNAIRE_REQUIRES_REGEN_FIELDS = {
     "weight",
@@ -78,6 +83,30 @@ def _questionnaire_payload(progress):
         "answers": progress.answers_json or {},
         "required_steps": QUESTIONNAIRE_STEPS,
         "completed_at": progress.completed_at,
+    }
+
+
+def _food_preferences_completed(progress):
+    answers = progress.answers_json or {}
+    food_preferences = answers.get("food_preferences")
+    return isinstance(food_preferences, dict) and bool(food_preferences)
+
+
+def _onboarding_payload(profile, progress):
+    requires_food_preferences = bool(profile and profile.includes_food_plan)
+    questionnaire_completed = progress.status == "completed"
+    food_preferences_completed = _food_preferences_completed(progress)
+    next_step = "dashboard"
+    if not questionnaire_completed:
+        next_step = "questionnaire"
+    elif requires_food_preferences and not food_preferences_completed:
+        next_step = "food_preferences"
+
+    return {
+        "questionnaire_completed": questionnaire_completed,
+        "requires_food_preferences": requires_food_preferences,
+        "food_preferences_completed": food_preferences_completed,
+        "next_step": next_step,
     }
 
 
@@ -238,67 +267,81 @@ def _serialize_food_preference_builder(progress: ClientQuestionnaireProgress):
     return food_pref or {}
 
 
-def _preferred_food_name_by_category(categories):
-    non_placeholder = sorted({(value or "").strip() for value in categories if (value or "").strip() and (value or "").strip() != "-"})
-    if not non_placeholder:
-        return {}
-
-    rows = (
-        FoodLibraryItem.objects.filter(category__in=non_placeholder, is_placeholder=False)
-        .exclude(name="-")
-        .order_by("source_food_id")
-    )
-    by_category = {}
-    for row in rows:
-        if row.category not in by_category:
-            by_category[row.category] = row.name
-    return by_category
-
-
 def _serialize_saved_weekly_combo_rows(user):
     rows = (
         ClientMealComboSelection.objects.filter(user=user)
         .select_related("combo_template")
         .order_by("day_of_week", "meal_number")
     )
-
-    categories = []
-    for row in rows:
-        combo = row.combo_template
-        categories.extend(
-            [
-                combo.protein_slot_1,
-                combo.protein_slot_2,
-                combo.carb_slot_1,
-                combo.carb_slot_2,
-                combo.fat_slot_1,
-                combo.fat_slot_2,
-            ]
-        )
-    preferred_food_by_category = _preferred_food_name_by_category(categories)
-
-    def to_display_food(slot_category):
-        normalized = (slot_category or "-").strip() or "-"
-        if normalized == "-":
-            return "-"
-        return preferred_food_by_category.get(normalized, normalized)
-
     weekly = {day: [] for day in WEEK_DAYS}
     for row in rows:
         combo = row.combo_template
         weekly[row.day_of_week].append(
             {
-                "protein_1": to_display_food(combo.protein_slot_1),
-                "protein_2": to_display_food(combo.protein_slot_2),
-                "carbs_1": to_display_food(combo.carb_slot_1),
-                "carbs_2": to_display_food(combo.carb_slot_2),
-                "fats_1": to_display_food(combo.fat_slot_1),
-                "fats_2": to_display_food(combo.fat_slot_2),
+                "protein_1": combo.protein_slot_1,
+                "protein_2": combo.protein_slot_2,
+                "carbs_1": combo.carb_slot_1,
+                "carbs_2": combo.carb_slot_2,
+                "fats_1": combo.fat_slot_1,
+                "fats_2": combo.fat_slot_2,
                 "combo_id": combo.combo_id,
                 "combo_match": "matched",
             }
         )
     return weekly
+
+
+def _normalize_meal_combo_payload(meal, supported_slot_values=None):
+    source = meal if isinstance(meal, dict) else {}
+    normalized_slots = normalize_slots_to_supported_combo_values(
+        {key: source.get(key) for key in MEAL_COMBO_SLOT_KEYS},
+        supported_values=supported_slot_values,
+    )
+    combo_id = find_meal_combo_id_by_slots(**normalized_slots)
+    return {
+        **source,
+        **normalized_slots,
+        "combo_id": int(combo_id) if combo_id else None,
+        "combo_match": "matched" if combo_id else "not_found",
+    }
+
+
+def _normalize_food_preference_builder(builder_value):
+    if not isinstance(builder_value, dict):
+        return {}
+
+    normalized = dict(builder_value)
+    supported_slot_values = get_supported_combo_slot_values()
+
+    if isinstance(normalized.get("default_day_meals"), list):
+        normalized["default_day_meals"] = [
+            _normalize_meal_combo_payload(meal, supported_slot_values) for meal in normalized["default_day_meals"]
+        ]
+
+    weekly_days = normalized.get("weekly_days")
+    if isinstance(weekly_days, dict):
+        normalized["weekly_days"] = {
+            day: [_normalize_meal_combo_payload(meal, supported_slot_values) for meal in meals]
+            if isinstance(meals, list)
+            else meals
+            for day, meals in weekly_days.items()
+        }
+
+    saved_templates = normalized.get("saved_templates")
+    if isinstance(saved_templates, list):
+        normalized["saved_templates"] = [
+            {
+                **template,
+                "meals": [_normalize_meal_combo_payload(meal, supported_slot_values) for meal in template.get("meals", [])]
+                if isinstance(template, dict) and isinstance(template.get("meals"), list)
+                else template.get("meals", []) if isinstance(template, dict) else [],
+            }
+            if isinstance(template, dict)
+            else template
+            for template in saved_templates
+        ]
+
+    return normalized
 
 
 def _extract_weekly_combo_selection_rows(answers):
@@ -310,6 +353,7 @@ def _extract_weekly_combo_selection_rows(answers):
     rows = []
     missing = []
     invalid = []
+    supported_slot_values = get_supported_combo_slot_values()
 
     for day in WEEK_DAYS:
         expected_count = int(meal_days.get(day) or 0)
@@ -328,24 +372,11 @@ def _extract_weekly_combo_selection_rows(answers):
             continue
 
         for idx, meal in enumerate(day_meals, start=1):
-            combo_id = None
-            try:
-                combo_id = int((meal or {}).get("combo_id") or 0)
-            except (TypeError, ValueError):
-                combo_id = 0
-            if combo_id <= 0:
-                auto_combo_id = find_meal_combo_id_by_slots(
-                    protein_1=(meal or {}).get("protein_1"),
-                    protein_2=(meal or {}).get("protein_2"),
-                    carbs_1=(meal or {}).get("carbs_1"),
-                    carbs_2=(meal or {}).get("carbs_2"),
-                    fats_1=(meal or {}).get("fats_1"),
-                    fats_2=(meal or {}).get("fats_2"),
-                )
-                if not auto_combo_id:
-                    invalid.append({"day": day, "meal_number": idx, "reason": "missing_combo_id"})
-                    continue
-                combo_id = int(auto_combo_id)
+            normalized_meal = _normalize_meal_combo_payload(meal, supported_slot_values)
+            combo_id = normalized_meal.get("combo_id")
+            if not combo_id:
+                invalid.append({"day": day, "meal_number": idx, "reason": "missing_combo_id"})
+                continue
             rows.append({"day_of_week": day, "meal_number": idx, "combo_id": combo_id})
 
     return rows, missing, invalid
@@ -982,6 +1013,7 @@ def client_dashboard(request):
                 "associated_admin_user_id": admin_user_id,
             },
             "questionnaire": _questionnaire_payload(progress),
+            "onboarding": _onboarding_payload(profile, progress),
             "results": build_questionnaire_results(
                 BuildResultsContext(
                     answers=progress.answers_json or {},
@@ -1112,6 +1144,13 @@ def client_food_preferences(request):
             builder_value = {
                 "weekly_days": _serialize_saved_weekly_combo_rows(request.user),
             }
+        normalized_builder_value = _normalize_food_preference_builder(builder_value)
+        if normalized_builder_value != builder_value:
+            answers = dict(progress.answers_json or {})
+            answers["food_preferences"] = normalized_builder_value
+            progress.answers_json = answers
+            progress.save(update_fields=["answers_json", "updated_at"])
+            builder_value = normalized_builder_value
         return ok(
             {
                 "food_preferences": {
@@ -1134,6 +1173,7 @@ def client_food_preferences(request):
     builder_value = payload.get("builder_value")
     if not isinstance(builder_value, dict):
         return error("INVALID_PAYLOAD", "builder_value must be an object.", http_status=400)
+    builder_value = _normalize_food_preference_builder(builder_value)
 
     answers = dict(progress.answers_json or {})
     previous_food_preferences = answers.get("food_preferences") if isinstance(answers.get("food_preferences"), dict) else {}
@@ -1284,6 +1324,7 @@ def questionnaire_submit(request):
         {
             "message": "Questionnaire submitted." if not already_completed else "Questionnaire updates saved.",
             "questionnaire": _questionnaire_payload(progress),
+            "onboarding": _onboarding_payload(profile, progress),
             "results": build_questionnaire_results(
                 BuildResultsContext(
                     answers=progress.answers_json or {},

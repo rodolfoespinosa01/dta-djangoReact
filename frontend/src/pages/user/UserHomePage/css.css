@@ -119,6 +119,135 @@
   color: #3b5278;
 }
 
+.user-home-plans {
+  margin-top: 1.6rem;
+}
+
+.user-home-plans-header {
+  text-align: center;
+}
+
+.user-home-plans-header h2 {
+  margin: 0;
+  color: #122647;
+  font-size: clamp(1.1rem, 2.2vw, 1.5rem);
+}
+
+.user-home-email-field {
+  margin: 0.9rem auto 0;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  text-align: left;
+  color: #22324d;
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.user-home-email-field input {
+  width: 100%;
+  padding: 0.78rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid rgba(34, 50, 77, 0.2);
+  background: #ffffff;
+  color: #101726;
+  font-size: 0.96rem;
+}
+
+.user-home-email-field input:focus {
+  outline: 2px solid rgba(36, 164, 255, 0.25);
+  border-color: rgba(36, 164, 255, 0.5);
+}
+
+.user-home-inline-message {
+  margin: 0.7rem auto 0;
+  max-width: 640px;
+  border: 1px solid rgba(55, 112, 190, 0.22);
+  border-radius: 10px;
+  padding: 0.65rem 0.8rem;
+  background: rgba(239, 247, 255, 0.95);
+  color: #20395f;
+  font-weight: 700;
+}
+
+.user-home-plan-grid {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.95rem;
+}
+
+.user-home-plan-card {
+  border: 1px solid rgba(18, 32, 58, 0.14);
+  border-radius: 16px;
+  padding: 0.95rem;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(12, 20, 36, 0.08);
+  display: flex;
+  flex-direction: column;
+}
+
+.user-home-plan-card.is-featured {
+  border-color: rgba(98, 132, 255, 0.42);
+  box-shadow: 0 12px 30px rgba(82, 105, 190, 0.16);
+}
+
+.user-home-plan-card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  align-items: flex-start;
+}
+
+.user-home-plan-card-top h3 {
+  margin: 0;
+  color: #112649;
+}
+
+.user-home-plan-card-top span {
+  color: #233a66;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.user-home-plan-image,
+.user-home-plan-image.small {
+  width: 100%;
+  height: 86px;
+  object-fit: contain;
+  margin: 0.65rem auto;
+}
+
+.user-home-plan-image.small {
+  width: 96px;
+  height: 72px;
+}
+
+.user-home-plan-image-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.user-home-plan-card p {
+  margin: 0.35rem 0 0;
+  color: #334a70;
+  font-size: 0.92rem;
+}
+
+.user-home-plan-card ul {
+  margin: 0.7rem 0 0;
+  padding-left: 1.1rem;
+  color: #263f66;
+  font-size: 0.9rem;
+}
+
+.user-home-plan-card .user-home-button {
+  margin-top: auto;
+}
+
 .user-macro-grid {
   margin-top: 1rem;
   display: grid;
@@ -267,6 +396,7 @@
 
 @media (max-width: 920px) {
   .user-macro-grid,
+  .user-home-plan-grid,
   .user-process-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -295,6 +425,7 @@
   }
 
   .user-macro-grid,
+  .user-home-plan-grid,
   .user-process-grid {
     grid-template-columns: minmax(0, 1fr);
   }
