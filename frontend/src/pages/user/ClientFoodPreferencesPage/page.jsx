@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { apiRequest } from '../../../api/client';
 import MealComboBuilderStep from '../../../components/MealComboBuilderStep';
 import { useAuth } from '../../../context/AuthContext';
@@ -16,6 +16,7 @@ function portalLabel(settings) {
 }
 
 function ClientFoodPreferencesPage() {
+  const navigate = useNavigate();
   const { logout } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -69,6 +70,7 @@ function ClientFoodPreferencesPage() {
         return;
       }
       setMessage(`${res.data?.message || 'Food preferences saved.'} ${res.data?.saved_meal_combo_selections ? `(${res.data.saved_meal_combo_selections} meals)` : ''}`);
+      navigate('/client_dashboard', { replace: true });
     } catch (err) {
       console.error(err);
       setError('Network error while saving food preferences.');
