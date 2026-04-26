@@ -2,16 +2,20 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
+import logging
 from typing import Any
 
 from django.db import transaction
 
 from core.models import FoodLibraryItem, MealComboTemplate
+from core.services.meal_combo_shape_policy import select_meal_combo_template_for_target
 from users.client_area.models import (
     ClientMealComboSelection,
     ClientMealPlanGeneratedMeal,
     ClientMealPlanGenerationStep1Row,
 )
+
+logger = logging.getLogger(__name__)
 
 
 ZERO = Decimal("0")
@@ -191,6 +195,23 @@ def _meal_targets_from_day_payload(day_payload: dict[str, Any]) -> dict[int, dic
     return targets
 
 
+def _training_adjacent_meals(day_payload: dict[str, Any]) -> set[int]:
+    raw = str((day_payload or {}).get("training_before_meal") or "").strip().lower()
+    if not raw.startswith("before_meal_"):
+        return set()
+    try:
+        post_workout_meal = int(raw.split("_")[-1])
+    except (TypeError, ValueError):
+        return set()
+    if post_workout_meal < 1:
+        return set()
+
+    meals = {post_workout_meal}
+    if post_workout_meal > 1:
+        meals.add(post_workout_meal - 1)
+    return meals
+
+
 def _evaluate_candidate(
     step1_row,
     combo: MealComboTemplate,
@@ -270,10 +291,53 @@ def run_steps_2_to_10_for_day(*, job, day_payload: dict[str, Any]) -> FullPipeli
         raise ValueError(f"No meal macro targets found for {day}.")
 
     selected_foods_by_meal = _selected_foods_by_meal_from_snapshot(job)
+    training_adjacent_meals = _training_adjacent_meals(day_payload)
 
     missing_combo_meals = sorted(set(targets_by_meal.keys()) - set(combo_by_meal.keys()))
     if missing_combo_meals:
         raise ValueError(f"Missing combo selections for meals: {missing_combo_meals}.")
+
+    selected_combo_by_meal: dict[int, MealComboTemplate] = {}
+    combo_debug_by_meal: dict[int, dict[str, Any]] = {}
+    for meal_number, saved_combo in combo_by_meal.items():
+        target = targets_by_meal.get(meal_number)
+        if not target:
+            selected_combo_by_meal[meal_number] = saved_combo
+            continue
+        decision = select_meal_combo_template_for_target(
+            saved_combo=saved_combo,
+            meal_target=target,
+            is_training_adjacent=meal_number in training_adjacent_meals,
+            selected_slots=selected_foods_by_meal.get(meal_number),
+        )
+        selected_combo_by_meal[meal_number] = decision.combo
+        combo_debug_by_meal[meal_number] = {
+            "protein_target": target["protein"],
+            "carb_target": target["carbs"],
+            "is_training_adjacent": meal_number in training_adjacent_meals,
+            "preferred_protein_structure": decision.preferred_shape.protein_structure,
+            "preferred_carb_structure": decision.preferred_shape.carb_structure,
+            "candidate_count_before_filtering": decision.candidate_count_before_filtering,
+            "candidate_count_after_filtering": decision.candidate_count_after_filtering,
+            "chosen_combo_id": decision.combo.combo_id,
+            "fallback_reason": decision.fallback_reason,
+        }
+        logger.info(
+            "Meal combo shape selection: meal=%s protein_target=%s carb_target=%s "
+            "training_adjacent=%s preferred_protein=%s preferred_carb=%s "
+            "candidates_before=%s candidates_after=%s chosen_combo_id=%s fallback_reason=%s",
+            meal_number,
+            target["protein"],
+            target["carbs"],
+            meal_number in training_adjacent_meals,
+            decision.preferred_shape.protein_structure,
+            decision.preferred_shape.carb_structure,
+            decision.candidate_count_before_filtering,
+            decision.candidate_count_after_filtering,
+            decision.combo.combo_id,
+            decision.fallback_reason,
+        )
+    combo_by_meal = selected_combo_by_meal
 
     referenced_food_names: list[str] = []
     for meal_number, combo in combo_by_meal.items():
@@ -338,6 +402,19 @@ def run_steps_2_to_10_for_day(*, job, day_payload: dict[str, Any]) -> FullPipeli
                 fats2_total=amounts["fats2"],
             )
         )
+
+    if combo_debug_by_meal:
+        snapshot = dict(job.input_snapshot_json or {})
+        snapshot["meal_combo_shape_debug"] = {
+            str(meal_number): {
+                **debug,
+                "protein_target": str(debug["protein_target"]),
+                "carb_target": str(debug["carb_target"]),
+            }
+            for meal_number, debug in sorted(combo_debug_by_meal.items())
+        }
+        job.input_snapshot_json = snapshot
+        job.save(update_fields=["input_snapshot_json", "updated_at"])
 
     ClientMealPlanGeneratedMeal.objects.bulk_create(
         final_rows,

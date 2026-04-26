@@ -1,9 +1,10 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase
+from unittest.mock import patch
 from rest_framework.test import APIClient
 
-from core.models import MealComboTemplate
-from users.client_area.models import ClientProfile, ClientQuestionnaireProgress
+from core.models import FoodLibraryItem, MealComboTemplate
+from users.client_area.models import ClientMealComboSelection, ClientProfile, ClientQuestionnaireProgress
 
 
 QUESTIONNAIRE_ANSWERS = {
@@ -112,3 +113,119 @@ class ClientOnboardingFlowTests(TestCase):
         dashboard = self.api.get("/api/v1/users/client/app/dashboard/")
         self.assertEqual(dashboard.data["onboarding"]["next_step"], "dashboard")
         self.assertTrue(dashboard.data["onboarding"]["food_preferences_completed"])
+
+    def test_food_preferences_store_template_slot_values_not_food_variations(self):
+        user, progress = self.create_client_user("slot-values@example.com", includes_food_plan=True)
+        FoodLibraryItem.objects.create(
+            source_food_id=900,
+            category="Ground Beef STANDARD",
+            name="Ground Beef 95/5",
+            measurement_unit="oz",
+            protein=24,
+            carbs=0,
+            fats=5,
+        )
+        MealComboTemplate.objects.create(
+            combo_id=77,
+            protein_slot_1="Ground Beef STANDARD",
+            protein_slot_2="-",
+            carb_slot_1="White Rice",
+            carb_slot_2="-",
+            fat_slot_1="Avocado",
+            fat_slot_2="Oil STANDARD",
+        )
+        meal = {
+            "protein_1": "Ground Beef 95/5",
+            "protein_2": "-",
+            "carbs_1": "White Rice",
+            "carbs_2": "-",
+            "fats_1": "Avocado",
+            "fats_2": "Oil STANDARD",
+        }
+        payload = {
+            "weekly_days": {
+                day: [dict(meal), dict(meal), dict(meal)]
+                for day in ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
+            }
+        }
+        self.api.force_authenticate(user=user)
+
+        response = self.api.put(
+            "/api/v1/users/client/app/food-preferences/",
+            {"builder_value": payload},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        progress.refresh_from_db()
+        saved_meal = progress.answers_json["food_preferences"]["weekly_days"]["sunday"][0]
+        self.assertEqual(saved_meal["protein_1"], "Ground Beef STANDARD")
+        self.assertEqual(saved_meal["combo_id"], 77)
+
+    def test_food_preferences_save_reselects_low_macro_combos_before_persisting(self):
+        user, progress = self.create_client_user("shape-save@example.com", includes_food_plan=True)
+        two_slot = MealComboTemplate.objects.create(
+            combo_id=8084,
+            protein_slot_1="Chicken Breast",
+            protein_slot_2="Eggs",
+            carb_slot_1="White Rice",
+            carb_slot_2="Banana",
+            fat_slot_1="Avocado",
+            fat_slot_2="Oil STANDARD",
+        )
+        one_slot = MealComboTemplate.objects.create(
+            combo_id=8121,
+            protein_slot_1="Chicken Breast",
+            protein_slot_2="-",
+            carb_slot_1="White Rice",
+            carb_slot_2="-",
+            fat_slot_1="Avocado",
+            fat_slot_2="Oil STANDARD",
+        )
+        bad_meal = {
+            "protein_1": two_slot.protein_slot_1,
+            "protein_2": two_slot.protein_slot_2,
+            "carbs_1": two_slot.carb_slot_1,
+            "carbs_2": two_slot.carb_slot_2,
+            "fats_1": two_slot.fat_slot_1,
+            "fats_2": two_slot.fat_slot_2,
+            "combo_id": two_slot.combo_id,
+        }
+        payload = {
+            "weekly_days": {
+                day: [dict(bad_meal), dict(bad_meal), dict(bad_meal)]
+                for day in ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
+            }
+        }
+        low_macro_results = {
+            "weekly_days": [
+                {
+                    "day": day,
+                    "training_before_meal": None,
+                    "meal_macro_splits": [
+                        {"meal_number": idx, "grams": {"protein_g": 38.67, "carbs_g": 40.04, "fats_g": 11.86}}
+                        for idx in (1, 2, 3)
+                    ],
+                }
+                for day in ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
+            ]
+        }
+        self.api.force_authenticate(user=user)
+
+        with patch("users.client_area.views.auth_flow.build_questionnaire_results", return_value=low_macro_results):
+            response = self.api.put(
+                "/api/v1/users/client/app/food-preferences/",
+                {"builder_value": payload},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        progress.refresh_from_db()
+        saved_meal = progress.answers_json["food_preferences"]["weekly_days"]["saturday"][0]
+        self.assertEqual(saved_meal["combo_id"], one_slot.combo_id)
+        self.assertEqual(saved_meal["protein_2"], "-")
+        self.assertEqual(saved_meal["carbs_2"], "-")
+        self.assertEqual(
+            ClientMealComboSelection.objects.get(user=user, day_of_week="saturday", meal_number=1).combo_template_id,
+            one_slot.combo_id,
+        )
