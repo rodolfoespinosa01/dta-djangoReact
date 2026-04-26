@@ -119,7 +119,8 @@ class ClientOnboardingFlowTests(TestCase):
         FoodLibraryItem.objects.create(
             source_food_id=900,
             category="Ground Beef STANDARD",
-            name="Ground Beef 95/5",
+            name="Ground Beef STANDARD",
+            display_name="Ground Beef 95/5",
             measurement_unit="oz",
             protein=24,
             carbs=0,
@@ -129,9 +130,9 @@ class ClientOnboardingFlowTests(TestCase):
             combo_id=77,
             protein_slot_1="Ground Beef STANDARD",
             protein_slot_2="-",
-            carb_slot_1="White Rice",
+            carb_slot_1="White Rice STANDARD",
             carb_slot_2="-",
-            fat_slot_1="Avocado",
+            fat_slot_1="Avocado STANDARD",
             fat_slot_2="Oil STANDARD",
         )
         meal = {
@@ -160,26 +161,28 @@ class ClientOnboardingFlowTests(TestCase):
         progress.refresh_from_db()
         saved_meal = progress.answers_json["food_preferences"]["weekly_days"]["sunday"][0]
         self.assertEqual(saved_meal["protein_1"], "Ground Beef STANDARD")
+        self.assertEqual(saved_meal["carbs_1"], "White Rice STANDARD")
+        self.assertEqual(saved_meal["fats_1"], "Avocado STANDARD")
         self.assertEqual(saved_meal["combo_id"], 77)
 
     def test_food_preferences_save_reselects_low_macro_combos_before_persisting(self):
         user, progress = self.create_client_user("shape-save@example.com", includes_food_plan=True)
         two_slot = MealComboTemplate.objects.create(
             combo_id=8084,
-            protein_slot_1="Chicken Breast",
-            protein_slot_2="Eggs",
-            carb_slot_1="White Rice",
-            carb_slot_2="Banana",
-            fat_slot_1="Avocado",
+            protein_slot_1="Chicken Breast STANDARD",
+            protein_slot_2="Eggs STANDARD",
+            carb_slot_1="White Rice STANDARD",
+            carb_slot_2="Banana STANDARD",
+            fat_slot_1="Avocado STANDARD",
             fat_slot_2="Oil STANDARD",
         )
         one_slot = MealComboTemplate.objects.create(
             combo_id=8121,
-            protein_slot_1="Chicken Breast",
+            protein_slot_1="Chicken Breast STANDARD",
             protein_slot_2="-",
-            carb_slot_1="White Rice",
+            carb_slot_1="White Rice STANDARD",
             carb_slot_2="-",
-            fat_slot_1="Avocado",
+            fat_slot_1="Avocado STANDARD",
             fat_slot_2="Oil STANDARD",
         )
         bad_meal = {

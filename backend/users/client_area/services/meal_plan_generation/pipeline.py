@@ -138,29 +138,36 @@ def _food_macros_by_name(names: list[str]) -> dict[str, FoodLibraryItem]:
     normalized = sorted({_food_key(name) for name in names if _norm_food_name(name) and _norm_food_name(name) != "-"})
     if not normalized:
         return {}
-    rows = list(FoodLibraryItem.objects.all().order_by("is_placeholder", "source_food_id"))
+    rows = list(
+        FoodLibraryItem.objects.filter(
+            is_active=True,
+            approval_status=FoodLibraryItem.ApprovalStatus.APPROVED,
+        ).order_by("is_placeholder", "-is_standard", "source_food_id")
+    )
     by_name: dict[str, FoodLibraryItem] = {}
 
-    # 1) Direct food-name matches take priority. Some canonical combo foods
+    # 1) Direct canonical/display-name matches take priority. Some canonical combo foods
     # are marked as placeholder/category-reference rows, but still carry the
     # macro data needed for serving calculations.
     for row in rows:
         if _food_key(row.name) == "-" or not _has_usable_macro_data(row):
             continue
-        key = _food_key(row.name)
-        if key in normalized and key not in by_name:
-            by_name[key] = row
+        for raw_key in (row.name, row.display_name, row.canonical_name, row.canonical_category):
+            key = _food_key(raw_key)
+            if key in normalized and key not in by_name:
+                by_name[key] = row
 
     # 2) Backward compatibility: category tokens (combo slot values) map to
-    # the first real food found for that category.
+    # the first approved standard food found for that category.
     unresolved = {key for key in normalized if key not in by_name}
     if unresolved:
         for row in rows:
             if _food_key(row.category) == "-" or not _has_usable_macro_data(row):
                 continue
-            category_key = _food_key(row.category)
-            if category_key in unresolved and category_key not in by_name:
-                by_name[category_key] = row
+            for raw_key in (row.category, row.canonical_category):
+                category_key = _food_key(raw_key)
+                if category_key in unresolved and category_key not in by_name:
+                    by_name[category_key] = row
 
     return by_name
 

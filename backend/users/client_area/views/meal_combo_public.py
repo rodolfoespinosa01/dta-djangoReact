@@ -14,10 +14,13 @@ from users.client_area.views.api_contract import error, ok
 
 logger = logging.getLogger(__name__)
 
-CHICKEN = "Chicken Breast"
+CHICKEN = "Chicken Breast STANDARD"
 STEAK = "Steak STANDARD"
 GROUND_BEEF = "Ground Beef STANDARD"
-FISH_CHOICES = ["Salmon", "Tilapia", "Tuna STANDARD"]
+EGGS = "Eggs STANDARD"
+AVOCADO = "Avocado STANDARD"
+OIL = "Oil STANDARD"
+FISH_CHOICES = ["Salmon STANDARD", "Tilapia STANDARD", "Tuna STANDARD"]
 
 PROTEIN_GROUPS = {
     "chicken_only": [CHICKEN],
@@ -30,20 +33,20 @@ PROTEIN_GROUPS = {
 }
 
 BASE_CARB_PATTERNS = [
-    ("White Rice", "Banana"),
-    ("White Rice", "-"),
-    ("Brown Rice", "-"),
-    ("Brown Rice", "Beans STANDARD"),
+    ("White Rice STANDARD", "Banana STANDARD"),
+    ("White Rice STANDARD", "-"),
+    ("Brown Rice STANDARD", "-"),
+    ("Brown Rice STANDARD", "Beans STANDARD"),
 ]
 
 ONE_CARB_PATTERNS = [
-    ("White Rice", "-"),
-    ("Brown Rice", "-"),
+    ("White Rice STANDARD", "-"),
+    ("Brown Rice STANDARD", "-"),
 ]
 
 TWO_CARB_PATTERNS = [
-    ("White Rice", "Banana"),
-    ("Brown Rice", "Beans STANDARD"),
+    ("White Rice STANDARD", "Banana STANDARD"),
+    ("Brown Rice STANDARD", "Beans STANDARD"),
 ]
 
 TEMPLATE_SPECS = [
@@ -52,49 +55,49 @@ TEMPLATE_SPECS = [
         "name": "Chicken Only",
         "description": "Egg-based meal 1, then chicken meals with rice/pasta carb rotation.",
         "protein_group": "chicken_only",
-        "pasta_carb": "Whole Wheat Pasta",
+        "pasta_carb": "Whole Wheat Pasta STANDARD",
     },
     {
         "template_key": "starter_chicken_steak_beef",
         "name": "Chicken + Steak/Beef",
         "description": "Chicken, steak, and ground beef mix with rice + beans style carb rotation.",
         "protein_group": "chicken_steak_beef",
-        "pasta_carb": "Plain Pasta",
+        "pasta_carb": "Plain Pasta STANDARD",
     },
     {
         "template_key": "starter_fish_only",
         "name": "Fish Only",
         "description": "Fish-focused meals with the same avocado + oil fat structure.",
         "protein_group": "fish_only",
-        "pasta_carb": "Whole Wheat Pasta",
+        "pasta_carb": "Whole Wheat Pasta STANDARD",
     },
     {
         "template_key": "starter_chicken_fish",
         "name": "Chicken + Fish",
         "description": "Chicken and fish blend with mostly white/brown rice meals.",
         "protein_group": "chicken_fish",
-        "pasta_carb": "Plain Pasta",
+        "pasta_carb": "Plain Pasta STANDARD",
     },
     {
         "template_key": "starter_chicken_beef_fish_mix",
         "name": "Chicken + Beef/Steak + Fish Mix",
         "description": "Mixed protein library template with rice-heavy meals plus pasta.",
         "protein_group": "chicken_beef_fish_mix",
-        "pasta_carb": "Whole Wheat Pasta",
+        "pasta_carb": "Whole Wheat Pasta STANDARD",
     },
     {
         "template_key": "starter_steak_only",
         "name": "Steak Only",
         "description": "Steak-only pattern with fixed avocado + oil fats.",
         "protein_group": "steak_only",
-        "pasta_carb": "Plain Pasta",
+        "pasta_carb": "Plain Pasta STANDARD",
     },
     {
         "template_key": "starter_ground_beef_only",
         "name": "Ground Beef Only",
         "description": "Ground beef-only option with your default carb pattern rotation.",
         "protein_group": "ground_beef_only",
-        "pasta_carb": "Whole Wheat Pasta",
+        "pasta_carb": "Whole Wheat Pasta STANDARD",
     },
 ]
 
@@ -259,14 +262,14 @@ def _pick_combo(
     base = MealComboTemplate.objects.filter(
         carb_slot_1=carb_1,
         carb_slot_2=carb_2,
-        fat_slot_1="Avocado",
-        fat_slot_2="Oil STANDARD",
+        fat_slot_1=AVOCADO,
+        fat_slot_2=OIL,
     )
 
-    allowed_plus = sorted(set(allowed_proteins or []) | {"-"} | ({"Eggs"} if require_eggs else set()))
+    allowed_plus = sorted(set(allowed_proteins or []) | {"-"} | ({EGGS} if require_eggs else set()))
     strict = base.filter(protein_slot_1__in=allowed_plus, protein_slot_2__in=allowed_plus)
     if require_eggs:
-        strict = strict.filter(_protein_match_q(["Eggs"]))
+        strict = strict.filter(_protein_match_q([EGGS]))
     if allowed_proteins:
         strict = strict.filter(_protein_match_q(allowed_proteins))
     if preferred_protein:
@@ -291,7 +294,7 @@ def _pick_combo(
 
     relaxed = base
     if require_eggs:
-        relaxed = relaxed.filter(_protein_match_q(["Eggs"]))
+        relaxed = relaxed.filter(_protein_match_q([EGGS]))
     if allowed_proteins:
         relaxed = relaxed.filter(_protein_match_q(allowed_proteins))
     if preferred_protein:
@@ -378,8 +381,8 @@ def _build_template(spec, day_payload=None):
     day = (day_payload or {}).get("day") if isinstance(day_payload, dict) else None
     meal_1_target = _target_for_meal(day_payload, 1)
     breakfast_combo = _pick_combo(
-        carb_1="Quinoa" if preferred_combo_shape_for_meal(meal_1_target, 1 in training_adjacent).preferred_carb_slot_2 != "-" else "White Rice",
-        carb_2="Banana" if preferred_combo_shape_for_meal(meal_1_target, 1 in training_adjacent).preferred_carb_slot_2 != "-" else "-",
+        carb_1="Quinoa STANDARD" if preferred_combo_shape_for_meal(meal_1_target, 1 in training_adjacent).preferred_carb_slot_2 != "-" else "White Rice STANDARD",
+        carb_2="Banana STANDARD" if preferred_combo_shape_for_meal(meal_1_target, 1 in training_adjacent).preferred_carb_slot_2 != "-" else "-",
         allowed_proteins=protein_cycle,
         preferred_protein=breakfast_preferred,
         require_eggs=preferred_combo_shape_for_meal(meal_1_target, 1 in training_adjacent).preferred_protein_slot_2 != "-",

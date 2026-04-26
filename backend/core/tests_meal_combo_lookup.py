@@ -15,7 +15,8 @@ class MealComboLookupNormalizationTests(TestCase):
                 FoodLibraryItem(
                     source_food_id=1,
                     category="Ground Beef STANDARD",
-                    name="Ground Beef 95/5",
+                    name="Ground Beef STANDARD",
+                    display_name="Ground Beef 95/5",
                     measurement_unit="oz",
                     protein=24,
                     carbs=0,
@@ -23,8 +24,9 @@ class MealComboLookupNormalizationTests(TestCase):
                 ),
                 FoodLibraryItem(
                     source_food_id=2,
-                    category="Fats",
-                    name="Avocado",
+                    category="Avocado STANDARD",
+                    name="Avocado STANDARD",
+                    display_name="Avocado",
                     measurement_unit="oz",
                     protein=1,
                     carbs=4,
@@ -33,11 +35,26 @@ class MealComboLookupNormalizationTests(TestCase):
                 FoodLibraryItem(
                     source_food_id=3,
                     category="Oil STANDARD",
-                    name="Olive Oil",
+                    name="Oil STANDARD",
+                    display_name="Olive Oil",
                     measurement_unit="oz",
                     protein=0,
                     carbs=0,
                     fats=14,
+                ),
+                FoodLibraryItem(
+                    source_food_id=4,
+                    category="Ground Beef STANDARD",
+                    name="Walmart Ground Beef",
+                    display_name="Walmart Ground Beef",
+                    measurement_unit="oz",
+                    protein=50,
+                    carbs=50,
+                    fats=50,
+                    source_type=FoodLibraryItem.SourceType.USER_SUBMITTED,
+                    approval_status=FoodLibraryItem.ApprovalStatus.PENDING,
+                    is_standard=False,
+                    is_active=True,
                 ),
             ]
         )
@@ -46,9 +63,9 @@ class MealComboLookupNormalizationTests(TestCase):
             combo_id=501,
             protein_slot_1="Ground Beef STANDARD",
             protein_slot_2="-",
-            carb_slot_1="White Rice",
+            carb_slot_1="White Rice STANDARD",
             carb_slot_2="-",
-            fat_slot_1="Avocado",
+            fat_slot_1="Avocado STANDARD",
             fat_slot_2="Oil STANDARD",
         )
 
@@ -68,9 +85,9 @@ class MealComboLookupNormalizationTests(TestCase):
         combo_id = find_meal_combo_id_by_slots(
             protein_1="Ground Beef STANDARD",
             protein_2="-",
-            carbs_1="White Rice",
+            carbs_1="White Rice STANDARD",
             carbs_2="-",
-            fats_1="Avocado",
+            fats_1="Avocado STANDARD",
             fats_2="Oil STANDARD",
         )
 
@@ -89,53 +106,69 @@ class MealComboLookupNormalizationTests(TestCase):
         )
 
         self.assertEqual(normalized["protein_1"], "Ground Beef STANDARD")
+        self.assertEqual(normalized["carbs_1"], "White Rice STANDARD")
+        self.assertEqual(normalized["fats_1"], "Avocado STANDARD")
         self.assertEqual(normalized["fats_2"], "Oil STANDARD")
+
+    def test_pending_user_food_does_not_affect_combo_normalization(self):
+        normalized = normalize_slots_to_supported_combo_values(
+            {
+                "protein_1": "Walmart Ground Beef",
+                "protein_2": "-",
+                "carbs_1": "White Rice",
+                "carbs_2": "-",
+                "fats_1": "Avocado",
+                "fats_2": "Oil STANDARD",
+            }
+        )
+
+        self.assertEqual(normalized["protein_1"], "Walmart Ground Beef")
 
 
 class MealComboShapePolicyTests(TestCase):
     def setUp(self):
         self.one_protein_one_carb = MealComboTemplate.objects.create(
             combo_id=1001,
-            protein_slot_1="Chicken Breast",
+            protein_slot_1="Chicken Breast STANDARD",
             protein_slot_2="-",
-            carb_slot_1="White Rice",
+            carb_slot_1="White Rice STANDARD",
             carb_slot_2="-",
-            fat_slot_1="Avocado",
+            fat_slot_1="Avocado STANDARD",
             fat_slot_2="Oil STANDARD",
         )
         self.two_protein_one_carb = MealComboTemplate.objects.create(
             combo_id=1002,
-            protein_slot_1="Chicken Breast",
+            protein_slot_1="Chicken Breast STANDARD",
             protein_slot_2="Steak STANDARD",
-            carb_slot_1="White Rice",
+            carb_slot_1="White Rice STANDARD",
             carb_slot_2="-",
-            fat_slot_1="Avocado",
+            fat_slot_1="Avocado STANDARD",
             fat_slot_2="Oil STANDARD",
         )
         self.one_protein_two_carb = MealComboTemplate.objects.create(
             combo_id=1003,
-            protein_slot_1="Chicken Breast",
+            protein_slot_1="Chicken Breast STANDARD",
             protein_slot_2="-",
-            carb_slot_1="White Rice",
-            carb_slot_2="Banana",
-            fat_slot_1="Avocado",
+            carb_slot_1="White Rice STANDARD",
+            carb_slot_2="Banana STANDARD",
+            fat_slot_1="Avocado STANDARD",
             fat_slot_2="Oil STANDARD",
         )
         self.two_protein_two_carb = MealComboTemplate.objects.create(
             combo_id=1004,
-            protein_slot_1="Chicken Breast",
+            protein_slot_1="Chicken Breast STANDARD",
             protein_slot_2="Steak STANDARD",
-            carb_slot_1="White Rice",
-            carb_slot_2="Banana",
-            fat_slot_1="Avocado",
+            carb_slot_1="White Rice STANDARD",
+            carb_slot_2="Banana STANDARD",
+            fat_slot_1="Avocado STANDARD",
             fat_slot_2="Oil STANDARD",
         )
         self.selected_slots = {
-            "protein_1": "Chicken Breast",
+            "protein_1": "Chicken Breast STANDARD",
             "protein_2": "Steak STANDARD",
-            "carbs_1": "White Rice",
-            "carbs_2": "Banana",
-            "fats_1": "Avocado",
+            "carbs_1": "White Rice STANDARD",
+            "carbs_2": "Banana STANDARD",
+            "fats_1": "Avocado STANDARD",
             "fats_2": "Oil STANDARD",
         }
 
