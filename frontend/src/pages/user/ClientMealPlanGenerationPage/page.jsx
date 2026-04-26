@@ -48,15 +48,19 @@ function buildComboCoverage(foodPreferencesPayload) {
 
 function amountLabel(slot, unitMode) {
   if (!slot) return '-';
-  if (unitMode === 'g') return `${Number(slot.amount_g || 0).toFixed(2)} g`;
-  return `${Number(slot.amount_oz || 0).toFixed(2)} oz`;
+  const rawAmount = unitMode === 'g' ? slot.amount_g : slot.amount_oz;
+  if (rawAmount == null || Number.isNaN(Number(rawAmount))) return '-';
+  if (unitMode === 'g') return `${Number(rawAmount).toFixed(2)} g`;
+  return `${Number(rawAmount).toFixed(2)} oz`;
 }
 
 function printableAmountLabel(slot, unitMode) {
   if (!slot) return '-';
+  const rawAmount = unitMode === 'g' ? slot.amount_g : slot.amount_oz;
+  if (rawAmount == null || Number.isNaN(Number(rawAmount))) return '-';
   return unitMode === 'g'
-    ? `${Number(slot.amount_g || 0).toFixed(2)} g`
-    : `${Number(slot.amount_oz || 0).toFixed(2)} oz`;
+    ? `${Number(rawAmount).toFixed(2)} g`
+    : `${Number(rawAmount).toFixed(2)} oz`;
 }
 
 function renderPrintSection(title, innerHtml) {
