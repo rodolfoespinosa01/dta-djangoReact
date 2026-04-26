@@ -42,6 +42,13 @@ from users.client_area.views.meal_plan_generation import (
 )
 from users.client_area.views.meal_recipe_suggestions import client_meal_plan_day_recipe_ideas
 from users.client_area.views.tracking import client_progress_photos, client_weight_entries
+from users.client_area.views.food_overrides import (
+    client_food_override_delete,
+    client_food_override_save,
+    client_food_overrides,
+    client_usda_food_detail,
+    client_usda_food_search,
+)
 
 urlpatterns = [
     path('dashboard/', dashboard_view, name='dashboard'),
@@ -69,6 +76,11 @@ urlpatterns = [
     path('app/settings/plan-action/', client_plan_action, name='client_app_plan_action'),
     path('stripe_webhook/', client_stripe_webhook, name='client_stripe_webhook'),
     path('app/food-preferences/', client_food_preferences, name='client_app_food_preferences'),
+    path('app/food-overrides/', client_food_overrides, name='client_app_food_overrides'),
+    path('app/food-overrides/save/', client_food_override_save, name='client_app_food_override_save'),
+    path('app/food-overrides/<int:override_id>/', client_food_override_delete, name='client_app_food_override_delete'),
+    path('app/food-overrides/usda/search/', client_usda_food_search, name='client_app_usda_food_search'),
+    path('app/food-overrides/usda/details/<str:fdc_id>/', client_usda_food_detail, name='client_app_usda_food_detail'),
     path('app/meal-plan-generation/run/', client_meal_plan_generation_run_full, name='client_meal_plan_generation_run_full'),
     path('app/meal-plan-generation/run-week/', client_meal_plan_generation_run_week, name='client_meal_plan_generation_run_week'),
     path('app/meal-plan-generation/run-week/<str:batch_id>/status/', client_meal_plan_generation_run_week_status, name='client_meal_plan_generation_run_week_status'),

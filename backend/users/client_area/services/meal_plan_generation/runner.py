@@ -8,6 +8,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from users.client_area.models import (
+    ClientFoodOverride,
     ClientMealPlanGeneratedMeal,
     ClientMealPlanGenerationJob,
     ClientMealPlanGenerationStep1Row,
@@ -487,6 +488,10 @@ def get_generated_meal_day_detail(user, day_of_week: str | None = None, job_id: 
     day_payload = ((job.input_snapshot_json or {}).get("day_payload") or {})
     training_time = day_payload.get("training_before_meal") or "none"
     day_selected_slot_foods = ((job.input_snapshot_json or {}).get("day_selected_slot_foods") or {})
+    overrides_by_category = {
+        row.canonical_category: row
+        for row in ClientFoodOverride.objects.filter(user=user, active=True)
+    }
 
     def selected_name_for_slot(meal_number: int, slot_key: str, fallback_name: str) -> str:
         row = day_selected_slot_foods.get(str(meal_number)) or day_selected_slot_foods.get(meal_number) or {}
@@ -497,8 +502,19 @@ def get_generated_meal_day_detail(user, day_of_week: str | None = None, job_id: 
 
     def _slot_payload(name: str, amount):
         amount_oz = float(amount or 0)
+        override = overrides_by_category.get(name or "")
         return {
-            "name": name or "-",
+            "name": override.display_name if override else name or "-",
+            "canonical_name": name or "-",
+            "override": {
+                "source_type": override.source_type,
+                "external_provider": override.external_provider,
+                "external_food_id": override.external_food_id,
+                "display_name": override.display_name,
+                "brand_name": override.brand_name,
+            }
+            if override
+            else None,
             "amount_oz": amount_oz,
             "amount_g": round(amount_oz * 28.3495, 2),
         }

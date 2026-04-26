@@ -231,6 +231,50 @@ class ClientFoodPreferenceChangeLog(models.Model):
         return f"{self.user.email} | food-pref change @ {self.created_at}"
 
 
+class ClientFoodOverride(models.Model):
+    SOURCE_TYPE_USDA = "usda"
+    SOURCE_TYPE_CHOICES = [
+        (SOURCE_TYPE_USDA, "USDA FoodData Central"),
+    ]
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="food_overrides")
+    canonical_category = models.CharField(max_length=120, db_index=True)
+    source_type = models.CharField(max_length=32, choices=SOURCE_TYPE_CHOICES, default=SOURCE_TYPE_USDA, db_index=True)
+    external_provider = models.CharField(max_length=40, default=SOURCE_TYPE_USDA, db_index=True)
+    external_food_id = models.CharField(max_length=120, db_index=True)
+    display_name = models.CharField(max_length=220)
+    brand_name = models.CharField(max_length=160, blank=True, default="")
+    serving_size = models.DecimalField(max_digits=12, decimal_places=4, default=0)
+    serving_unit = models.CharField(max_length=40, blank=True, default="")
+    serving_weight_grams = models.DecimalField(max_digits=12, decimal_places=4, default=0)
+    protein = models.DecimalField(max_digits=12, decimal_places=5, default=0)
+    carbs = models.DecimalField(max_digits=12, decimal_places=5, default=0)
+    fats = models.DecimalField(max_digits=12, decimal_places=5, default=0)
+    calories = models.DecimalField(max_digits=12, decimal_places=5, default=0)
+    raw_payload = models.JSONField(default=dict, blank=True)
+    active = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("user_id", "canonical_category", "-updated_at")
+        verbose_name = "Client Food Override"
+        verbose_name_plural = "Client Food Overrides"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "canonical_category"],
+                condition=Q(active=True),
+                name="client_unique_active_food_override_per_category",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["user", "canonical_category", "active"], name="client_food_ovr_lkp_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.user.email} | {self.canonical_category} -> {self.display_name}"
+
+
 class ClientQueuedPlanChange(models.Model):
     STATUS_CHOICES = [
         ("queued", "Queued"),
