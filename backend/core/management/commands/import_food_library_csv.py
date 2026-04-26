@@ -6,6 +6,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from core.models import ComboMacroErrorLookup, FoodLibraryItem, MealComboTemplate
+from core.services.food_canonical import canonical_standard_name
 
 
 def _str_or_default(value, default=""):
@@ -153,23 +154,29 @@ class Command(BaseCommand):
         food_objects = []
         for row in food_rows:
             macro = _str_or_default(row.get("macro"), "-")
-            name = _str_or_default(row.get("name"), "-")
+            raw_name = _str_or_default(row.get("name"), "-")
             raw_category = _str_or_default(row.get("category"), "")
-            category = raw_category
-            if not raw_category:
-                category = name or "-"
-            is_category_reference_row = bool(raw_category) and name.lower() == category.lower()
+            category = canonical_standard_name(raw_category or raw_name or "-")
+            display_name = raw_name or category
+            is_category_reference_row = bool(raw_category) and display_name.lower() == raw_category.lower()
             food_objects.append(
                 FoodLibraryItem(
                     source_food_id=int(_str_or_default(row.get("food_id"), "0")),
                     macro=macro,
                     category=category,
-                    name=name,
+                    name=category,
+                    display_name=display_name,
+                    canonical_name=category,
+                    canonical_category=category,
+                    source_type=FoodLibraryItem.SourceType.STANDARD,
+                    approval_status=FoodLibraryItem.ApprovalStatus.APPROVED,
+                    is_standard=True,
+                    is_active=True,
                     measurement_unit=_str_or_default(row.get("measurement"), "oz"),
                     protein=_decimal_or_zero(row.get("protein")),
                     carbs=_decimal_or_zero(row.get("carbs")),
                     fats=_decimal_or_zero(row.get("fats")),
-                    is_placeholder=(name == "-" or category == "-" or is_category_reference_row),
+                    is_placeholder=(display_name == "-" or category == "-" or is_category_reference_row),
                 )
             )
 
@@ -182,6 +189,13 @@ class Command(BaseCommand):
                 "macro",
                 "category",
                 "name",
+                "display_name",
+                "canonical_name",
+                "canonical_category",
+                "source_type",
+                "approval_status",
+                "is_standard",
+                "is_active",
                 "measurement_unit",
                 "protein",
                 "carbs",
@@ -198,12 +212,12 @@ class Command(BaseCommand):
             combo_objects.append(
                 MealComboTemplate(
                     combo_id=int(combo_id),
-                    protein_slot_1=_str_or_default(row.get("c1_protein_1"), "-"),
-                    protein_slot_2=_str_or_default(row.get("c1_protein_2"), "-"),
-                    carb_slot_1=_str_or_default(row.get("c1_carbs_1"), "-"),
-                    carb_slot_2=_str_or_default(row.get("c1_carbs_2"), "-"),
-                    fat_slot_1=_str_or_default(row.get("c1_fats_1"), "-"),
-                    fat_slot_2=_str_or_default(row.get("c1_fats_2"), "-"),
+                    protein_slot_1=canonical_standard_name(row.get("c1_protein_1")),
+                    protein_slot_2=canonical_standard_name(row.get("c1_protein_2")),
+                    carb_slot_1=canonical_standard_name(row.get("c1_carbs_1")),
+                    carb_slot_2=canonical_standard_name(row.get("c1_carbs_2")),
+                    fat_slot_1=canonical_standard_name(row.get("c1_fats_1")),
+                    fat_slot_2=canonical_standard_name(row.get("c1_fats_2")),
                     protein_split_1=_decimal_or_none(row.get("p1")),
                     protein_split_2=_decimal_or_none(row.get("p2")),
                     carb_split_1=_decimal_or_none(row.get("c1")),

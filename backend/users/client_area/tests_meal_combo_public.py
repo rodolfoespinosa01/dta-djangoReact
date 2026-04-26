@@ -13,7 +13,8 @@ class MealComboPublicOptionsTests(TestCase):
                 FoodLibraryItem(
                     source_food_id=1,
                     category="Ground Beef STANDARD",
-                    name="Ground Beef 95/5",
+                    name="Ground Beef STANDARD",
+                    display_name="Ground Beef 95/5",
                     measurement_unit="oz",
                     protein=24,
                     carbs=0,
@@ -22,11 +23,25 @@ class MealComboPublicOptionsTests(TestCase):
                 FoodLibraryItem(
                     source_food_id=2,
                     category="Ground Beef STANDARD",
-                    name="Ground Beef 90/10",
+                    name="Ground Beef STANDARD",
+                    display_name="Ground Beef 90/10",
                     measurement_unit="oz",
                     protein=22,
                     carbs=0,
                     fats=10,
+                ),
+                FoodLibraryItem(
+                    source_food_id=3,
+                    category="Ground Beef STANDARD",
+                    name="User Ground Beef",
+                    display_name="User Ground Beef",
+                    measurement_unit="oz",
+                    protein=99,
+                    carbs=99,
+                    fats=99,
+                    source_type=FoodLibraryItem.SourceType.USER_SUBMITTED,
+                    approval_status=FoodLibraryItem.ApprovalStatus.PENDING,
+                    is_standard=False,
                 ),
             ]
         )
@@ -34,9 +49,9 @@ class MealComboPublicOptionsTests(TestCase):
             combo_id=501,
             protein_slot_1="Ground Beef STANDARD",
             protein_slot_2="-",
-            carb_slot_1="White Rice",
+            carb_slot_1="White Rice STANDARD",
             carb_slot_2="-",
-            fat_slot_1="Avocado",
+            fat_slot_1="Avocado STANDARD",
             fat_slot_2="Oil STANDARD",
         )
 
@@ -48,6 +63,7 @@ class MealComboPublicOptionsTests(TestCase):
         self.assertIn("Ground Beef STANDARD", protein_options)
         self.assertNotIn("Ground Beef 95/5", protein_options)
         self.assertNotIn("Ground Beef 90/10", protein_options)
+        self.assertNotIn("User Ground Beef", protein_options)
 
     def test_lookup_normalizes_legacy_food_names_before_combo_match(self):
         response = self.api.post(
@@ -67,6 +83,8 @@ class MealComboPublicOptionsTests(TestCase):
         self.assertTrue(response.data["combo_match"]["found"])
         self.assertEqual(response.data["combo_match"]["combo_id"], 501)
         self.assertEqual(response.data["combo_match"]["slots"]["protein_1"], "Ground Beef STANDARD")
+        self.assertEqual(response.data["combo_match"]["slots"]["carbs_1"], "White Rice STANDARD")
+        self.assertEqual(response.data["combo_match"]["slots"]["fats_1"], "Avocado STANDARD")
 
     def test_combo_payload_uses_template_slot_values_for_starter_rows(self):
         combo = MealComboTemplate.objects.get(combo_id=501)
@@ -84,74 +102,74 @@ class MealComboStarterTemplateShapePolicyTests(TestCase):
             [
                 MealComboTemplate(
                     combo_id=100,
-                    protein_slot_1="Chicken Breast",
-                    protein_slot_2="Eggs",
-                    carb_slot_1="White Rice",
+                    protein_slot_1="Chicken Breast STANDARD",
+                    protein_slot_2="Eggs STANDARD",
+                    carb_slot_1="White Rice STANDARD",
                     carb_slot_2="-",
-                    fat_slot_1="Avocado",
+                    fat_slot_1="Avocado STANDARD",
                     fat_slot_2="Oil STANDARD",
                 ),
                 MealComboTemplate(
                     combo_id=101,
-                    protein_slot_1="Chicken Breast",
+                    protein_slot_1="Chicken Breast STANDARD",
                     protein_slot_2="-",
-                    carb_slot_1="White Rice",
+                    carb_slot_1="White Rice STANDARD",
                     carb_slot_2="-",
-                    fat_slot_1="Avocado",
+                    fat_slot_1="Avocado STANDARD",
                     fat_slot_2="Oil STANDARD",
                 ),
                 MealComboTemplate(
                     combo_id=102,
-                    protein_slot_1="Chicken Breast",
+                    protein_slot_1="Chicken Breast STANDARD",
                     protein_slot_2="-",
-                    carb_slot_1="Brown Rice",
+                    carb_slot_1="Brown Rice STANDARD",
                     carb_slot_2="-",
-                    fat_slot_1="Avocado",
+                    fat_slot_1="Avocado STANDARD",
                     fat_slot_2="Oil STANDARD",
                 ),
                 MealComboTemplate(
                     combo_id=103,
-                    protein_slot_1="Chicken Breast",
+                    protein_slot_1="Chicken Breast STANDARD",
                     protein_slot_2="Ground Beef STANDARD",
-                    carb_slot_1="Brown Rice",
+                    carb_slot_1="Brown Rice STANDARD",
                     carb_slot_2="-",
-                    fat_slot_1="Avocado",
+                    fat_slot_1="Avocado STANDARD",
                     fat_slot_2="Oil STANDARD",
                 ),
                 MealComboTemplate(
                     combo_id=104,
-                    protein_slot_1="Chicken Breast",
+                    protein_slot_1="Chicken Breast STANDARD",
                     protein_slot_2="-",
-                    carb_slot_1="White Rice",
-                    carb_slot_2="Banana",
-                    fat_slot_1="Avocado",
+                    carb_slot_1="White Rice STANDARD",
+                    carb_slot_2="Banana STANDARD",
+                    fat_slot_1="Avocado STANDARD",
                     fat_slot_2="Oil STANDARD",
                 ),
                 MealComboTemplate(
                     combo_id=105,
-                    protein_slot_1="Chicken Breast",
+                    protein_slot_1="Chicken Breast STANDARD",
                     protein_slot_2="-",
-                    carb_slot_1="Quinoa",
-                    carb_slot_2="Banana",
-                    fat_slot_1="Avocado",
+                    carb_slot_1="Quinoa STANDARD",
+                    carb_slot_2="Banana STANDARD",
+                    fat_slot_1="Avocado STANDARD",
                     fat_slot_2="Oil STANDARD",
                 ),
                 MealComboTemplate(
                     combo_id=106,
-                    protein_slot_1="Chicken Breast",
-                    protein_slot_2="Eggs",
-                    carb_slot_1="Quinoa",
-                    carb_slot_2="Banana",
-                    fat_slot_1="Avocado",
+                    protein_slot_1="Chicken Breast STANDARD",
+                    protein_slot_2="Eggs STANDARD",
+                    carb_slot_1="Quinoa STANDARD",
+                    carb_slot_2="Banana STANDARD",
+                    fat_slot_1="Avocado STANDARD",
                     fat_slot_2="Oil STANDARD",
                 ),
                 MealComboTemplate(
                     combo_id=107,
-                    protein_slot_1="Chicken Breast",
+                    protein_slot_1="Chicken Breast STANDARD",
                     protein_slot_2="-",
-                    carb_slot_1="Brown Rice",
+                    carb_slot_1="Brown Rice STANDARD",
                     carb_slot_2="Beans STANDARD",
-                    fat_slot_1="Avocado",
+                    fat_slot_1="Avocado STANDARD",
                     fat_slot_2="Oil STANDARD",
                 ),
             ]
@@ -208,19 +226,19 @@ class MealComboStarterTemplateShapePolicyTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         meal_1 = response.data["starter_templates"][0]["default_day_meals"][0]
-        self.assertEqual(meal_1["protein_2"], "Eggs")
+        self.assertEqual(meal_1["protein_2"], "Eggs STANDARD")
 
     def test_training_adjacent_moderate_carb_starter_can_choose_two_carb_template(self):
         response = self._starter(self._day_payload(protein=40, carbs=50, training_before_meal="before_meal_2"))
 
         self.assertEqual(response.status_code, 200)
         meals = response.data["starter_templates"][0]["default_day_meals"]
-        self.assertEqual(meals[0]["carbs_2"], "Banana")
-        self.assertEqual(meals[1]["carbs_2"], "Banana")
+        self.assertEqual(meals[0]["carbs_2"], "Banana STANDARD")
+        self.assertEqual(meals[1]["carbs_2"], "Banana STANDARD")
 
     def test_high_carb_starter_can_choose_two_carb_template(self):
         response = self._starter(self._day_payload(protein=40, carbs=65))
 
         self.assertEqual(response.status_code, 200)
         meals = response.data["starter_templates"][0]["default_day_meals"]
-        self.assertIn("Banana", {meal["carbs_2"] for meal in meals})
+        self.assertIn("Banana STANDARD", {meal["carbs_2"] for meal in meals})
