@@ -5,6 +5,7 @@ from django.utils import timezone
 from django.utils.html import format_html
 
 from .models import (
+    ClientFoodOverride,
     ClientFoodPreferenceChangeLog,
     ClientMealPlanGeneratedMeal,
     ClientMealPlanGenerationJob,
@@ -361,6 +362,96 @@ class ClientMealComboSelectionAdmin(admin.ModelAdmin):
         return False
 
     def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(ClientFoodOverride)
+class ClientFoodOverrideAdmin(admin.ModelAdmin):
+    list_display = (
+        "user",
+        "canonical_category",
+        "display_name",
+        "brand_name",
+        "external_provider",
+        "external_food_id",
+        "protein",
+        "carbs",
+        "fats",
+        "calories",
+        "active",
+        "created_at",
+        "updated_at",
+    )
+    list_filter = ("active", "external_provider", "canonical_category")
+    search_fields = ("display_name", "brand_name", "external_food_id", "canonical_category", "user__email")
+    list_select_related = ("user",)
+    readonly_fields = (
+        "user",
+        "canonical_category",
+        "source_type",
+        "external_provider",
+        "external_food_id",
+        "display_name",
+        "brand_name",
+        "serving_size",
+        "serving_unit",
+        "serving_weight_grams",
+        "protein",
+        "carbs",
+        "fats",
+        "calories",
+        "raw_payload",
+        "created_at",
+        "updated_at",
+    )
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": (
+                    "user",
+                    "canonical_category",
+                    "display_name",
+                    "brand_name",
+                    "active",
+                )
+            },
+        ),
+        (
+            "USDA Source",
+            {
+                "fields": (
+                    "source_type",
+                    "external_provider",
+                    "external_food_id",
+                    "serving_size",
+                    "serving_unit",
+                    "serving_weight_grams",
+                )
+            },
+        ),
+        (
+            "Macros",
+            {
+                "fields": ("protein", "carbs", "fats", "calories"),
+            },
+        ),
+        (
+            "Raw Payload",
+            {
+                "classes": ("collapse",),
+                "fields": ("raw_payload",),
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
+            },
+        ),
+    )
+
+    def has_add_permission(self, request):
         return False
 
 
