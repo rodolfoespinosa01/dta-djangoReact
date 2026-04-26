@@ -217,24 +217,6 @@ function UserHomePage() {
         </div>
       </section>
 
-      <div className="user-login-form">
-        <p className="user-login-label" style={{ margin: 0 }}>
-          DTA Client Access
-        </p>
-        <p className="user-section-subtitle" style={{ marginTop: 0 }}>
-          Already have a DTA client account? Use the dedicated DTA client login page to sign in with password or Google.
-        </p>
-        <button type="button" className="user-home-button" onClick={() => navigate('/user_login')}>
-          Go To DTA Client Login
-        </button>
-        <p className="user-section-subtitle" style={{ marginTop: '0.25rem' }}>
-          DTA clients log in on the DTA client login page. If you are a coach&apos;s client, use your coach link and log in from that coach page.
-        </p>
-        <button type="button" className="user-home-button" onClick={() => navigate('/welcome')}>
-          Back to Main Page
-        </button>
-      </div>
-
       <section className="user-home-plans" aria-label="DTA plan signup options">
         <div className="user-home-plans-header">
           <h2>Choose Your Plan</h2>
@@ -336,6 +318,25 @@ function UserHomePage() {
           <h2>{t('user_home.no_ai_title')}</h2>
           <p>{t('user_home.no_ai_text_1')}</p>
           <p>{t('user_home.no_ai_text_2')}</p>
+        </div>
+      </section>
+      <section>
+        <div className="user-login-form">
+          <p className="user-login-label" style={{ margin: 0 }}>
+            DTA Client Access
+          </p>
+          <p className="user-section-subtitle" style={{ marginTop: 0 }}>
+            Already have a DTA client account? Use the dedicated DTA client login page to sign in with password or Google.
+          </p>
+          <button type="button" className="user-home-button" onClick={() => navigate('/user_login')}>
+            Go To DTA Client Login
+          </button>
+          <p className="user-section-subtitle" style={{ marginTop: '0.25rem' }}>
+            DTA clients log in on the DTA client login page. If you are a coach&apos;s client, use your coach link and log in from that coach page.
+          </p>
+          <button type="button" className="user-home-button" onClick={() => navigate('/welcome')}>
+            Back to Main Page
+          </button>
         </div>
       </section>
     </div>

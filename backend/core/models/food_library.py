@@ -2,6 +2,17 @@ from django.db import models
 
 
 class FoodLibraryItem(models.Model):
+    class SourceType(models.TextChoices):
+        STANDARD = "standard", "Standard"
+        BRANDED = "branded", "Branded"
+        USER_SUBMITTED = "user_submitted", "User Submitted"
+        ADMIN_APPROVED = "admin_approved", "Admin Approved"
+
+    class ApprovalStatus(models.TextChoices):
+        APPROVED = "approved", "Approved"
+        PENDING = "pending", "Pending"
+        REJECTED = "rejected", "Rejected"
+
     class Macro(models.TextChoices):
         PROTEIN = "Protein", "Protein"
         CARBS = "Carbs", "Carbs"
@@ -13,6 +24,28 @@ class FoodLibraryItem(models.Model):
     # Canonical meal-combo category bridge (example: "Ground Beef STANDARD").
     category = models.CharField(max_length=120, default="-", db_index=True)
     name = models.CharField(max_length=120, db_index=True)
+    display_name = models.CharField(max_length=160, blank=True, default="")
+    canonical_name = models.CharField(max_length=120, blank=True, default="", db_index=True)
+    canonical_category = models.CharField(max_length=120, blank=True, default="", db_index=True)
+    brand_name = models.CharField(max_length=120, blank=True, default="")
+    source_type = models.CharField(max_length=32, choices=SourceType.choices, default=SourceType.STANDARD, db_index=True)
+    approval_status = models.CharField(max_length=20, choices=ApprovalStatus.choices, default=ApprovalStatus.APPROVED, db_index=True)
+    created_by_user = models.ForeignKey(
+        "core.CustomUser",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="submitted_food_library_items",
+    )
+    is_standard = models.BooleanField(default=True, db_index=True)
+    is_active = models.BooleanField(default=True, db_index=True)
+    parent_standard_food = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="specific_food_variants",
+    )
     measurement_unit = models.CharField(max_length=16, blank=True, default="oz")
     protein = models.DecimalField(max_digits=12, decimal_places=5, default=0)
     carbs = models.DecimalField(max_digits=12, decimal_places=5, default=0)

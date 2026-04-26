@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../../context/LanguageContext';
-import welcomeImage from '../../assets/dta_brand_content/welcome_DTA.jpg';
+import welcomeImage from '../../assets/dta_brand_content/b2b_b2c.jpg';
 import './MainWelcomeScreen.css';
 
 function MainWelcomeScreen() {
