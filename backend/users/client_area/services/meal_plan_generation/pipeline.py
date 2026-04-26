@@ -51,6 +51,10 @@ def _food_key(value: str | None) -> str:
     return _norm_food_name(value).lower()
 
 
+def _has_usable_macro_data(row: FoodLibraryItem) -> bool:
+    return any(_d(getattr(row, macro, ZERO)) > ZERO for macro in ("protein", "carbs", "fats"))
+
+
 @dataclass
 class FullPipelineRunResult:
     generated_meal_count: int
@@ -133,9 +137,11 @@ def _food_macros_by_name(names: list[str]) -> dict[str, FoodLibraryItem]:
     rows = list(FoodLibraryItem.objects.all().order_by("is_placeholder", "source_food_id"))
     by_name: dict[str, FoodLibraryItem] = {}
 
-    # 1) Direct food-name matches take priority.
+    # 1) Direct food-name matches take priority. Some canonical combo foods
+    # are marked as placeholder/category-reference rows, but still carry the
+    # macro data needed for serving calculations.
     for row in rows:
-        if row.is_placeholder:
+        if _food_key(row.name) == "-" or not _has_usable_macro_data(row):
             continue
         key = _food_key(row.name)
         if key in normalized and key not in by_name:
@@ -146,7 +152,7 @@ def _food_macros_by_name(names: list[str]) -> dict[str, FoodLibraryItem]:
     unresolved = {key for key in normalized if key not in by_name}
     if unresolved:
         for row in rows:
-            if row.is_placeholder:
+            if _food_key(row.category) == "-" or not _has_usable_macro_data(row):
                 continue
             category_key = _food_key(row.category)
             if category_key in unresolved and category_key not in by_name:
@@ -357,4 +363,3 @@ def run_steps_2_to_10_for_day(*, job, day_payload: dict[str, Any]) -> FullPipeli
         step1_row_count=step1_row_count,
         note="WP Steps 2-10 ported into a collapsed Python pipeline (same scoring + winner selection).",
     )
-
