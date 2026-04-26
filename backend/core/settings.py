@@ -242,6 +242,11 @@ if DEBUG:
 
 FRONTEND_URL = os.getenv("FRONTEND_URL") or "http://localhost:3000"
 
+USDA_FDC_API_KEY = os.getenv("USDA_FDC_API_KEY") or os.getenv("USDA_FOODDATA_API_KEY") or ""
+USDA_FOODDATA_API_KEY = USDA_FDC_API_KEY
+USDA_FOODDATA_BASE_URL = os.getenv("USDA_FOODDATA_BASE_URL") or "https://api.nal.usda.gov/fdc/v1"
+USDA_FOODDATA_TIMEOUT_SECONDS = int(os.getenv("USDA_FOODDATA_TIMEOUT_SECONDS") or "8")
+
 
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL") or os.getenv("REDIS_URL") or "redis://127.0.0.1:6379/0"
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND") or CELERY_BROKER_URL

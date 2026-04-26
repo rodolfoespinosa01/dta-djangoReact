@@ -92,6 +92,15 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
   const [starterLoading, setStarterLoading] = useState(false);
   const [copyTargetDay, setCopyTargetDay] = useState('monday');
   const [templatePanelMode, setTemplatePanelMode] = useState('starter');
+  const [foodOverrides, setFoodOverrides] = useState({});
+  const [usdaPicker, setUsdaPicker] = useState({
+    open: false,
+    canonicalCategory: '',
+    query: '',
+    loading: false,
+    error: '',
+    results: [],
+  });
 
   useEffect(() => {
     let ignore = false;
@@ -109,6 +118,24 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
         if (!ignore) setOptionsError('Unable to load meal combo options.');
       });
     return () => { ignore = true; };
+  }, []);
+
+  const loadFoodOverrides = async () => {
+    try {
+      const res = await apiRequest('/api/v1/users/client/app/food-overrides/', { auth: true });
+      if (!res.ok) return;
+      const map = {};
+      (Array.isArray(res.data?.food_overrides) ? res.data.food_overrides : []).forEach((row) => {
+        if (row?.canonical_category) map[row.canonical_category] = row;
+      });
+      setFoodOverrides(map);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    loadFoodOverrides();
   }, []);
 
   const normalized = useMemo(() => {
@@ -406,6 +433,103 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
 
   const activeDay = normalized.active_day;
 
+  const openUsdaPicker = (canonicalCategory) => {
+    const cleanCategory = normalizeSlotValue(canonicalCategory);
+    setUsdaPicker({
+      open: true,
+      canonicalCategory: cleanCategory,
+      query: cleanCategory.replace(/\sSTANDARD$/i, ''),
+      loading: false,
+      error: '',
+      results: [],
+    });
+  };
+
+  const searchUsdaFoods = async () => {
+    const query = String(usdaPicker.query || '').trim();
+    if (!query) return;
+    setUsdaPicker((prev) => ({ ...prev, loading: true, error: '' }));
+    try {
+      const res = await apiRequest('/api/v1/users/client/app/food-overrides/usda/search/', {
+        method: 'POST',
+        auth: true,
+        body: { query, page: 1, page_size: 12, data_type: 'Branded' },
+      });
+      if (!res.ok) {
+        setUsdaPicker((prev) => ({
+          ...prev,
+          loading: false,
+          error: res.data?.error?.message || 'USDA search failed.',
+        }));
+        return;
+      }
+      setUsdaPicker((prev) => ({
+        ...prev,
+        loading: false,
+        results: Array.isArray(res.data?.usda_foods) ? res.data.usda_foods : [],
+      }));
+    } catch (err) {
+      console.error(err);
+      setUsdaPicker((prev) => ({ ...prev, loading: false, error: 'USDA search failed.' }));
+    }
+  };
+
+  const saveUsdaOverride = async (food) => {
+    if (!food?.fdc_id || !usdaPicker.canonicalCategory) return;
+    setUsdaPicker((prev) => ({ ...prev, loading: true, error: '' }));
+    try {
+      const res = await apiRequest('/api/v1/users/client/app/food-overrides/save/', {
+        method: 'POST',
+        auth: true,
+        body: {
+          canonical_category: usdaPicker.canonicalCategory,
+          fdc_id: food.fdc_id,
+        },
+      });
+      if (!res.ok) {
+        setUsdaPicker((prev) => ({
+          ...prev,
+          loading: false,
+          error: res.data?.error?.message || 'Unable to save USDA override.',
+        }));
+        return;
+      }
+      const saved = res.data?.food_override;
+      if (saved?.canonical_category) {
+        setFoodOverrides((prev) => ({ ...prev, [saved.canonical_category]: saved }));
+      }
+      setUsdaPicker({
+        open: false,
+        canonicalCategory: '',
+        query: '',
+        loading: false,
+        error: '',
+        results: [],
+      });
+    } catch (err) {
+      console.error(err);
+      setUsdaPicker((prev) => ({ ...prev, loading: false, error: 'Unable to save USDA override.' }));
+    }
+  };
+
+  const removeFoodOverride = async (override) => {
+    if (!override?.id) return;
+    try {
+      const res = await apiRequest(`/api/v1/users/client/app/food-overrides/${override.id}/`, {
+        method: 'DELETE',
+        auth: true,
+      });
+      if (!res.ok) return;
+      setFoodOverrides((prev) => {
+        const next = { ...prev };
+        delete next[override.canonical_category];
+        return next;
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     let ignore = false;
     const dayPayload = macroResultsByDay[activeDay] || null;
@@ -594,7 +718,9 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
               const currentValue = meal[slotKey] || '-';
               const baseOptions = slotOptions?.[slotKey] || ['-'];
               const selectValue = baseOptions.includes(currentValue) ? currentValue : '-';
+              const override = foodOverrides[selectValue];
               return (
+                <>
                 <select
                   value={disabled ? '-' : selectValue}
                   onChange={(e) => onSlotChange(mealIndex, slotKey, e.target.value)}
@@ -604,6 +730,36 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
                     <option key={`${slotKey}-${opt}`} value={opt}>{opt}</option>
                   ))}
                 </select>
+                {!disabled && selectValue !== '-' ? (
+                  <div className="client-q-stack" style={{ gap: '0.3rem', marginTop: '0.35rem' }}>
+                    {override ? (
+                      <small className="client-q-help">
+                        USDA override: {override.display_name}
+                      </small>
+                    ) : null}
+                    <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        className="client-q-btn secondary"
+                        style={{ padding: '0.35rem 0.55rem', fontSize: '0.78rem' }}
+                        onClick={() => openUsdaPicker(selectValue)}
+                      >
+                        {override ? 'Change USDA Food' : 'Choose USDA Food'}
+                      </button>
+                      {override ? (
+                        <button
+                          type="button"
+                          className="client-q-btn secondary"
+                          style={{ padding: '0.35rem 0.55rem', fontSize: '0.78rem' }}
+                          onClick={() => removeFoodOverride(override)}
+                        >
+                          Remove
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+                </>
               );
             })()}
             {(() => {
@@ -642,6 +798,71 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
         Build one full default day of meals using food combo dropdowns. We match each meal to a `meal_combo_id`, then you can apply it to the whole week and customize specific days.
       </p>
       {optionsError ? <p className="client-q-error">{optionsError}</p> : null}
+
+      {usdaPicker.open ? (
+        <div className="client-q-stack" style={{ border: '1px solid rgba(20,40,74,0.16)', borderRadius: 12, padding: '0.75rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'center' }}>
+            <strong>USDA override for {usdaPicker.canonicalCategory}</strong>
+            <button
+              type="button"
+              className="client-q-btn secondary"
+              onClick={() => setUsdaPicker({ open: false, canonicalCategory: '', query: '', loading: false, error: '', results: [] })}
+            >
+              Close
+            </button>
+          </div>
+          <div className="client-q-inline-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) auto' }}>
+            <label>
+              Search USDA FoodData Central
+              <input
+                type="text"
+                value={usdaPicker.query}
+                onChange={(e) => setUsdaPicker((prev) => ({ ...prev, query: e.target.value }))}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    searchUsdaFoods();
+                  }
+                }}
+              />
+            </label>
+            <div style={{ display: 'flex', alignItems: 'end' }}>
+              <button type="button" className="client-q-btn" onClick={searchUsdaFoods} disabled={usdaPicker.loading}>
+                {usdaPicker.loading ? 'Searching...' : 'Search'}
+              </button>
+            </div>
+          </div>
+          {usdaPicker.error ? <p className="client-q-error">{usdaPicker.error}</p> : null}
+          <div className="client-q-stack">
+            {usdaPicker.results.map((food) => (
+              <div key={food.fdc_id} style={{ border: '1px solid rgba(20,40,74,0.1)', borderRadius: 10, padding: '0.65rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'center' }}>
+                  <div className="client-q-stack" style={{ gap: '0.2rem' }}>
+                    <strong>{food.display_name || food.fdc_id}</strong>
+                    <small className="client-q-help">
+                      {food.brand_name ? `${food.brand_name} • ` : ''}
+                      P {food.protein} / C {food.carbs} / F {food.fats} per oz
+                      {food.calories ? ` • ${food.calories} cal/oz` : ''}
+                    </small>
+                    {food.serving_size || food.serving_unit ? (
+                      <small className="client-q-help">
+                        Serving: {food.serving_size || '-'} {food.serving_unit || ''}
+                        {food.serving_weight_grams ? ` (${food.serving_weight_grams}g)` : ''}
+                      </small>
+                    ) : null}
+                  </div>
+                  <button type="button" className="client-q-btn secondary" onClick={() => saveUsdaOverride(food)} disabled={usdaPicker.loading}>
+                    Select
+                  </button>
+                </div>
+              </div>
+            ))}
+            {!usdaPicker.loading && !usdaPicker.results.length ? (
+              <p className="client-q-help">Search for a branded USDA food to override this STANDARD slot.</p>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       <div className="client-q-stack">
         <strong>Template Setup Mode</strong>

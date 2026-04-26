@@ -10,6 +10,7 @@ from django.db import transaction
 from core.models import FoodLibraryItem, MealComboTemplate
 from core.services.meal_combo_shape_policy import select_meal_combo_template_for_target
 from users.client_area.models import (
+    ClientFoodOverride,
     ClientMealComboSelection,
     ClientMealPlanGeneratedMeal,
     ClientMealPlanGenerationStep1Row,
@@ -134,7 +135,7 @@ def _slot_definitions(combo: MealComboTemplate) -> dict[str, dict[str, Any]]:
     }
 
 
-def _food_macros_by_name(names: list[str]) -> dict[str, FoodLibraryItem]:
+def _food_macros_by_name(names: list[str]) -> dict[str, Any]:
     normalized = sorted({_food_key(name) for name in names if _norm_food_name(name) and _norm_food_name(name) != "-"})
     if not normalized:
         return {}
@@ -172,7 +173,23 @@ def _food_macros_by_name(names: list[str]) -> dict[str, FoodLibraryItem]:
     return by_name
 
 
-def _macro_density(food: FoodLibraryItem | None, macro: str) -> Decimal:
+def _food_overrides_by_name(user, names: list[str]) -> dict[str, ClientFoodOverride]:
+    normalized_names = {
+        _norm_food_name(name)
+        for name in names
+        if _norm_food_name(name) and _norm_food_name(name) != "-"
+    }
+    if not normalized_names:
+        return {}
+    rows = ClientFoodOverride.objects.filter(
+        user=user,
+        active=True,
+        canonical_category__in=normalized_names,
+    )
+    return {_food_key(row.canonical_category): row for row in rows}
+
+
+def _macro_density(food: Any | None, macro: str) -> Decimal:
     if not food:
         return ZERO
     return _nonnegative(_d(getattr(food, macro, ZERO)))
@@ -266,6 +283,7 @@ def _evaluate_candidate(
         "error_code": int(step1_row.error_code),
         "error_est": error_est,
         "amounts": amounts,
+        "step1_row": step1_row,
     }
 
 
@@ -361,6 +379,8 @@ def run_steps_2_to_10_for_day(*, job, day_payload: dict[str, Any]) -> FullPipeli
             ]
         )
     foods_by_name = _food_macros_by_name(referenced_food_names)
+    override_foods_by_name = _food_overrides_by_name(user, referenced_food_names)
+    effective_foods_by_name = {**foods_by_name, **override_foods_by_name}
 
     winners_by_meal: dict[int, dict[str, Any]] = {}
     for row in step1_rows_qs.iterator(chunk_size=5000):
@@ -393,6 +413,14 @@ def run_steps_2_to_10_for_day(*, job, day_payload: dict[str, Any]) -> FullPipeli
         combo = combo_by_meal[meal_number]
         winner = winners_by_meal[meal_number]
         amounts = winner["amounts"]
+        if override_foods_by_name:
+            amounts = _evaluate_candidate(
+                winner["step1_row"],
+                combo,
+                effective_foods_by_name,
+                targets_by_meal[meal_number],
+                selected_foods_for_meal=selected_foods_by_meal.get(meal_number),
+            )["amounts"]
         final_rows.append(
             ClientMealPlanGeneratedMeal(
                 job=job,
