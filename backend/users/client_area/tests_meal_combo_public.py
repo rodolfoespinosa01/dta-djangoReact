@@ -75,3 +75,152 @@ class MealComboPublicOptionsTests(TestCase):
 
         self.assertEqual(payload["protein_1"], "Ground Beef STANDARD")
         self.assertNotEqual(payload["protein_1"], "Ground Beef 95/5")
+
+
+class MealComboStarterTemplateShapePolicyTests(TestCase):
+    def setUp(self):
+        self.api = APIClient()
+        MealComboTemplate.objects.bulk_create(
+            [
+                MealComboTemplate(
+                    combo_id=100,
+                    protein_slot_1="Chicken Breast",
+                    protein_slot_2="Eggs",
+                    carb_slot_1="White Rice",
+                    carb_slot_2="-",
+                    fat_slot_1="Avocado",
+                    fat_slot_2="Oil STANDARD",
+                ),
+                MealComboTemplate(
+                    combo_id=101,
+                    protein_slot_1="Chicken Breast",
+                    protein_slot_2="-",
+                    carb_slot_1="White Rice",
+                    carb_slot_2="-",
+                    fat_slot_1="Avocado",
+                    fat_slot_2="Oil STANDARD",
+                ),
+                MealComboTemplate(
+                    combo_id=102,
+                    protein_slot_1="Chicken Breast",
+                    protein_slot_2="-",
+                    carb_slot_1="Brown Rice",
+                    carb_slot_2="-",
+                    fat_slot_1="Avocado",
+                    fat_slot_2="Oil STANDARD",
+                ),
+                MealComboTemplate(
+                    combo_id=103,
+                    protein_slot_1="Chicken Breast",
+                    protein_slot_2="Ground Beef STANDARD",
+                    carb_slot_1="Brown Rice",
+                    carb_slot_2="-",
+                    fat_slot_1="Avocado",
+                    fat_slot_2="Oil STANDARD",
+                ),
+                MealComboTemplate(
+                    combo_id=104,
+                    protein_slot_1="Chicken Breast",
+                    protein_slot_2="-",
+                    carb_slot_1="White Rice",
+                    carb_slot_2="Banana",
+                    fat_slot_1="Avocado",
+                    fat_slot_2="Oil STANDARD",
+                ),
+                MealComboTemplate(
+                    combo_id=105,
+                    protein_slot_1="Chicken Breast",
+                    protein_slot_2="-",
+                    carb_slot_1="Quinoa",
+                    carb_slot_2="Banana",
+                    fat_slot_1="Avocado",
+                    fat_slot_2="Oil STANDARD",
+                ),
+                MealComboTemplate(
+                    combo_id=106,
+                    protein_slot_1="Chicken Breast",
+                    protein_slot_2="Eggs",
+                    carb_slot_1="Quinoa",
+                    carb_slot_2="Banana",
+                    fat_slot_1="Avocado",
+                    fat_slot_2="Oil STANDARD",
+                ),
+                MealComboTemplate(
+                    combo_id=107,
+                    protein_slot_1="Chicken Breast",
+                    protein_slot_2="-",
+                    carb_slot_1="Brown Rice",
+                    carb_slot_2="Beans STANDARD",
+                    fat_slot_1="Avocado",
+                    fat_slot_2="Oil STANDARD",
+                ),
+            ]
+        )
+
+    def _day_payload(self, *, protein, carbs, training_before_meal=None):
+        return {
+            "day": "saturday",
+            "is_workout_day": bool(training_before_meal),
+            "training_before_meal": training_before_meal,
+            "meals_per_day": 3,
+            "meal_macro_splits": [
+                {
+                    "meal_number": meal_number,
+                    "grams": {"protein_g": protein, "carbs_g": carbs, "fats_g": 12},
+                }
+                for meal_number in (1, 2, 3)
+            ],
+        }
+
+    def _starter(self, payload):
+        return self.api.post(
+            "/api/v1/users/client/public/meal-combo-starter-templates/?count=1",
+            {"day_payload": payload},
+            format="json",
+        )
+
+    def test_low_protein_low_carb_no_training_starter_prefers_one_protein_one_carb(self):
+        response = self._starter(self._day_payload(protein=38.67, carbs=40.04))
+
+        self.assertEqual(response.status_code, 200)
+        meals = response.data["starter_templates"][0]["default_day_meals"]
+        self.assertEqual(len(meals), 3)
+        for meal in meals:
+            self.assertEqual(meal["protein_2"], "-")
+            self.assertEqual(meal["carbs_2"], "-")
+
+    def test_low_protein_starter_does_not_choose_two_protein_when_one_protein_exists(self):
+        response = self._starter(self._day_payload(protein=40, carbs=65))
+
+        self.assertEqual(response.status_code, 200)
+        meals = response.data["starter_templates"][0]["default_day_meals"]
+        self.assertTrue(all(meal["protein_2"] == "-" for meal in meals))
+
+    def test_low_carb_no_training_starter_does_not_choose_two_carb_when_one_carb_exists(self):
+        response = self._starter(self._day_payload(protein=55, carbs=35))
+
+        self.assertEqual(response.status_code, 200)
+        meals = response.data["starter_templates"][0]["default_day_meals"]
+        self.assertTrue(all(meal["carbs_2"] == "-" for meal in meals))
+
+    def test_high_protein_starter_can_choose_two_protein_template(self):
+        response = self._starter(self._day_payload(protein=55, carbs=40))
+
+        self.assertEqual(response.status_code, 200)
+        meal_1 = response.data["starter_templates"][0]["default_day_meals"][0]
+        self.assertEqual(meal_1["protein_2"], "Eggs")
+
+    def test_training_adjacent_moderate_carb_starter_can_choose_two_carb_template(self):
+        response = self._starter(self._day_payload(protein=40, carbs=50, training_before_meal="before_meal_2"))
+
+        self.assertEqual(response.status_code, 200)
+        meals = response.data["starter_templates"][0]["default_day_meals"]
+        self.assertEqual(meals[0]["carbs_2"], "Banana")
+        self.assertEqual(meals[1]["carbs_2"], "Banana")
+
+    def test_high_carb_starter_can_choose_two_carb_template(self):
+        response = self._starter(self._day_payload(protein=40, carbs=65))
+
+        self.assertEqual(response.status_code, 200)
+        meals = response.data["starter_templates"][0]["default_day_meals"]
+        self.assertIn("Banana", {meal["carbs_2"] for meal in meals})
