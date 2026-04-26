@@ -572,16 +572,14 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
               const disabled = isSecondSlotDisabled(slotKey, scopeLabel, mealIndex);
               const currentValue = meal[slotKey] || '-';
               const baseOptions = slotOptions?.[slotKey] || ['-'];
-              const mergedOptions = baseOptions.includes(currentValue)
-                ? baseOptions
-                : [currentValue, ...baseOptions];
+              const selectValue = baseOptions.includes(currentValue) ? currentValue : '-';
               return (
                 <select
-                  value={disabled ? '-' : currentValue}
+                  value={disabled ? '-' : selectValue}
                   onChange={(e) => onSlotChange(mealIndex, slotKey, e.target.value)}
                   disabled={disabled}
                 >
-                  {mergedOptions.map((opt) => (
+                  {baseOptions.map((opt) => (
                     <option key={`${slotKey}-${opt}`} value={opt}>{opt}</option>
                   ))}
                 </select>
