@@ -13,10 +13,12 @@ const SLOT_LABELS = {
 const WEEK_DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 const MAX_SAVED_TEMPLATES = 7;
 const SLOT_MIN_GRAMS_FOR_SECOND_SOURCE = {
-  protein_2: 35,
-  carbs_2: 30,
+  protein_2: 50,
+  carbs_2: 45,
   fats_2: 20,
 };
+const TWO_CARB_ALLOWED_G = 60;
+const TRAINING_ADJACENT_TWO_CARB_MIN_G = 45;
 
 function createEmptyMeal() {
   return {
@@ -105,25 +107,6 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
       .catch((err) => {
         console.error(err);
         if (!ignore) setOptionsError('Unable to load meal combo options.');
-      });
-    return () => { ignore = true; };
-  }, []);
-
-  useEffect(() => {
-    let ignore = false;
-    setStarterLoading(true);
-    apiRequest('/api/v1/users/client/public/meal-combo-starter-templates/')
-      .then((res) => {
-        if (ignore) return;
-        if (res.ok) {
-          setStarterTemplates(Array.isArray(res.data?.starter_templates) ? res.data.starter_templates : []);
-        }
-      })
-      .catch((err) => {
-        console.error(err);
-      })
-      .finally(() => {
-        if (!ignore) setStarterLoading(false);
       });
     return () => { ignore = true; };
   }, []);
@@ -289,6 +272,7 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
     const proteinG = Number(mealSplit?.grams?.protein_g || 0);
     const carbsG = Number(mealSplit?.grams?.carbs_g || 0);
     const fatsG = Number(mealSplit?.grams?.fats_g || 0);
+    const isTrainingAdjacent = mealSplit?.is_training_adjacent === true;
 
     if (proteinG === 0) {
       next.protein_1 = '-';
@@ -301,6 +285,8 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
       next.carbs_1 = '-';
       next.carbs_2 = '-';
     } else if (carbsG < SLOT_MIN_GRAMS_FOR_SECOND_SOURCE.carbs_2) {
+      next.carbs_2 = '-';
+    } else if (carbsG < TWO_CARB_ALLOWED_G && !(isTrainingAdjacent && carbsG >= TRAINING_ADJACENT_TWO_CARB_MIN_G)) {
       next.carbs_2 = '-';
     }
 
@@ -329,9 +315,15 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
   function applyMacroThresholdsToMealsForDay(meals, day) {
     const dayResult = macroResultsByDay[day];
     if (!dayResult) return meals;
+    const trainingMatch = /^before_meal_(\d+)$/.exec(dayResult.training_before_meal || '');
+    const postWorkoutMeal = trainingMatch ? Number(trainingMatch[1]) : null;
     return (Array.isArray(meals) ? meals : []).map((meal, idx) => {
-      const split = (dayResult.meal_macro_splits || []).find((row) => Number(row?.meal_number) === idx + 1) || null;
-      return applyMacroThresholdsToMeal(meal, split);
+      const mealNumber = idx + 1;
+      const split = (dayResult.meal_macro_splits || []).find((row) => Number(row?.meal_number) === mealNumber) || null;
+      const splitWithContext = split
+        ? { ...split, is_training_adjacent: postWorkoutMeal === mealNumber || postWorkoutMeal === mealNumber + 1 }
+        : null;
+      return applyMacroThresholdsToMeal(meal, splitWithContext);
     });
   }
 
@@ -415,6 +407,29 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
   const activeDay = normalized.active_day;
 
   useEffect(() => {
+    let ignore = false;
+    const dayPayload = macroResultsByDay[activeDay] || null;
+    setStarterLoading(true);
+    apiRequest('/api/v1/users/client/public/meal-combo-starter-templates/', {
+      method: dayPayload ? 'POST' : 'GET',
+      body: dayPayload ? { day_payload: dayPayload } : undefined,
+    })
+      .then((res) => {
+        if (ignore) return;
+        if (res.ok) {
+          setStarterTemplates(Array.isArray(res.data?.starter_templates) ? res.data.starter_templates : []);
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+      })
+      .finally(() => {
+        if (!ignore) setStarterLoading(false);
+      });
+    return () => { ignore = true; };
+  }, [activeDay, macroResultsByDay]);
+
+  useEffect(() => {
     if (copyTargetDay !== activeDay) return;
     setCopyTargetDay(WEEK_DAYS.find((day) => day !== activeDay) || 'monday');
   }, [activeDay, copyTargetDay]);
@@ -462,9 +477,15 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
     if (!mealSplit) return false;
     const gramsKey = slotKey.startsWith('protein') ? 'protein_g' : slotKey.startsWith('carbs') ? 'carbs_g' : 'fats_g';
     const macroAmount = Number(mealSplit?.grams?.[gramsKey] || 0);
+    const dayResult = macroResultsByDay[scopeLabel === 'default' ? activeDay : scopeLabel];
+    const trainingMatch = /^before_meal_(\d+)$/.exec(dayResult?.training_before_meal || '');
+    const postWorkoutMeal = trainingMatch ? Number(trainingMatch[1]) : null;
+    const mealNumber = mealIndex + 1;
+    const isTrainingAdjacent = postWorkoutMeal === mealNumber || postWorkoutMeal === mealNumber + 1;
     // Block second source if macro is below threshold, or if macro is zero (block all sources)
     if (slotKey.endsWith('_2')) {
       if (macroAmount < minRequired) return true;
+      if (slotKey === 'carbs_2' && macroAmount < TWO_CARB_ALLOWED_G && !(isTrainingAdjacent && macroAmount >= TRAINING_ADJACENT_TWO_CARB_MIN_G)) return true;
     }
     // Block all sources if macro is zero
     if (macroAmount === 0) return true;

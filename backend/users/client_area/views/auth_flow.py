@@ -4,6 +4,7 @@ from django.db import transaction
 from django.utils import timezone
 from django.utils.crypto import get_random_string
 from datetime import timedelta
+import logging
 from urllib.parse import quote_plus
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -36,12 +37,14 @@ from core.services.meal_combo_lookup import (
     get_supported_combo_slot_values,
     normalize_slots_to_supported_combo_values,
 )
+from core.services.meal_combo_shape_policy import select_meal_combo_template_for_target
 from core.models import MealComboTemplate
 from users.client_area.services.results_engine import BuildResultsContext, build_questionnaire_results
 from core.services.theme_preferences import normalize_theme
 
 stripe.api_key = getattr(settings, "STRIPE_SECRET_KEY", None)
 FRONTEND_URL = getattr(settings, "FRONTEND_URL", None) or "https://localhost:3000"
+logger = logging.getLogger(__name__)
 
 QUESTIONNAIRE_STEPS = [
     "gender",
@@ -342,6 +345,158 @@ def _normalize_food_preference_builder(builder_value):
         ]
 
     return normalized
+
+
+def _meal_targets_from_day_payload(day_payload):
+    targets = {}
+    if not isinstance(day_payload, dict):
+        return targets
+    for row in day_payload.get("meal_macro_splits") or []:
+        if not isinstance(row, dict):
+            continue
+        try:
+            meal_number = int(row.get("meal_number") or 0)
+        except (TypeError, ValueError):
+            continue
+        if meal_number < 1:
+            continue
+        grams = row.get("grams") if isinstance(row.get("grams"), dict) else {}
+        targets[meal_number] = {
+            "protein": grams.get("protein_g") or 0,
+            "carbs": grams.get("carbs_g") or 0,
+            "fats": grams.get("fats_g") or 0,
+        }
+    return targets
+
+
+def _training_adjacent_meals(day_payload):
+    raw = str((day_payload or {}).get("training_before_meal") or "").strip().lower()
+    if not raw.startswith("before_meal_"):
+        return set()
+    try:
+        post_workout_meal = int(raw.split("_")[-1])
+    except (TypeError, ValueError):
+        return set()
+    if post_workout_meal < 1:
+        return set()
+    meals = {post_workout_meal}
+    if post_workout_meal > 1:
+        meals.add(post_workout_meal - 1)
+    return meals
+
+
+def _combo_payload_from_template(combo, source_meal):
+    return {
+        **(source_meal if isinstance(source_meal, dict) else {}),
+        "protein_1": combo.protein_slot_1,
+        "protein_2": combo.protein_slot_2,
+        "carbs_1": combo.carb_slot_1,
+        "carbs_2": combo.carb_slot_2,
+        "fats_1": combo.fat_slot_1,
+        "fats_2": combo.fat_slot_2,
+        "combo_id": combo.combo_id,
+        "combo_match": "matched",
+    }
+
+
+def _combo_id_from_meal(meal):
+    try:
+        return int((meal or {}).get("combo_id") or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _apply_combo_shape_policy_to_food_preferences(builder_value, results):
+    if not isinstance(builder_value, dict) or not isinstance(results, dict):
+        return builder_value
+
+    weekly_days = builder_value.get("weekly_days")
+    result_days = {
+        (row or {}).get("day"): row
+        for row in (results.get("weekly_days") or [])
+        if isinstance(row, dict) and (row or {}).get("day")
+    }
+    if not isinstance(weekly_days, dict) or not result_days:
+        return builder_value
+
+    combo_ids = sorted(
+        {
+            _combo_id_from_meal(meal)
+            for meals in weekly_days.values()
+            if isinstance(meals, list)
+            for meal in meals
+            if isinstance(meal, dict) and _combo_id_from_meal(meal) > 0
+        }
+    )
+    templates = {combo.combo_id: combo for combo in MealComboTemplate.objects.filter(combo_id__in=combo_ids)}
+    next_builder = {**builder_value, "weekly_days": dict(weekly_days)}
+    debug_rows = {}
+
+    for day, meals in weekly_days.items():
+        day_payload = result_days.get(day)
+        if not day_payload or not isinstance(meals, list):
+            continue
+        targets = _meal_targets_from_day_payload(day_payload)
+        training_adjacent = _training_adjacent_meals(day_payload)
+        patched_meals = []
+        for idx, meal in enumerate(meals, start=1):
+            if not isinstance(meal, dict):
+                patched_meals.append(meal)
+                continue
+            saved_combo = templates.get(_combo_id_from_meal(meal))
+            target = targets.get(idx)
+            if not saved_combo or not target:
+                patched_meals.append(meal)
+                continue
+            decision = select_meal_combo_template_for_target(
+                saved_combo=saved_combo,
+                meal_target=target,
+                is_training_adjacent=idx in training_adjacent,
+                selected_slots=meal,
+            )
+            patched_meals.append(_combo_payload_from_template(decision.combo, meal))
+            debug_rows[f"{day}:{idx}"] = {
+                "day": day,
+                "meal_number": idx,
+                "protein_target": str(target.get("protein")),
+                "carb_target": str(target.get("carbs")),
+                "is_training_adjacent": idx in training_adjacent,
+                "preferred_protein_structure": decision.preferred_shape.protein_structure,
+                "preferred_carb_structure": decision.preferred_shape.carb_structure,
+                "candidate_count_before_filtering": decision.candidate_count_before_filtering,
+                "candidate_count_after_filtering": decision.candidate_count_after_filtering,
+                "chosen_combo_id": decision.combo.combo_id,
+                "chosen_protein_slot_1": decision.combo.protein_slot_1,
+                "chosen_protein_slot_2": decision.combo.protein_slot_2,
+                "chosen_carb_slot_1": decision.combo.carb_slot_1,
+                "chosen_carb_slot_2": decision.combo.carb_slot_2,
+                "fallback_reason": decision.fallback_reason,
+            }
+            logger.info(
+                "Saved food preference combo shape selection: day=%s meal=%s protein_target=%s carb_target=%s "
+                "training_adjacent=%s preferred_protein=%s preferred_carb=%s candidates_before=%s "
+                "candidates_after=%s chosen_combo_id=%s protein_slots=%s/%s carb_slots=%s/%s fallback_reason=%s",
+                day,
+                idx,
+                target.get("protein"),
+                target.get("carbs"),
+                idx in training_adjacent,
+                decision.preferred_shape.protein_structure,
+                decision.preferred_shape.carb_structure,
+                decision.candidate_count_before_filtering,
+                decision.candidate_count_after_filtering,
+                decision.combo.combo_id,
+                decision.combo.protein_slot_1,
+                decision.combo.protein_slot_2,
+                decision.combo.carb_slot_1,
+                decision.combo.carb_slot_2,
+                decision.fallback_reason,
+            )
+        next_builder["weekly_days"][day] = patched_meals
+
+    if debug_rows:
+        next_builder["combo_shape_debug"] = debug_rows
+    return next_builder
 
 
 def _extract_weekly_combo_selection_rows(answers):
@@ -1174,6 +1329,13 @@ def client_food_preferences(request):
     if not isinstance(builder_value, dict):
         return error("INVALID_PAYLOAD", "builder_value must be an object.", http_status=400)
     builder_value = _normalize_food_preference_builder(builder_value)
+    results = build_questionnaire_results(
+        BuildResultsContext(
+            answers=progress.answers_json or {},
+            admin_identity=profile.associated_admin if profile else None,
+        )
+    )
+    builder_value = _apply_combo_shape_policy_to_food_preferences(builder_value, results)
 
     answers = dict(progress.answers_json or {})
     previous_food_preferences = answers.get("food_preferences") if isinstance(answers.get("food_preferences"), dict) else {}
