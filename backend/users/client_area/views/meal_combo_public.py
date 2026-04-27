@@ -10,6 +10,7 @@ from core.services.meal_combo_lookup import (
     normalize_slots_to_supported_combo_values,
 )
 from core.services.meal_combo_shape_policy import preferred_combo_shape_for_meal
+from core.services.meal_combo_shape_policy import requires_cooking_fat_for_protein
 from users.client_area.views.api_contract import error, ok
 
 logger = logging.getLogger(__name__)
@@ -244,6 +245,28 @@ def _filter_for_shape(qs, shape):
     return filtered, fallback_reasons
 
 
+def _filter_for_fat_policy(qs, shape, preferred_protein=None):
+    filtered = qs
+    fallback_reasons = []
+    require_oil = requires_cooking_fat_for_protein(preferred_protein)
+
+    if require_oil:
+        oil_filtered = filtered.filter(Q(fat_slot_1=OIL) | Q(fat_slot_2=OIL))
+        if oil_filtered.exists():
+            filtered = oil_filtered
+        else:
+            fallback_reasons.append("no_cooking_oil_combo_for_lean_protein")
+
+    if shape.preferred_fat_slot_2 == "-":
+        one_fat_filtered = filtered.filter(fat_slot_2="-")
+        if one_fat_filtered.exists():
+            filtered = one_fat_filtered
+        else:
+            fallback_reasons.append("no_one_fat_starter_combo")
+
+    return filtered, fallback_reasons
+
+
 def _protein_match_q(values):
     return Q(protein_slot_1__in=values) | Q(protein_slot_2__in=values)
 
@@ -262,8 +285,6 @@ def _pick_combo(
     base = MealComboTemplate.objects.filter(
         carb_slot_1=carb_1,
         carb_slot_2=carb_2,
-        fat_slot_1=AVOCADO,
-        fat_slot_2=OIL,
     )
 
     allowed_plus = sorted(set(allowed_proteins or []) | {"-"} | ({EGGS} if require_eggs else set()))
@@ -277,6 +298,8 @@ def _pick_combo(
     shape = preferred_combo_shape_for_meal(meal_target, is_training_adjacent=is_training_adjacent)
     candidates_before = strict.count()
     shaped, fallback_reasons = _filter_for_shape(strict, shape)
+    shaped, fat_fallback_reasons = _filter_for_fat_policy(shaped, shape, preferred_protein=preferred_protein)
+    fallback_reasons.extend(fat_fallback_reasons)
     candidates_after = shaped.count()
     combo = shaped.order_by("combo_id").first()
     if combo:
@@ -301,6 +324,11 @@ def _pick_combo(
         relaxed = relaxed.filter(_protein_match_q([preferred_protein]))
     relaxed_before = relaxed.count()
     relaxed_shaped, relaxed_fallback_reasons = _filter_for_shape(relaxed, shape)
+    relaxed_shaped, relaxed_fat_fallback_reasons = _filter_for_fat_policy(
+        relaxed_shaped,
+        shape,
+        preferred_protein=preferred_protein,
+    )
     combo = relaxed_shaped.order_by("combo_id").first()
     if combo:
         _log_starter_selection(
@@ -311,12 +339,19 @@ def _pick_combo(
             candidates_before=relaxed_before,
             candidates_after=relaxed_shaped.count(),
             combo=combo,
-            fallback_reason=";".join([*fallback_reasons, *relaxed_fallback_reasons, "relaxed_protein_match"]) or "relaxed_protein_match",
+            fallback_reason=";".join(
+                [*fallback_reasons, *relaxed_fallback_reasons, *relaxed_fat_fallback_reasons, "relaxed_protein_match"]
+            ) or "relaxed_protein_match",
         )
         return combo
 
     base_before = base.count()
     base_shaped, base_fallback_reasons = _filter_for_shape(base, shape)
+    base_shaped, base_fat_fallback_reasons = _filter_for_fat_policy(
+        base_shaped,
+        shape,
+        preferred_protein=preferred_protein,
+    )
     combo = base_shaped.order_by("combo_id").first() or base.order_by("combo_id").first()
     if combo:
         _log_starter_selection(
@@ -327,7 +362,7 @@ def _pick_combo(
             candidates_before=base_before,
             candidates_after=base_shaped.count(),
             combo=combo,
-            fallback_reason=";".join([*fallback_reasons, *base_fallback_reasons, "base_combo_fallback"]),
+            fallback_reason=";".join([*fallback_reasons, *base_fallback_reasons, *base_fat_fallback_reasons, "base_combo_fallback"]),
         )
     return combo
 
@@ -348,15 +383,18 @@ def _log_starter_selection(
     context = debug_context or {}
     logger.info(
         "Starter meal combo selection: day=%s meal=%s protein_target=%s carb_target=%s "
-        "training_context=%s preferred_protein=%s preferred_carb=%s candidates_before=%s "
-        "candidates_after=%s chosen_combo_id=%s protein_slots=%s/%s carb_slots=%s/%s fallback_reason=%s",
+        "fat_target=%s training_context=%s preferred_protein=%s preferred_carb=%s preferred_fat=%s "
+        "candidates_before=%s candidates_after=%s chosen_combo_id=%s protein_slots=%s/%s "
+        "carb_slots=%s/%s fat_slots=%s/%s fallback_reason=%s",
         context.get("day"),
         context.get("meal_number"),
         (meal_target or {}).get("protein"),
         (meal_target or {}).get("carbs"),
+        (meal_target or {}).get("fats"),
         context.get("training_context"),
         shape.protein_structure,
         shape.carb_structure,
+        shape.fat_structure,
         candidates_before,
         candidates_after,
         combo.combo_id,
@@ -364,6 +402,8 @@ def _log_starter_selection(
         combo.protein_slot_2,
         combo.carb_slot_1,
         combo.carb_slot_2,
+        combo.fat_slot_1,
+        combo.fat_slot_2,
         fallback_reason,
     )
 
@@ -426,7 +466,7 @@ def _build_template(spec, day_payload=None):
         "name": spec["name"],
         "description": (
             f'{spec["description"]} Meal slots adapt to the selected day macro targets. '
-            "Fats use Avocado + Oil STANDARD when available."
+            "Lean proteins prefer Oil STANDARD, and second fats depend on the meal fat target."
         ),
         "default_meal_count": default_meal_count,
         "default_day_meals": [_combo_to_payload(combo) for combo in meal_combos],

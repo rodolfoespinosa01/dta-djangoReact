@@ -85,14 +85,12 @@ function ClientFoodPreferencesPage() {
     <div className="client-dashboard-page">
       <header className="client-dashboard-header">
         <div>
-          <h1>Food Preferences & Meal Combos</h1>
+          <h1>Choose your meal preferences</h1>
           <div className="client-dash-chips" style={{ marginTop: '0.35rem' }}>
             <span>{portalLabel(settingsMeta)}</span>
             <span>Source: {normalizeSubdomainLabel(settingsMeta?.associated_admin_slug)}</span>
           </div>
-          <p className="client-dash-muted">
-            Choose your meal combos for the week using templates or custom combinations. We save combo IDs for your Sunday-Saturday plan.
-          </p>
+          <p className="client-dash-muted">Pick visual meal templates for each day, then customize foods only when needed.</p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <Link className="client-q-btn secondary" to="/client_dashboard">Back to Dashboard</Link>

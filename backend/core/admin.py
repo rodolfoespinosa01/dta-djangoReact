@@ -41,12 +41,14 @@ class FoodLibraryItemAdmin(admin.ModelAdmin):
         'is_standard',
         'is_active',
         'measurement_unit',
+        'preparation_state',
+        'measurement_basis_label',
         'protein',
         'carbs',
         'fats',
         'is_placeholder',
     )
-    list_filter = ('macro', 'category', 'canonical_category', 'source_type', 'approval_status', 'is_standard', 'is_active', 'measurement_unit', 'is_placeholder')
+    list_filter = ('macro', 'category', 'canonical_category', 'source_type', 'approval_status', 'is_standard', 'is_active', 'measurement_unit', 'preparation_state', 'is_placeholder')
     search_fields = ('name', 'display_name', 'category', 'canonical_category', 'brand_name', 'source_food_id')
     ordering = ('source_food_id',)
 

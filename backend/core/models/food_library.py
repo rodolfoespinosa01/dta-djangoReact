@@ -19,6 +19,17 @@ class FoodLibraryItem(models.Model):
         FATS = "Fats", "Fats"
         NONE = "-", "-"
 
+    class PreparationState(models.TextChoices):
+        RAW = "raw", "Raw / uncooked"
+        COOKED = "cooked", "Cooked"
+        BOILED = "boiled", "Boiled"
+        GRILLED = "grilled", "Grilled"
+        BAKED = "baked", "Baked"
+        DRAINED = "drained", "Drained / cooked"
+        DRY_UNCOOKED = "dry_uncooked", "Dry / uncooked"
+        AS_PACKAGED = "as_packaged", "As packaged"
+        UNKNOWN = "unknown", "Unknown"
+
     source_food_id = models.IntegerField(unique=True, db_index=True)
     macro = models.CharField(max_length=20, choices=Macro.choices, default=Macro.NONE, db_index=True)
     # Canonical meal-combo category bridge (example: "Ground Beef STANDARD").
@@ -47,6 +58,15 @@ class FoodLibraryItem(models.Model):
         related_name="specific_food_variants",
     )
     measurement_unit = models.CharField(max_length=16, blank=True, default="oz")
+    preparation_state = models.CharField(
+        max_length=32,
+        choices=PreparationState.choices,
+        default=PreparationState.UNKNOWN,
+        db_index=True,
+    )
+    measurement_basis_label = models.CharField(max_length=80, blank=True, default="")
+    raw_to_cooked_yield_factor = models.DecimalField(max_digits=8, decimal_places=5, null=True, blank=True)
+    cooked_to_raw_yield_factor = models.DecimalField(max_digits=8, decimal_places=5, null=True, blank=True)
     protein = models.DecimalField(max_digits=12, decimal_places=5, default=0)
     carbs = models.DecimalField(max_digits=12, decimal_places=5, default=0)
     fats = models.DecimalField(max_digits=12, decimal_places=5, default=0)

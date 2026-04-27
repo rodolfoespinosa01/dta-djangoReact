@@ -1,5 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { apiRequest } from '../api/client';
+import ProductSearchPicker from './ProductSearchPicker';
+import {
+  mealTemplateBadges,
+  mealTemplateDescription,
+  mealTemplateImage,
+  mealTemplateTitle,
+  templateCoverImage,
+} from './mealTemplateVisuals';
 
 const SLOT_KEYS = ['protein_1', 'protein_2', 'carbs_1', 'carbs_2', 'fats_1', 'fats_2'];
 const SLOT_LABELS = {
@@ -91,15 +99,20 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
   const [starterTemplates, setStarterTemplates] = useState([]);
   const [starterLoading, setStarterLoading] = useState(false);
   const [copyTargetDay, setCopyTargetDay] = useState('monday');
-  const [templatePanelMode, setTemplatePanelMode] = useState('starter');
+  const [templatePanelMode, setTemplatePanelMode] = useState('template');
+  const [expandedCustomize, setExpandedCustomize] = useState({});
+  const [templateChooserMeal, setTemplateChooserMeal] = useState(null);
   const [foodOverrides, setFoodOverrides] = useState({});
   const [usdaPicker, setUsdaPicker] = useState({
     open: false,
     canonicalCategory: '',
     query: '',
+    barcode: '',
     loading: false,
     error: '',
     results: [],
+    notFound: false,
+    imageUploadingId: '',
   });
 
   useEffect(() => {
@@ -439,43 +452,95 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
       open: true,
       canonicalCategory: cleanCategory,
       query: cleanCategory.replace(/\sSTANDARD$/i, ''),
+      barcode: '',
       loading: false,
       error: '',
       results: [],
+      notFound: false,
+      imageUploadingId: '',
     });
   };
 
   const searchUsdaFoods = async () => {
     const query = String(usdaPicker.query || '').trim();
     if (!query) return;
-    setUsdaPicker((prev) => ({ ...prev, loading: true, error: '' }));
+    setUsdaPicker((prev) => ({ ...prev, loading: true, error: '', notFound: false }));
     try {
-      const res = await apiRequest('/api/v1/users/client/app/food-overrides/usda/search/', {
+      console.debug('[ProductSearchPicker] product search request', {
+        url: '/api/v1/users/client/app/food-overrides/products/search/',
+        query,
+      });
+      const res = await apiRequest('/api/v1/users/client/app/food-overrides/products/search/', {
         method: 'POST',
         auth: true,
-        body: { query, page: 1, page_size: 12, data_type: 'Branded' },
+        body: { query, page: 1, page_size: 12, providers: ['open_food_facts', 'usda'] },
+      });
+      console.debug('[ProductSearchPicker] product search response', {
+        status: res.status,
+        count: Array.isArray(res.data?.products) ? res.data.products.length : 0,
       });
       if (!res.ok) {
         setUsdaPicker((prev) => ({
           ...prev,
           loading: false,
-          error: res.data?.error?.message || 'USDA search failed.',
+          error: 'Could not search products right now. Try again.',
         }));
         return;
       }
       setUsdaPicker((prev) => ({
         ...prev,
         loading: false,
-        results: Array.isArray(res.data?.usda_foods) ? res.data.usda_foods : [],
+        results: Array.isArray(res.data?.products) ? res.data.products : [],
       }));
     } catch (err) {
       console.error(err);
-      setUsdaPicker((prev) => ({ ...prev, loading: false, error: 'USDA search failed.' }));
+      setUsdaPicker((prev) => ({ ...prev, loading: false, error: 'Could not search products right now. Try again.' }));
+    }
+  };
+
+  const lookupBarcode = async () => {
+    const barcode = String(usdaPicker.barcode || '').trim();
+    if (!barcode) return;
+    setUsdaPicker((prev) => ({ ...prev, loading: true, error: '', notFound: false }));
+    try {
+      console.debug('[ProductSearchPicker] barcode lookup request', {
+        url: '/api/v1/users/client/app/food-overrides/products/barcode/',
+        barcode,
+      });
+      const res = await apiRequest('/api/v1/users/client/app/food-overrides/products/barcode/', {
+        method: 'POST',
+        auth: true,
+        body: { barcode },
+      });
+      console.debug('[ProductSearchPicker] barcode lookup response', {
+        status: res.status,
+        product: res.data?.product || null,
+      });
+      if (!res.ok) {
+        const notFound = res.status === 404 || res.data?.error?.code === 'PRODUCT_NOT_FOUND';
+        setUsdaPicker((prev) => ({
+          ...prev,
+          loading: false,
+          notFound,
+          error: notFound ? '' : 'Could not search products right now. Try again.',
+        }));
+        return;
+      }
+      setUsdaPicker((prev) => ({
+        ...prev,
+        loading: false,
+        results: res.data?.product ? [res.data.product] : [],
+      }));
+    } catch (err) {
+      console.error(err);
+      setUsdaPicker((prev) => ({ ...prev, loading: false, error: 'Could not search products right now. Try again.' }));
     }
   };
 
   const saveUsdaOverride = async (food) => {
-    if (!food?.fdc_id || !usdaPicker.canonicalCategory) return;
+    const providerProductId = food?.provider_product_id || food?.external_food_id || food?.fdc_id || food?.barcode;
+    const provider = food?.provider || food?.external_provider || (food?.fdc_id ? 'usda' : '');
+    if (!providerProductId || !provider || !usdaPicker.canonicalCategory) return;
     setUsdaPicker((prev) => ({ ...prev, loading: true, error: '' }));
     try {
       const res = await apiRequest('/api/v1/users/client/app/food-overrides/save/', {
@@ -483,14 +548,15 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
         auth: true,
         body: {
           canonical_category: usdaPicker.canonicalCategory,
-          fdc_id: food.fdc_id,
+          provider,
+          provider_product_id: providerProductId,
         },
       });
       if (!res.ok) {
         setUsdaPicker((prev) => ({
           ...prev,
           loading: false,
-          error: res.data?.error?.message || 'Unable to save USDA override.',
+          error: 'Could not save this product right now. Try again.',
         }));
         return;
       }
@@ -502,13 +568,66 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
         open: false,
         canonicalCategory: '',
         query: '',
+        barcode: '',
         loading: false,
         error: '',
         results: [],
+        notFound: false,
+        imageUploadingId: '',
       });
     } catch (err) {
       console.error(err);
-      setUsdaPicker((prev) => ({ ...prev, loading: false, error: 'Unable to save USDA override.' }));
+      setUsdaPicker((prev) => ({ ...prev, loading: false, error: 'Could not save this product right now. Try again.' }));
+    }
+  };
+
+  const uploadProductImage = async (food, file) => {
+    const providerProductId = food?.provider_product_id || food?.external_food_id || food?.fdc_id || food?.barcode;
+    const provider = food?.provider || food?.external_provider || (food?.fdc_id ? 'usda' : '');
+    if (!providerProductId || !provider || !file) return;
+    const formData = new FormData();
+    formData.append('provider', provider);
+    formData.append('provider_product_id', providerProductId);
+    formData.append('barcode', food?.barcode || '');
+    formData.append('product_name', food?.display_name || food?.name || '');
+    formData.append('brand', food?.brand_name || food?.brand || '');
+    formData.append('image', file);
+    setUsdaPicker((prev) => ({ ...prev, imageUploadingId: providerProductId, error: '' }));
+    try {
+      const res = await apiRequest('/api/v1/users/client/app/food-overrides/products/images/submit/', {
+        method: 'POST',
+        auth: true,
+        body: formData,
+      });
+      if (!res.ok) {
+        setUsdaPicker((prev) => ({
+          ...prev,
+          imageUploadingId: '',
+          error: 'Could not upload image right now. Try again.',
+        }));
+        return;
+      }
+      const submission = res.data?.image_submission;
+      setUsdaPicker((prev) => ({
+        ...prev,
+        imageUploadingId: '',
+        results: (prev.results || []).map((row) => {
+          const rowId = row.provider_product_id || row.external_food_id || row.fdc_id || row.barcode;
+          if (rowId !== providerProductId || (row.provider || row.external_provider) !== provider) return row;
+          return {
+            ...row,
+            image_submission_status: submission?.status || 'pending',
+            image_submission_id: submission?.id || row.image_submission_id,
+          };
+        }),
+      }));
+    } catch (err) {
+      console.error(err);
+      setUsdaPicker((prev) => ({
+        ...prev,
+        imageUploadingId: '',
+        error: 'Could not upload image right now. Try again.',
+      }));
     }
   };
 
@@ -619,24 +738,48 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
   const applyStarterTemplateToDefault = (template) => {
     const count = [3, 4, 5, 6].includes(Number(template?.default_meal_count)) ? Number(template.default_meal_count) : 6;
     const baseMeals = ensureMealArray(template?.default_day_meals, count);
-    const patched = applyMacroThresholdsToMealsForDay(baseMeals, activeDay);
     emit({
       default_day_meal_count: count,
-      default_day_meals: patched,
+      default_day_meals: baseMeals,
     });
-    triggerAutoLookupForMeals({ scope: 'default', meals: patched });
   };
 
   const applyStarterTemplateToActiveDay = (template) => {
     const cloned = cloneMealsForCount(template?.default_day_meals, normalized.week_counts[activeDay]);
-    const patched = applyMacroThresholdsToMealsForDay(cloned, activeDay);
     emit({
       weekly_days: {
         ...normalized.weekly_days,
-        [activeDay]: patched,
+        [activeDay]: cloned,
       },
     });
-    triggerAutoLookupForMeals({ scope: 'weekly', day: activeDay, meals: patched });
+  };
+
+  const applyStarterMealToActiveDay = (meal, mealIndex) => {
+    const dayMeals = [...(normalized.weekly_days[activeDay] || [])];
+    dayMeals[mealIndex] = {
+      ...createEmptyMeal(),
+      ...(meal || {}),
+      combo_match: Number(meal?.combo_id) > 0 ? 'matched' : (meal?.combo_match || 'unknown'),
+    };
+    emit({
+      weekly_days: {
+        ...normalized.weekly_days,
+        [activeDay]: dayMeals,
+      },
+    });
+  };
+
+  const starterMealOptionsForIndex = (mealIndex) => (
+    (starterTemplates || [])
+      .map((template) => ({
+        template,
+        meal: Array.isArray(template?.default_day_meals) ? template.default_day_meals[mealIndex] : null,
+      }))
+      .filter((row) => row.meal)
+  );
+
+  const toggleCustomize = (key) => {
+    setExpandedCustomize((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   const copyDayToDay = (fromDay, toDay) => {
@@ -734,7 +877,8 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
                   <div className="client-q-stack" style={{ gap: '0.3rem', marginTop: '0.35rem' }}>
                     {override ? (
                       <small className="client-q-help">
-                        USDA override: {override.display_name}
+                        Product override: {override.display_name}
+                        {override.measurement_basis_label ? ` • ${override.measurement_basis_label}` : ''}
                       </small>
                     ) : null}
                     <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
@@ -744,7 +888,7 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
                         style={{ padding: '0.35rem 0.55rem', fontSize: '0.78rem' }}
                         onClick={() => openUsdaPicker(selectValue)}
                       >
-                        {override ? 'Change USDA Food' : 'Choose USDA Food'}
+                        {override ? 'Change product' : 'Choose product'}
                       </button>
                       {override ? (
                         <button
@@ -792,139 +936,247 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
   );
   };
 
-  return (
-    <div className="client-q-stack">
-      <p className="client-q-help">
-        Build one full default day of meals using food combo dropdowns. We match each meal to a `meal_combo_id`, then you can apply it to the whole week and customize specific days.
-      </p>
-      {optionsError ? <p className="client-q-error">{optionsError}</p> : null}
-
-      {usdaPicker.open ? (
-        <div className="client-q-stack" style={{ border: '1px solid rgba(20,40,74,0.16)', borderRadius: 12, padding: '0.75rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'center' }}>
-            <strong>USDA override for {usdaPicker.canonicalCategory}</strong>
-            <button
-              type="button"
-              className="client-q-btn secondary"
-              onClick={() => setUsdaPicker({ open: false, canonicalCategory: '', query: '', loading: false, error: '', results: [] })}
-            >
-              Close
+  const renderTemplateSummaryCard = (template) => {
+    const meals = Array.isArray(template?.default_day_meals) ? template.default_day_meals : [];
+    const matched = meals.filter((meal) => Number(meal?.combo_id) > 0).length;
+    return (
+      <article key={template.template_key} className="meal-template-card">
+        <div className="meal-template-card__image">
+          <img src={templateCoverImage(template)} alt="" />
+        </div>
+        <div className="meal-template-card__body">
+          <div className="meal-template-card__top">
+            <strong>{template.name}</strong>
+            <span className="client-q-chip">{template.default_meal_count} meals</span>
+          </div>
+          <p>{template.description}</p>
+          <div className="meal-template-card__badges">
+            <span className="client-q-chip ok">{matched}/{meals.length} matched</span>
+            <span className="client-q-chip">STANDARD slots</span>
+          </div>
+          <div className="meal-template-card__actions">
+            <button type="button" className="client-q-btn" onClick={() => applyStarterTemplateToActiveDay(template)}>
+              Use for {prettyDay(activeDay)}
+            </button>
+            <button type="button" className="client-q-btn secondary" onClick={() => applyStarterTemplateToDefault(template)}>
+              Use as default
             </button>
           </div>
-          <div className="client-q-inline-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) auto' }}>
-            <label>
-              Search USDA FoodData Central
-              <input
-                type="text"
-                value={usdaPicker.query}
-                onChange={(e) => setUsdaPicker((prev) => ({ ...prev, query: e.target.value }))}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    searchUsdaFoods();
-                  }
-                }}
-              />
-            </label>
-            <div style={{ display: 'flex', alignItems: 'end' }}>
-              <button type="button" className="client-q-btn" onClick={searchUsdaFoods} disabled={usdaPicker.loading}>
-                {usdaPicker.loading ? 'Searching...' : 'Search'}
-              </button>
+        </div>
+      </article>
+    );
+  };
+
+  const renderMealTemplateOption = ({ template, meal }, mealIndex) => {
+    const refDay = activeDay;
+    const dayResult = macroResultsByDay[refDay];
+    const mealSplit = getReferenceMealSplit(refDay, mealIndex);
+    const mealContext = getMealContextLabel(dayResult, mealIndex + 1);
+    const badges = mealTemplateBadges(meal, mealSplit, mealContext);
+    return (
+      <button
+        key={`${template.template_key}-${mealIndex}-${meal.combo_id || rowSignature(meal)}`}
+        type="button"
+        className="meal-choice-card"
+        onClick={() => {
+          applyStarterMealToActiveDay(meal, mealIndex);
+          setTemplateChooserMeal(null);
+        }}
+      >
+        <img src={mealTemplateImage(meal)} alt="" />
+        <span className="meal-choice-card__title">{mealTemplateTitle(meal, `Meal ${mealIndex + 1}`)}</span>
+        <span className="meal-choice-card__description">{mealTemplateDescription(meal)}</span>
+        <span className="meal-choice-card__badges">
+          {badges.map((badge) => <span key={badge} className="client-q-chip">{badge}</span>)}
+        </span>
+        <span className="meal-choice-card__source">{template.name}</span>
+      </button>
+    );
+  };
+
+  const renderSelectedMealCard = (meal, idx) => {
+    const scopeLabel = activeDay;
+    const lookupKey = `weekly:${activeDay}:${idx}`;
+    const dayResult = macroResultsByDay[activeDay];
+    const mealSplit = getReferenceMealSplit(activeDay, idx);
+    const mealContext = getMealContextLabel(dayResult, idx + 1);
+    const customizeKey = `${activeDay}-${idx}`;
+    const isOpen = Boolean(expandedCustomize[customizeKey]);
+    const options = starterMealOptionsForIndex(idx);
+    return (
+      <article key={`${activeDay}-visual-${idx}`} className="visual-meal-card">
+        <div className="visual-meal-card__image">
+          <img src={mealTemplateImage(meal)} alt="" />
+        </div>
+        <div className="visual-meal-card__body">
+          <div className="visual-meal-card__header">
+            <div>
+              <span className="visual-meal-card__eyebrow">Meal {idx + 1}</span>
+              <strong>{mealTemplateTitle(meal, 'Choose a template')}</strong>
             </div>
+            <span className={`client-q-chip ${meal.combo_match === 'matched' ? 'ok' : meal.combo_match === 'not_found' ? 'warn' : ''}`}>
+              {meal.combo_match === 'matched'
+                ? `Combo ${meal.combo_id}`
+                : lookupBusy[lookupKey] || meal.combo_match === 'checking'
+                  ? 'Checking'
+                  : 'Pending'}
+            </span>
           </div>
-          {usdaPicker.error ? <p className="client-q-error">{usdaPicker.error}</p> : null}
-          <div className="client-q-stack">
-            {usdaPicker.results.map((food) => (
-              <div key={food.fdc_id} style={{ border: '1px solid rgba(20,40,74,0.1)', borderRadius: 10, padding: '0.65rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'center' }}>
-                  <div className="client-q-stack" style={{ gap: '0.2rem' }}>
-                    <strong>{food.display_name || food.fdc_id}</strong>
-                    <small className="client-q-help">
-                      {food.brand_name ? `${food.brand_name} • ` : ''}
-                      P {food.protein} / C {food.carbs} / F {food.fats} per oz
-                      {food.calories ? ` • ${food.calories} cal/oz` : ''}
-                    </small>
-                    {food.serving_size || food.serving_unit ? (
-                      <small className="client-q-help">
-                        Serving: {food.serving_size || '-'} {food.serving_unit || ''}
-                        {food.serving_weight_grams ? ` (${food.serving_weight_grams}g)` : ''}
-                      </small>
-                    ) : null}
-                  </div>
-                  <button type="button" className="client-q-btn secondary" onClick={() => saveUsdaOverride(food)} disabled={usdaPicker.loading}>
-                    Select
-                  </button>
-                </div>
-              </div>
-            ))}
-            {!usdaPicker.loading && !usdaPicker.results.length ? (
-              <p className="client-q-help">Search for a branded USDA food to override this STANDARD slot.</p>
+          <p className="visual-meal-card__description">{mealTemplateDescription(meal)}</p>
+          <div className="visual-meal-card__badges">
+            {mealSplit ? (
+              <>
+                <span className="client-q-chip">P {mealSplit.grams?.protein_g}g</span>
+                <span className="client-q-chip">C {mealSplit.grams?.carbs_g}g</span>
+                <span className="client-q-chip">F {mealSplit.grams?.fats_g}g</span>
+              </>
             ) : null}
+            {mealContext ? <span className="client-q-chip">{mealContext}</span> : null}
+            {mealTemplateBadges(meal, mealSplit, mealContext).map((badge) => (
+              <span key={`${idx}-${badge}`} className="client-q-chip">{badge}</span>
+            ))}
+          </div>
+          <div className="visual-meal-card__actions">
+            <button
+              type="button"
+              className="client-q-btn"
+              onClick={() => setTemplateChooserMeal(templateChooserMeal === idx ? null : idx)}
+            >
+              {Number(meal?.combo_id) > 0 ? 'Change template' : 'Choose template'}
+            </button>
+            <button type="button" className="client-q-btn secondary" onClick={() => toggleCustomize(customizeKey)}>
+              {isOpen ? 'Hide customization' : 'Customize foods'}
+            </button>
           </div>
         </div>
-      ) : null}
+        {templateChooserMeal === idx ? (
+          <div className="meal-choice-panel">
+            {starterLoading ? <p className="client-q-help">Loading templates...</p> : null}
+            {!starterLoading && options.length ? (
+              <div className="meal-choice-grid">
+                {options.map((row) => renderMealTemplateOption(row, idx))}
+              </div>
+            ) : null}
+            {!starterLoading && !options.length ? <p className="client-q-help">No database templates are available for this meal yet.</p> : null}
+          </div>
+        ) : null}
+        {isOpen ? (
+          <div className="visual-meal-card__customize">
+            {renderMealRow({
+              meal,
+              mealIndex: idx,
+              scopeLabel,
+              lookupKey,
+              onSlotChange: (mealIndex, slotKey, slotValue) => updateWeeklyMealSlot(activeDay, mealIndex, slotKey, slotValue),
+            })}
+          </div>
+        ) : null}
+      </article>
+    );
+  };
+
+  return (
+    <div className="client-q-stack">
+      <div className="food-pref-intro">
+        <div>
+          <h2>Choose your preferred meals</h2>
+          <p>Start with database templates, then customize only the foods you care about.</p>
+        </div>
+        <div className="food-pref-progress">
+          <span className={`client-q-chip ${weeklyCompletionSummary.isComplete ? 'ok' : weeklyCompletionSummary.missingMeals ? 'warn' : ''}`}>
+            {weeklyCompletionSummary.matchedMeals}/{weeklyCompletionSummary.totalMeals} meals complete
+          </span>
+          <span className="client-q-chip">{weeklyCompletionSummary.daysComplete}/{weeklyCompletionSummary.totalDays} days complete</span>
+        </div>
+      </div>
+      {optionsError ? <p className="client-q-error">{optionsError}</p> : null}
+
+      <ProductSearchPicker
+        picker={usdaPicker}
+        onClose={() => setUsdaPicker({ open: false, canonicalCategory: '', query: '', barcode: '', loading: false, error: '', results: [], notFound: false, imageUploadingId: '' })}
+        onQueryChange={(query) => setUsdaPicker((prev) => ({ ...prev, query }))}
+        onBarcodeChange={(barcode) => setUsdaPicker((prev) => ({ ...prev, barcode }))}
+        onSearch={searchUsdaFoods}
+        onBarcodeLookup={lookupBarcode}
+        onSelect={saveUsdaOverride}
+        onAddImage={uploadProductImage}
+      />
+
+      <div className="food-pref-mode-toggle">
+          <button
+            type="button"
+            className={`food-pref-mode ${templatePanelMode === 'template' ? 'is-active' : ''}`}
+            onClick={() => setTemplatePanelMode('template')}
+          >
+            <strong>Template + customization</strong>
+            <span>Choose visual meal templates first.</span>
+          </button>
+          <button
+            type="button"
+            className={`food-pref-mode ${templatePanelMode === 'custom' ? 'is-active' : ''}`}
+            onClick={() => setTemplatePanelMode('custom')}
+          >
+            <strong>Customization only</strong>
+            <span>Manually build each meal from slots.</span>
+          </button>
+      </div>
 
       <div className="client-q-stack">
-        <strong>Template Setup Mode</strong>
-        <div className="client-q-card-grid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
-          <button
-            type="button"
-            className={`client-q-option-card ${templatePanelMode === 'starter' ? 'is-active' : ''}`}
-            onClick={() => setTemplatePanelMode('starter')}
-          >
-            <span>Starter Template Library</span>
-          </button>
-          <button
-            type="button"
-            className={`client-q-option-card ${templatePanelMode === 'default' ? 'is-active' : ''}`}
-            onClick={() => setTemplatePanelMode('default')}
-          >
-            <span>Default Day Template</span>
-          </button>
+        <div className="client-q-day-grid">
+          {WEEK_DAYS.map((day) => (
+            <button
+              key={`day-tab-${day}`}
+              type="button"
+              className={`client-q-day ${activeDay === day ? 'is-active' : ''}`}
+              onClick={() => emit({ active_day: day })}
+            >
+              <div style={{ display: 'grid', gap: '0.1rem', justifyItems: 'center' }}>
+                <span>{day.slice(0, 3).toUpperCase()} • {normalized.week_counts[day]}</span>
+                <span style={{ fontSize: '0.68rem', fontWeight: 700, opacity: activeDay === day ? 0.95 : 0.8 }}>
+                  {dayCompletion[day]?.isComplete ? 'Complete' : `${dayCompletion[day]?.missing || 0} pending`}
+                </span>
+              </div>
+            </button>
+          ))}
         </div>
       </div>
 
-      {templatePanelMode === 'starter' ? (
+      {templatePanelMode === 'template' ? (
       <div className="client-q-stack">
-        <strong>Starter Template Library</strong>
-        <p className="client-q-help">
-          Quick defaults built from your combo database: Meal 1 is breakfast-style, Meals 2-6 are lunch/dinner combos. Use one, then customize.
-        </p>
+        <div className="food-pref-section-title">
+          <strong>{prettyDay(activeDay)} templates</strong>
+          <span className="client-q-help">Pick a full-day template or choose per meal.</span>
+        </div>
         {starterLoading ? (
           <p className="client-q-help">Loading starter templates…</p>
         ) : (
-          <div className="client-q-stack">
-            {starterTemplates.map((template) => (
-              <div key={template.template_key} style={{ border: '1px solid rgba(20,40,74,0.1)', borderRadius: 12, padding: '0.75rem' }}>
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                  <strong>{template.name}</strong>
-                  <span className="client-q-chip">{template.default_meal_count} meals</span>
-                </div>
-                <p className="client-q-help" style={{ marginTop: '0.35rem' }}>{template.description}</p>
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
-                  <button type="button" className="client-q-btn secondary" onClick={() => applyStarterTemplateToDefault(template)}>
-                    Use As Default Day
-                  </button>
-                  <button type="button" className="client-q-btn secondary" onClick={() => applyStarterTemplateToActiveDay(template)}>
-                    Apply To {activeDay.slice(0, 3).toUpperCase()}
-                  </button>
-                </div>
-              </div>
-            ))}
+          <div className="meal-template-grid">
+            {starterTemplates.map((template) => renderTemplateSummaryCard(template))}
             {!starterTemplates.length ? (
               <p className="client-q-help">No starter templates available yet.</p>
             ) : null}
           </div>
         )}
+        <div className="visual-meal-list">
+          {(normalized.weekly_days[activeDay] || []).map((meal, idx) => renderSelectedMealCard(meal, idx))}
+        </div>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="client-q-btn secondary"
+            onClick={() => copyDayToAllIncompleteDays(activeDay)}
+            disabled={weeklyCompletionSummary.isComplete || WEEK_DAYS.every((day) => day === activeDay || dayCompletion[day]?.isComplete)}
+          >
+            Copy {prettyDay(activeDay)} To All Incomplete Days
+          </button>
+        </div>
       </div>
       ) : null}
 
-      {templatePanelMode === 'default' ? (
+      {templatePanelMode === 'custom' ? (
       <div className="client-q-stack">
-        <strong>Default Day Template</strong>
-        <p className="client-q-help">
-          Build one full day, then apply it across the week. You can also save multiple templates and reuse them for different days.
-        </p>
+        <strong>Customization only</strong>
+        <p className="client-q-help">Build a default day manually, apply it across the week, then adjust individual days.</p>
         <div className="client-q-card-grid">
           {[3, 4, 5, 6].map((count) => (
             <button
@@ -950,25 +1202,20 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
         <button type="button" className="client-q-btn" onClick={applyDefaultToAllDays}>
           Apply Default Day To Whole Week
         </button>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            className="client-q-btn secondary"
-            onClick={saveDefaultAsTemplate}
-            disabled={(normalized.saved_templates || []).length >= MAX_SAVED_TEMPLATES}
-          >
-            {(normalized.saved_templates || []).length >= MAX_SAVED_TEMPLATES
-              ? `Template Limit Reached (${MAX_SAVED_TEMPLATES})`
-              : 'Save This Day As Template'}
-          </button>
-          <span className="client-q-help" style={{ alignSelf: 'center' }}>
-            You can save up to {MAX_SAVED_TEMPLATES} templates and apply them to one day or the whole week.
-          </span>
-        </div>
+        <button
+          type="button"
+          className="client-q-btn secondary"
+          onClick={saveDefaultAsTemplate}
+          disabled={(normalized.saved_templates || []).length >= MAX_SAVED_TEMPLATES}
+        >
+          {(normalized.saved_templates || []).length >= MAX_SAVED_TEMPLATES
+            ? `Template Limit Reached (${MAX_SAVED_TEMPLATES})`
+            : 'Save This Day As Template'}
+        </button>
       </div>
       ) : null}
 
-      <div className="client-q-stack">
+      <div className="client-q-stack food-pref-saved">
         <strong>Saved Templates</strong>
         {(normalized.saved_templates || []).length === 0 ? (
           <p className="client-q-help">No saved templates yet. Build a default day and save it as a template.</p>
@@ -1012,6 +1259,7 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
         )}
       </div>
 
+      {templatePanelMode === 'custom' ? (
       <div className="client-q-stack">
         <strong>Customize Specific Day (Optional)</strong>
         <p className="client-q-help">
@@ -1065,23 +1313,6 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
             This only fills days that are still incomplete and keeps completed/customized days untouched.
           </span>
         </div>
-        <div className="client-q-day-grid">
-          {WEEK_DAYS.map((day) => (
-            <button
-              key={`day-tab-${day}`}
-              type="button"
-              className={`client-q-day ${activeDay === day ? 'is-active' : ''}`}
-              onClick={() => emit({ active_day: day })}
-            >
-              <div style={{ display: 'grid', gap: '0.1rem', justifyItems: 'center' }}>
-                <span>{day.slice(0, 3).toUpperCase()} • {normalized.week_counts[day]}</span>
-                <span style={{ fontSize: '0.68rem', fontWeight: 700, opacity: activeDay === day ? 0.95 : 0.8 }}>
-                  {dayCompletion[day]?.isComplete ? 'Complete' : `${dayCompletion[day]?.missing || 0} missing`}
-                </span>
-              </div>
-            </button>
-          ))}
-        </div>
         <div className="client-q-stack">
           {(normalized.weekly_days[activeDay] || []).map((meal, idx) =>
             renderMealRow({
@@ -1093,6 +1324,7 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
             }))}
         </div>
       </div>
+      ) : null}
     </div>
   );
 }

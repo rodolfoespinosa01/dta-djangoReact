@@ -159,6 +159,7 @@ def normalize_food(payload: dict[str, Any]) -> dict[str, Any]:
     return {
         "external_provider": "usda",
         "fdc_id": _clean(payload.get("fdcId") or payload.get("fdc_id")),
+        "barcode": _clean(payload.get("gtinUpc") or payload.get("gtin_upc") or payload.get("upc") or payload.get("barcode")),
         "display_name": _display_name(payload),
         "brand_name": _brand_name(payload),
         "data_type": _clean(payload.get("dataType") or payload.get("data_type")),

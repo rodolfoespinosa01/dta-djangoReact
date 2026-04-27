@@ -63,6 +63,17 @@ function printableAmountLabel(slot, unitMode) {
     : `${Number(rawAmount).toFixed(2)} oz`;
 }
 
+function measurementBasisLabel(slot) {
+  return slot?.measurement_basis_label || 'Measurement basis not specified';
+}
+
+function slotImageUrl(slot) {
+  if (!slot) return null;
+  if (slot.image_url) return slot.image_url;
+  if (slot.override) return null;
+  return getFoodImageUrl(slot.canonical_name || slot.name);
+}
+
 function renderPrintSection(title, innerHtml) {
   return `<section class="section"><h2>${escapeHtml(title)}</h2>${innerHtml}</section>`;
 }
@@ -119,12 +130,12 @@ function buildFoodPlanSectionHtml(detail, unitMode) {
   const rows = meals.map((meal) => ([
     `Meal ${meal.meal_number ?? '-'}`,
     String(meal.combo_id ?? '-'),
-    `${meal.slots?.protein_1?.name || '-'} (${printableAmountLabel(meal.slots?.protein_1, unitMode)})`,
-    `${meal.slots?.protein_2?.name || '-'} (${printableAmountLabel(meal.slots?.protein_2, unitMode)})`,
-    `${meal.slots?.carbs_1?.name || '-'} (${printableAmountLabel(meal.slots?.carbs_1, unitMode)})`,
-    `${meal.slots?.carbs_2?.name || '-'} (${printableAmountLabel(meal.slots?.carbs_2, unitMode)})`,
-    `${meal.slots?.fats_1?.name || '-'} (${printableAmountLabel(meal.slots?.fats_1, unitMode)})`,
-    `${meal.slots?.fats_2?.name || '-'} (${printableAmountLabel(meal.slots?.fats_2, unitMode)})`,
+    `${meal.slots?.protein_1?.name || '-'} (${printableAmountLabel(meal.slots?.protein_1, unitMode)}, ${measurementBasisLabel(meal.slots?.protein_1)})`,
+    `${meal.slots?.protein_2?.name || '-'} (${printableAmountLabel(meal.slots?.protein_2, unitMode)}, ${measurementBasisLabel(meal.slots?.protein_2)})`,
+    `${meal.slots?.carbs_1?.name || '-'} (${printableAmountLabel(meal.slots?.carbs_1, unitMode)}, ${measurementBasisLabel(meal.slots?.carbs_1)})`,
+    `${meal.slots?.carbs_2?.name || '-'} (${printableAmountLabel(meal.slots?.carbs_2, unitMode)}, ${measurementBasisLabel(meal.slots?.carbs_2)})`,
+    `${meal.slots?.fats_1?.name || '-'} (${printableAmountLabel(meal.slots?.fats_1, unitMode)}, ${measurementBasisLabel(meal.slots?.fats_1)})`,
+    `${meal.slots?.fats_2?.name || '-'} (${printableAmountLabel(meal.slots?.fats_2, unitMode)}, ${measurementBasisLabel(meal.slots?.fats_2)})`,
   ]));
 
   return renderPrintSection(
@@ -201,7 +212,7 @@ function buildRecipesSectionHtml(detail, recipeIdeasResult) {
 }
 
 function FoodSlotCell({ slot, unitMode }) {
-  const imageUrl = getFoodImageUrl(slot?.name);
+  const imageUrl = slotImageUrl(slot);
   return (
     <div style={{ display: 'grid', gap: '0.35rem' }}>
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
@@ -234,6 +245,9 @@ function FoodSlotCell({ slot, unitMode }) {
       </div>
       <span className="client-dash-muted" style={{ fontSize: '0.85rem', paddingLeft: imageUrl ? 46 : 0 }}>
         {amountLabel(slot, unitMode)}
+      </span>
+      <span className="client-q-chip" style={{ width: 'fit-content', paddingLeft: imageUrl ? undefined : undefined }}>
+        {measurementBasisLabel(slot)}
       </span>
     </div>
   );
