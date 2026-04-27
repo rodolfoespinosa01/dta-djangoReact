@@ -233,20 +233,43 @@ class ClientFoodPreferenceChangeLog(models.Model):
 
 class ClientFoodOverride(models.Model):
     SOURCE_TYPE_USDA = "usda"
+    SOURCE_TYPE_OPEN_FOOD_FACTS = "open_food_facts"
     SOURCE_TYPE_CHOICES = [
         (SOURCE_TYPE_USDA, "USDA FoodData Central"),
+        (SOURCE_TYPE_OPEN_FOOD_FACTS, "Open Food Facts"),
     ]
+
+    class PreparationState(models.TextChoices):
+        RAW = "raw", "Raw / uncooked"
+        COOKED = "cooked", "Cooked"
+        BOILED = "boiled", "Boiled"
+        GRILLED = "grilled", "Grilled"
+        BAKED = "baked", "Baked"
+        DRAINED = "drained", "Drained / cooked"
+        DRY_UNCOOKED = "dry_uncooked", "Dry / uncooked"
+        AS_PACKAGED = "as_packaged", "As packaged"
+        UNKNOWN = "unknown", "Unknown"
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="food_overrides")
     canonical_category = models.CharField(max_length=120, db_index=True)
     source_type = models.CharField(max_length=32, choices=SOURCE_TYPE_CHOICES, default=SOURCE_TYPE_USDA, db_index=True)
     external_provider = models.CharField(max_length=40, default=SOURCE_TYPE_USDA, db_index=True)
     external_food_id = models.CharField(max_length=120, db_index=True)
+    barcode = models.CharField(max_length=80, blank=True, default="", db_index=True)
+    image_url = models.URLField(max_length=500, blank=True, default="")
     display_name = models.CharField(max_length=220)
     brand_name = models.CharField(max_length=160, blank=True, default="")
+    ingredients = models.TextField(blank=True, default="")
     serving_size = models.DecimalField(max_digits=12, decimal_places=4, default=0)
     serving_unit = models.CharField(max_length=40, blank=True, default="")
     serving_weight_grams = models.DecimalField(max_digits=12, decimal_places=4, default=0)
+    preparation_state = models.CharField(
+        max_length=32,
+        choices=PreparationState.choices,
+        default=PreparationState.AS_PACKAGED,
+        db_index=True,
+    )
+    measurement_basis_label = models.CharField(max_length=80, blank=True, default="As packaged")
     protein = models.DecimalField(max_digits=12, decimal_places=5, default=0)
     carbs = models.DecimalField(max_digits=12, decimal_places=5, default=0)
     fats = models.DecimalField(max_digits=12, decimal_places=5, default=0)
@@ -273,6 +296,57 @@ class ClientFoodOverride(models.Model):
 
     def __str__(self):
         return f"{self.user.email} | {self.canonical_category} -> {self.display_name}"
+
+
+def product_image_submission_upload_path(instance, filename):
+    provider = str(instance.provider or "provider").replace("/", "_")
+    product_id = str(instance.provider_product_id or instance.barcode or "product").replace("/", "_")
+    return f"product_image_submissions/{provider}/{product_id}/{filename}"
+
+
+class ProductImageSubmission(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
+
+    submitted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="product_image_submissions",
+    )
+    provider = models.CharField(max_length=40, db_index=True)
+    provider_product_id = models.CharField(max_length=120, db_index=True)
+    barcode = models.CharField(max_length=80, blank=True, default="", db_index=True)
+    product_name = models.CharField(max_length=220, blank=True, default="")
+    brand = models.CharField(max_length=160, blank=True, default="")
+    image = models.FileField(upload_to=product_image_submission_upload_path)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING, db_index=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="reviewed_product_image_submissions",
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    rejection_reason = models.CharField(max_length=300, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        indexes = [
+            models.Index(fields=["provider", "provider_product_id", "status"], name="product_img_provider_idx"),
+            models.Index(fields=["barcode", "status"], name="product_img_barcode_idx"),
+        ]
+        verbose_name = "Product Image Submission"
+        verbose_name_plural = "Product Image Submissions"
+
+    def __str__(self):
+        return f"{self.provider} | {self.provider_product_id} | {self.status}"
 
 
 class ClientQueuedPlanChange(models.Model):

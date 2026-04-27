@@ -7,6 +7,7 @@ from typing import Any
 from django.db import transaction
 from django.utils import timezone
 
+from core.models import FoodLibraryItem
 from users.client_area.models import (
     ClientFoodOverride,
     ClientMealPlanGeneratedMeal,
@@ -14,6 +15,7 @@ from users.client_area.models import (
     ClientMealPlanGenerationStep1Row,
     ClientProfile,
     ClientQuestionnaireProgress,
+    ProductImageSubmission,
 )
 from users.client_area.services.results_engine import BuildResultsContext, build_questionnaire_results
 
@@ -492,6 +494,65 @@ def get_generated_meal_day_detail(user, day_of_week: str | None = None, job_id: 
         row.canonical_category: row
         for row in ClientFoodOverride.objects.filter(user=user, active=True)
     }
+    food_names = set()
+    for row in rows:
+        combo = row.combo_template
+        food_names.update(
+            {
+                combo.protein_slot_1,
+                combo.protein_slot_2,
+                combo.carb_slot_1,
+                combo.carb_slot_2,
+                combo.fat_slot_1,
+                combo.fat_slot_2,
+            }
+        )
+        selected = day_selected_slot_foods.get(str(row.meal_number)) or day_selected_slot_foods.get(row.meal_number) or {}
+        if isinstance(selected, dict):
+            food_names.update(str(value or "").strip() for value in selected.values())
+
+    food_rows = FoodLibraryItem.objects.filter(
+        is_active=True,
+        approval_status=FoodLibraryItem.ApprovalStatus.APPROVED,
+    )
+    foods_by_category = {}
+    normalized_food_names = {str(name or "").strip() for name in food_names if str(name or "").strip() and str(name or "").strip() != "-"}
+    for food in food_rows:
+        for key in (food.name, food.display_name, food.category, food.canonical_category, food.canonical_name):
+            clean = str(key or "").strip()
+            if clean in normalized_food_names and clean not in foods_by_category:
+                foods_by_category[clean] = food
+
+    approved_images = list(ProductImageSubmission.objects.filter(status=ProductImageSubmission.Status.APPROVED))
+
+    def _approved_image_for_override(override):
+        if not override:
+            return None
+        for submission in approved_images:
+            if (
+                submission.provider == override.external_provider
+                and submission.provider_product_id == override.external_food_id
+            ) or (submission.barcode and submission.barcode == override.barcode):
+                return submission
+        return None
+
+    def _generic_food_for_name(name):
+        return foods_by_category.get(str(name or "").strip())
+
+    def _measurement_label(state, label):
+        if label:
+            return label
+        mapping = {
+            "raw": "Measure raw",
+            "cooked": "Measure cooked",
+            "boiled": "Measure cooked/boiled",
+            "grilled": "Measure cooked/grilled",
+            "baked": "Measure baked",
+            "drained": "Measure drained/cooked",
+            "dry_uncooked": "Measure dry/uncooked",
+            "as_packaged": "As packaged",
+        }
+        return mapping.get(state or "unknown", "Measurement basis not specified")
 
     def selected_name_for_slot(meal_number: int, slot_key: str, fallback_name: str) -> str:
         row = day_selected_slot_foods.get(str(meal_number)) or day_selected_slot_foods.get(meal_number) or {}
@@ -503,15 +564,43 @@ def get_generated_meal_day_detail(user, day_of_week: str | None = None, job_id: 
     def _slot_payload(name: str, amount):
         amount_oz = float(amount or 0)
         override = overrides_by_category.get(name or "")
+        food = None if override else _generic_food_for_name(name)
+        approved_image = _approved_image_for_override(override)
+        image_url = ""
+        image_source = ""
+        if approved_image and approved_image.image:
+            image_url = approved_image.image.url
+            image_source = "approved_local"
+        elif override and override.image_url:
+            image_url = override.image_url
+            image_source = "selected_product"
+        preparation_state = (
+            override.preparation_state
+            if override
+            else getattr(food, "preparation_state", "unknown")
+        )
+        measurement_basis_label = _measurement_label(
+            preparation_state,
+            override.measurement_basis_label if override else getattr(food, "measurement_basis_label", ""),
+        )
         return {
             "name": override.display_name if override else name or "-",
             "canonical_name": name or "-",
+            "image_url": image_url,
+            "image_source": image_source,
+            "preparation_state": preparation_state,
+            "measurement_basis_label": measurement_basis_label,
             "override": {
                 "source_type": override.source_type,
                 "external_provider": override.external_provider,
                 "external_food_id": override.external_food_id,
                 "display_name": override.display_name,
                 "brand_name": override.brand_name,
+                "barcode": override.barcode,
+                "image_url": image_url,
+                "image_source": image_source,
+                "preparation_state": override.preparation_state,
+                "measurement_basis_label": measurement_basis_label,
             }
             if override
             else None,

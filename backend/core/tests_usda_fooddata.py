@@ -16,6 +16,7 @@ class USDAFoodDataProviderTests(TestCase):
                 "foods": [
                     {
                         "fdcId": 123,
+                        "gtinUpc": "012345678905",
                         "description": "GROUND BEEF 93/7",
                         "brandOwner": "Walmart",
                         "dataType": "Branded",
@@ -35,6 +36,7 @@ class USDAFoodDataProviderTests(TestCase):
 
         self.assertEqual(result["total_hits"], 1)
         self.assertEqual(result["foods"][0]["fdc_id"], "123")
+        self.assertEqual(result["foods"][0]["barcode"], "012345678905")
         self.assertEqual(result["foods"][0]["brand_name"], "Walmart")
         self.assertGreater(result["foods"][0]["protein"], Decimal("0"))
         called_kwargs = request.call_args.kwargs

@@ -6,6 +6,7 @@ from core.services.meal_combo_lookup import (
     normalize_slots_to_supported_combo_values,
 )
 from core.services.meal_combo_shape_policy import select_meal_combo_template_for_target
+from core.services.meal_combo_shape_policy import allows_second_fat, requires_cooking_fat_for_protein
 
 
 class MealComboLookupNormalizationTests(TestCase):
@@ -217,3 +218,20 @@ class MealComboShapePolicyTests(TestCase):
 
         self.assertEqual(decision.combo.combo_id, 1004)
         self.assertIsNotNone(decision.fallback_reason)
+
+
+class MealTemplateFatPolicyTests(TestCase):
+    def test_chicken_breast_requires_cooking_oil(self):
+        self.assertTrue(requires_cooking_fat_for_protein("Chicken Breast STANDARD"))
+
+    def test_fish_requires_cooking_oil(self):
+        self.assertTrue(requires_cooking_fat_for_protein("Tilapia STANDARD"))
+
+    def test_steak_does_not_require_cooking_oil(self):
+        self.assertFalse(requires_cooking_fat_for_protein("Steak STANDARD"))
+
+    def test_low_fat_meal_avoids_second_fat_source(self):
+        self.assertFalse(allows_second_fat(12))
+
+    def test_higher_fat_meal_allows_second_fat_source(self):
+        self.assertTrue(allows_second_fat(20))

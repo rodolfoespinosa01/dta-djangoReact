@@ -15,6 +15,7 @@ from .models import (
     ClientPendingSignup,
     ClientProfile,
     ClientProgressPhoto,
+    ProductImageSubmission,
     ClientWeightEntry,
     ClientQuestionnaireProgress,
     ClientQueuedPlanChange,
@@ -396,6 +397,8 @@ class ClientFoodOverrideAdmin(admin.ModelAdmin):
         "serving_size",
         "serving_unit",
         "serving_weight_grams",
+        "preparation_state",
+        "measurement_basis_label",
         "protein",
         "carbs",
         "fats",
@@ -427,6 +430,8 @@ class ClientFoodOverrideAdmin(admin.ModelAdmin):
                     "serving_size",
                     "serving_unit",
                     "serving_weight_grams",
+                    "preparation_state",
+                    "measurement_basis_label",
                 )
             },
         ),
@@ -453,6 +458,105 @@ class ClientFoodOverrideAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+
+@admin.action(description="Approve selected product images")
+def approve_product_images(modeladmin, request, queryset):
+    queryset.update(
+        status=ProductImageSubmission.Status.APPROVED,
+        reviewed_by_id=request.user.id,
+        reviewed_at=timezone.now(),
+        rejection_reason="",
+    )
+
+
+@admin.action(description="Reject selected product images")
+def reject_product_images(modeladmin, request, queryset):
+    queryset.update(
+        status=ProductImageSubmission.Status.REJECTED,
+        reviewed_by_id=request.user.id,
+        reviewed_at=timezone.now(),
+    )
+
+
+@admin.register(ProductImageSubmission)
+class ProductImageSubmissionAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "status",
+        "image_preview",
+        "product_name",
+        "brand",
+        "provider",
+        "provider_product_id",
+        "barcode",
+        "submitted_by",
+        "reviewed_by",
+        "created_at",
+        "reviewed_at",
+    )
+    list_filter = ("status", "provider", "created_at", "reviewed_at")
+    search_fields = ("product_name", "brand", "provider_product_id", "barcode", "submitted_by__email")
+    readonly_fields = ("image_preview", "created_at", "updated_at", "reviewed_at")
+    autocomplete_fields = ("submitted_by", "reviewed_by")
+    actions = (approve_product_images, reject_product_images)
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": (
+                    "status",
+                    "image",
+                    "image_preview",
+                    "product_name",
+                    "brand",
+                )
+            },
+        ),
+        (
+            "Product Identity",
+            {
+                "fields": (
+                    "provider",
+                    "provider_product_id",
+                    "barcode",
+                )
+            },
+        ),
+        (
+            "Review",
+            {
+                "fields": (
+                    "submitted_by",
+                    "reviewed_by",
+                    "reviewed_at",
+                    "rejection_reason",
+                )
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
+            },
+        ),
+    )
+
+    def image_preview(self, obj):
+        if not obj or not obj.image:
+            return "-"
+        return format_html(
+            '<img src="{}" style="width:96px;height:96px;object-fit:cover;border-radius:8px;border:1px solid #ddd" />',
+            obj.image.url,
+        )
+
+    image_preview.short_description = "Preview"
+
+    def save_model(self, request, obj, form, change):
+        if obj.status in {ProductImageSubmission.Status.APPROVED, ProductImageSubmission.Status.REJECTED} and not obj.reviewed_by:
+            obj.reviewed_by = request.user
+            obj.reviewed_at = timezone.now()
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(ClientProgressPhoto)

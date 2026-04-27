@@ -241,11 +241,15 @@ if DEBUG:
         )
 
 FRONTEND_URL = os.getenv("FRONTEND_URL") or "http://localhost:3000"
+GOOGLE_OAUTH_CLOCK_SKEW_SECONDS = int(os.getenv("GOOGLE_OAUTH_CLOCK_SKEW_SECONDS") or "10")
 
 USDA_FDC_API_KEY = os.getenv("USDA_FDC_API_KEY") or os.getenv("USDA_FOODDATA_API_KEY") or ""
 USDA_FOODDATA_API_KEY = USDA_FDC_API_KEY
 USDA_FOODDATA_BASE_URL = os.getenv("USDA_FOODDATA_BASE_URL") or "https://api.nal.usda.gov/fdc/v1"
 USDA_FOODDATA_TIMEOUT_SECONDS = int(os.getenv("USDA_FOODDATA_TIMEOUT_SECONDS") or "8")
+OPEN_FOOD_FACTS_BASE_URL = os.getenv("OPEN_FOOD_FACTS_BASE_URL") or "https://world.openfoodfacts.org"
+OPEN_FOOD_FACTS_USER_AGENT = os.getenv("OPEN_FOOD_FACTS_USER_AGENT") or "DTA-Diet-Generator/1.0 (support@dtameals.com)"
+OPEN_FOOD_FACTS_TIMEOUT_SECONDS = int(os.getenv("OPEN_FOOD_FACTS_TIMEOUT_SECONDS") or "8")
 
 
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL") or os.getenv("REDIS_URL") or "redis://127.0.0.1:6379/0"

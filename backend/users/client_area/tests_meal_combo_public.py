@@ -2,7 +2,7 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from core.models import FoodLibraryItem, MealComboTemplate
-from users.client_area.views.meal_combo_public import _combo_to_payload
+from users.client_area.views.meal_combo_public import _combo_to_payload, _pick_combo
 
 
 class MealComboPublicOptionsTests(TestCase):
@@ -242,3 +242,111 @@ class MealComboStarterTemplateShapePolicyTests(TestCase):
         self.assertEqual(response.status_code, 200)
         meals = response.data["starter_templates"][0]["default_day_meals"]
         self.assertIn("Banana STANDARD", {meal["carbs_2"] for meal in meals})
+
+
+class MealComboStarterTemplateFatPolicyTests(TestCase):
+    def test_chicken_breast_prefers_oil_as_single_fat_for_low_fat_meal(self):
+        MealComboTemplate.objects.bulk_create(
+            [
+                MealComboTemplate(
+                    combo_id=201,
+                    protein_slot_1="Chicken Breast STANDARD",
+                    protein_slot_2="-",
+                    carb_slot_1="White Rice STANDARD",
+                    carb_slot_2="-",
+                    fat_slot_1="Avocado STANDARD",
+                    fat_slot_2="-",
+                ),
+                MealComboTemplate(
+                    combo_id=202,
+                    protein_slot_1="Chicken Breast STANDARD",
+                    protein_slot_2="-",
+                    carb_slot_1="White Rice STANDARD",
+                    carb_slot_2="-",
+                    fat_slot_1="Oil STANDARD",
+                    fat_slot_2="-",
+                ),
+            ]
+        )
+
+        combo = _pick_combo(
+            carb_1="White Rice STANDARD",
+            carb_2="-",
+            allowed_proteins=["Chicken Breast STANDARD"],
+            preferred_protein="Chicken Breast STANDARD",
+            meal_target={"protein": 40, "carbs": 35, "fats": 12},
+        )
+
+        self.assertEqual(combo.combo_id, 202)
+        self.assertEqual(combo.fat_slot_1, "Oil STANDARD")
+        self.assertEqual(combo.fat_slot_2, "-")
+
+    def test_steak_does_not_force_oil(self):
+        MealComboTemplate.objects.bulk_create(
+            [
+                MealComboTemplate(
+                    combo_id=301,
+                    protein_slot_1="Steak STANDARD",
+                    protein_slot_2="-",
+                    carb_slot_1="White Rice STANDARD",
+                    carb_slot_2="-",
+                    fat_slot_1="Avocado STANDARD",
+                    fat_slot_2="-",
+                ),
+                MealComboTemplate(
+                    combo_id=302,
+                    protein_slot_1="Steak STANDARD",
+                    protein_slot_2="-",
+                    carb_slot_1="White Rice STANDARD",
+                    carb_slot_2="-",
+                    fat_slot_1="Oil STANDARD",
+                    fat_slot_2="-",
+                ),
+            ]
+        )
+
+        combo = _pick_combo(
+            carb_1="White Rice STANDARD",
+            carb_2="-",
+            allowed_proteins=["Steak STANDARD"],
+            preferred_protein="Steak STANDARD",
+            meal_target={"protein": 40, "carbs": 35, "fats": 12},
+        )
+
+        self.assertEqual(combo.combo_id, 301)
+        self.assertEqual(combo.fat_slot_1, "Avocado STANDARD")
+
+    def test_higher_fat_meal_can_use_second_fat_source(self):
+        MealComboTemplate.objects.bulk_create(
+            [
+                MealComboTemplate(
+                    combo_id=401,
+                    protein_slot_1="Steak STANDARD",
+                    protein_slot_2="-",
+                    carb_slot_1="White Rice STANDARD",
+                    carb_slot_2="-",
+                    fat_slot_1="Avocado STANDARD",
+                    fat_slot_2="Oil STANDARD",
+                ),
+                MealComboTemplate(
+                    combo_id=402,
+                    protein_slot_1="Steak STANDARD",
+                    protein_slot_2="-",
+                    carb_slot_1="White Rice STANDARD",
+                    carb_slot_2="-",
+                    fat_slot_1="Avocado STANDARD",
+                    fat_slot_2="-",
+                ),
+            ]
+        )
+
+        combo = _pick_combo(
+            carb_1="White Rice STANDARD",
+            carb_2="-",
+            allowed_proteins=["Steak STANDARD"],
+            preferred_protein="Steak STANDARD",
+            meal_target={"protein": 40, "carbs": 35, "fats": 24},
+        )
+
+        self.assertEqual(combo.combo_id, 401)
+        self.assertEqual(combo.fat_slot_2, "Oil STANDARD")

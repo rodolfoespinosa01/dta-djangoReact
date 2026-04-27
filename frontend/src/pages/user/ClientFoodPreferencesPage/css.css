@@ -1,0 +1,315 @@
+.food-pref-intro {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.food-pref-intro h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #14284a;
+}
+
+.food-pref-intro p,
+.meal-template-card p,
+.visual-meal-card__description {
+  margin: 0.25rem 0 0;
+  color: #5d6d82;
+  line-height: 1.45;
+}
+
+.food-pref-progress,
+.meal-template-card__badges,
+.visual-meal-card__badges,
+.visual-meal-card__actions,
+.meal-template-card__actions,
+.meal-choice-card__badges,
+.food-product-card__meta {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.food-pref-mode-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.food-pref-mode {
+  text-align: left;
+  border: 1px solid rgba(20, 40, 74, 0.14);
+  background: #fff;
+  border-radius: 8px;
+  padding: 0.8rem;
+  cursor: pointer;
+  display: grid;
+  gap: 0.25rem;
+  color: #14284a;
+}
+
+.food-pref-mode span {
+  color: #64748b;
+  font-size: 0.88rem;
+}
+
+.food-pref-mode.is-active {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.food-pref-section-title,
+.meal-template-card__top,
+.visual-meal-card__header,
+.food-product-card__header,
+.product-picker-panel__top {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.meal-template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.85rem;
+}
+
+.meal-template-card,
+.visual-meal-card,
+.product-picker-panel,
+.food-product-card {
+  border: 1px solid rgba(20, 40, 74, 0.11);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.meal-template-card {
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: 150px 1fr;
+}
+
+.meal-template-card__image,
+.visual-meal-card__image,
+.food-product-card__image {
+  background: #f1f5f9;
+}
+
+.meal-template-card__image img,
+.visual-meal-card__image img,
+.meal-choice-card img,
+.food-product-card__image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.meal-template-card__body,
+.visual-meal-card__body {
+  padding: 0.85rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.visual-meal-list {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.visual-meal-card {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.visual-meal-card__image {
+  min-height: 150px;
+}
+
+.visual-meal-card__eyebrow,
+.meal-choice-card__source {
+  display: block;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.meal-choice-panel,
+.visual-meal-card__customize {
+  grid-column: 1 / -1;
+  border-top: 1px solid rgba(20, 40, 74, 0.1);
+  padding: 0.85rem;
+  background: #f8fafc;
+}
+
+.meal-choice-grid,
+.food-product-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(320px, 1fr));
+  gap: 0.9rem;
+}
+
+.meal-choice-card {
+  border: 1px solid rgba(20, 40, 74, 0.12);
+  border-radius: 8px;
+  background: #fff;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  overflow: hidden;
+  display: grid;
+}
+
+.meal-choice-card img {
+  height: 112px;
+}
+
+.meal-choice-card__title,
+.meal-choice-card__description,
+.meal-choice-card__badges,
+.meal-choice-card__source {
+  padding: 0 0.7rem;
+}
+
+.meal-choice-card__title {
+  padding-top: 0.65rem;
+  font-weight: 800;
+  color: #14284a;
+}
+
+.meal-choice-card__description {
+  color: #5d6d82;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  min-height: 2.3rem;
+}
+
+.meal-choice-card__source {
+  padding-bottom: 0.7rem;
+}
+
+.product-picker-panel {
+  padding: 0.9rem;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.product-picker-panel__search {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.7rem;
+  align-items: end;
+}
+
+.food-product-card {
+  padding: 0.85rem;
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 0.9rem;
+  align-items: start;
+}
+
+.food-product-card__image {
+  width: 132px;
+  height: 132px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.food-product-card__image.is-missing {
+  background: #f8fafc;
+  border: 1px dashed rgba(20, 40, 74, 0.25);
+}
+
+.food-product-card__placeholder {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.86rem;
+  font-weight: 800;
+  padding: 0.75rem;
+}
+
+.food-product-card__body {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.food-product-card__actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.food-product-card__upload {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.food-product-card__upload input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.food-product-card__upload.is-disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.food-product-card__meta {
+  color: #5d6d82;
+  font-size: 0.82rem;
+}
+
+.food-product-card__ingredients {
+  max-height: 2.4rem;
+  overflow: hidden;
+}
+
+@media (max-width: 760px) {
+  .food-pref-intro,
+  .food-pref-section-title,
+  .product-picker-panel__top {
+    display: grid;
+  }
+
+  .food-pref-mode-toggle,
+  .product-picker-panel__search {
+    grid-template-columns: 1fr;
+  }
+
+  .visual-meal-card,
+  .food-product-card {
+    grid-template-columns: 1fr;
+  }
+
+  .food-product-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .visual-meal-card__image {
+    min-height: 180px;
+  }
+
+  .food-product-card__image {
+    width: 100%;
+    height: 180px;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 980px) {
+  .food-product-grid {
+    grid-template-columns: 1fr;
+  }
+}

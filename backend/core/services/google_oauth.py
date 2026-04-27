@@ -14,6 +14,18 @@ def get_google_client_ids():
     return [value.strip() for value in str(raw).split(",") if value.strip()]
 
 
+def get_google_clock_skew_seconds():
+    raw = (
+        getattr(settings, "GOOGLE_OAUTH_CLOCK_SKEW_SECONDS", None)
+        or os.getenv("GOOGLE_OAUTH_CLOCK_SKEW_SECONDS")
+        or 10
+    )
+    try:
+        return max(0, int(raw))
+    except (TypeError, ValueError):
+        return 10
+
+
 def verify_google_id_token(id_token: str):
     if not id_token:
         raise ValueError("Missing Google ID token.")
@@ -29,13 +41,18 @@ def verify_google_id_token(id_token: str):
         raise RuntimeError("google-auth is not installed. Add it to backend requirements.") from exc
 
     request_adapter = google_requests.Request()
+    clock_skew_seconds = get_google_clock_skew_seconds()
     last_error = None
     for audience in client_ids:
         try:
-            payload = google_id_token.verify_oauth2_token(id_token, request_adapter, audience)
+            payload = google_id_token.verify_oauth2_token(
+                id_token,
+                request_adapter,
+                audience,
+                clock_skew_in_seconds=clock_skew_seconds,
+            )
             return payload
         except Exception as exc:  # keep trying other client ids
             last_error = exc
 
     raise ValueError(f"Unable to verify Google token for configured audience(s): {last_error}")
-

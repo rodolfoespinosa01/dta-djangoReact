@@ -10,6 +10,21 @@ TWO_PROTEIN_MIN_G = Decimal("50")
 ONE_CARB_PREFERRED_BELOW_G = Decimal("45")
 TWO_CARB_ALLOWED_G = Decimal("60")
 TRAINING_ADJACENT_TWO_CARB_MIN_G = Decimal("45")
+SECOND_FAT_MIN_G = Decimal("20")
+COOKING_FAT_SLOT = "Oil STANDARD"
+LEAN_PROTEIN_COOKING_FAT_REQUIRED = frozenset(
+    {
+        "Chicken Breast STANDARD",
+        "Fish STANDARD",
+        "Salmon STANDARD",
+        "Tilapia STANDARD",
+        "Tuna STANDARD",
+        "Cod STANDARD",
+        "Catfish STANDARD",
+        "Shrimp STANDARD",
+        "Merluza, Hake (flesh only) STANDARD",
+    }
+)
 
 
 def _normalize_slot(value):
@@ -39,14 +54,25 @@ def allows_second_carb(carb_target_g: Any, is_training_adjacent: bool = False) -
     return bool(is_training_adjacent) and target >= TRAINING_ADJACENT_TWO_CARB_MIN_G
 
 
+def allows_second_fat(fat_target_g: Any) -> bool:
+    return _target_decimal(fat_target_g) >= SECOND_FAT_MIN_G
+
+
+def requires_cooking_fat_for_protein(protein_name: Any) -> bool:
+    return _normalize_slot(protein_name) in LEAN_PROTEIN_COOKING_FAT_REQUIRED
+
+
 @dataclass(frozen=True)
 class MealComboShapePreference:
     allows_second_protein: bool
     allows_second_carb: bool
+    allows_second_fat: bool
     preferred_protein_slot_2: str | None
     preferred_carb_slot_2: str | None
+    preferred_fat_slot_2: str | None
     protein_structure: str
     carb_structure: str
+    fat_structure: str
 
 
 @dataclass(frozen=True)
@@ -62,13 +88,17 @@ def preferred_combo_shape_for_meal(meal_target: dict[str, Any] | None, is_traini
     target = meal_target or {}
     protein_allows_second = allows_second_protein(target.get("protein"))
     carb_allows_second = allows_second_carb(target.get("carbs"), is_training_adjacent=is_training_adjacent)
+    fat_allows_second = allows_second_fat(target.get("fats"))
     return MealComboShapePreference(
         allows_second_protein=protein_allows_second,
         allows_second_carb=carb_allows_second,
+        allows_second_fat=fat_allows_second,
         preferred_protein_slot_2=None if protein_allows_second else "-",
         preferred_carb_slot_2=None if carb_allows_second else "-",
+        preferred_fat_slot_2=None if fat_allows_second else "-",
         protein_structure="one_or_two_protein" if protein_allows_second else "one_protein",
         carb_structure="one_or_two_carb" if carb_allows_second else "one_carb",
+        fat_structure="one_or_two_fat" if fat_allows_second else "one_fat",
     )
 
 
