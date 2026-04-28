@@ -1,5 +1,7 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.db import transaction
 from django.utils import timezone
 from django.utils.crypto import get_random_string
@@ -71,12 +73,22 @@ QUESTIONNAIRE_REQUIRES_REGEN_FIELDS = {
     "meal_schedule",
     "training_schedule",
 }
+QUESTIONNAIRE_ALLOWED_VALUES = {
+    "gender": {"male", "female"},
+    "goal": {"lose", "maintain", "gain"},
+    "lifestyle": {"low", "moderate", "high"},
+    "meal_plan_type": {"standard", "carb_cycling", "keto"},
+}
 
 TRIAL_ADMIN_CLIENT_LIMIT = 5
 
 def _is_gmail_email(value):
     email = (value or "").strip().lower()
     return email.endswith("@gmail.com") or email.endswith("@googlemail.com")
+
+
+def _is_pending_expired(pending: ClientPendingSignup) -> bool:
+    return bool(pending.expires_at and pending.expires_at <= timezone.now())
 
 
 def _questionnaire_payload(progress):
@@ -617,6 +629,28 @@ def _normalize_questionnaire_answer(step_key, answer, current_answers):
     return answer, None
 
 
+def _normalize_public_questionnaire_answers(raw_answers):
+    if not isinstance(raw_answers, dict):
+        return None, ["answers"], [{"step": "answers", "reason": "answers_must_be_object"}]
+
+    normalized = {}
+    invalid = []
+    for step in QUESTIONNAIRE_STEPS:
+        if step not in raw_answers or raw_answers.get(step) in (None, "", []):
+            continue
+        normalized_answer, normalize_error = _normalize_questionnaire_answer(step, raw_answers.get(step), normalized)
+        if normalize_error:
+            invalid.append({"step": step, **normalize_error})
+            continue
+        if step in QUESTIONNAIRE_ALLOWED_VALUES and normalized_answer not in QUESTIONNAIRE_ALLOWED_VALUES[step]:
+            invalid.append({"step": step, "reason": "unsupported_value"})
+            continue
+        normalized[step] = normalized_answer
+
+    missing = [step for step in QUESTIONNAIRE_STEPS if step not in normalized or normalized.get(step) in (None, "", [])]
+    return normalized, missing, invalid
+
+
 def _persist_client_meal_combo_selections(user, answers):
     rows, missing, invalid = _extract_weekly_combo_selection_rows(answers)
     if missing or invalid:
@@ -947,6 +981,10 @@ def register_client(request):
     ).first()
     if not pending:
         return error("INVALID_TOKEN", "Invalid or expired registration token.", http_status=404)
+    if _is_pending_expired(pending):
+        pending.status = ClientPendingSignup.STATUS_EXPIRED
+        pending.save(update_fields=["status"])
+        return error("INVALID_TOKEN", "Invalid or expired registration token.", http_status=404)
     if pending.email != email:
         return error("EMAIL_TOKEN_MISMATCH", "This token does not match the provided email.", http_status=400)
 
@@ -989,11 +1027,13 @@ def register_client(request):
         includes_coaching=pending.includes_coaching,
         is_active=True,
     )
+    pending_answers = pending.questionnaire_answers_json if isinstance(pending.questionnaire_answers_json, dict) else {}
     ClientQuestionnaireProgress.objects.create(
         user=user,
-        status="not_started",
-        current_step=QUESTIONNAIRE_STEPS[0],
-        answers_json={},
+        status="completed" if pending_answers else "not_started",
+        current_step=QUESTIONNAIRE_STEPS[-1] if pending_answers else QUESTIONNAIRE_STEPS[0],
+        answers_json=pending_answers,
+        completed_at=timezone.now() if pending_answers else None,
     )
 
     pending.used_at = timezone.now()
@@ -1025,6 +1065,10 @@ def pending_signup_preview(request, token):
         status=ClientPendingSignup.STATUS_PENDING,
     ).first()
     if not pending:
+        return error("INVALID_TOKEN", "Invalid or expired registration token.", http_status=404)
+    if _is_pending_expired(pending):
+        pending.status = ClientPendingSignup.STATUS_EXPIRED
+        pending.save(update_fields=["status"])
         return error("INVALID_TOKEN", "Invalid or expired registration token.", http_status=404)
     return ok(
         {
@@ -1124,6 +1168,104 @@ def macro_access_questionnaire_submit(request, token):
                 )
             ),
         }
+    )
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def public_macro_calculator(request):
+    payload = request.data or {}
+    email = (payload.get("email") or "").strip().lower()
+    if not email:
+        return error("MISSING_EMAIL", "Email is required to send your macro results link.", http_status=400)
+    try:
+        validate_email(email)
+    except ValidationError:
+        return error("INVALID_EMAIL", "Enter a valid email address.", http_status=400)
+
+    answers, missing, invalid = _normalize_public_questionnaire_answers(payload.get("answers"))
+    if invalid:
+        return error(
+            "INVALID_QUESTIONNAIRE_ANSWERS",
+            "One or more questionnaire answers are invalid.",
+            http_status=400,
+            details={"invalid_answers": invalid},
+        )
+    if missing:
+        return error(
+            "MISSING_REQUIRED_STEPS",
+            "Questionnaire is incomplete.",
+            http_status=400,
+            details={"missing_steps": missing},
+        )
+
+    admin_slug = (payload.get("admin_slug") or "").strip().lower()
+    admin_identity = AdminIdentity.objects.filter(subdomain_slug=admin_slug).first() if admin_slug else None
+    if admin_slug and not admin_identity:
+        return error("ADMIN_PAGE_NOT_FOUND", "Admin page not found.", http_status=404)
+
+    User = get_user_model()
+    if User.objects.filter(email=email).exists():
+        return error("EMAIL_ALREADY_REGISTERED", "This email already has an account. Log in to view your dashboard.", http_status=409)
+
+    results = build_questionnaire_results(BuildResultsContext(answers=answers or {}, admin_identity=admin_identity))
+    if not results:
+        return error(
+            "UNABLE_TO_CALCULATE_MACROS",
+            "We could not calculate macros from these answers.",
+            http_status=400,
+        )
+
+    existing_pending = ClientPendingSignup.objects.filter(
+        email__iexact=email,
+        status=ClientPendingSignup.STATUS_PENDING,
+    ).first()
+    if existing_pending:
+        existing_pending.status = ClientPendingSignup.STATUS_SUPERSEDED
+        existing_pending.save(update_fields=["status"])
+
+    offer = OFFER_CATALOG["macro_calculator_free"]
+    token = get_random_string(64)
+    registration_link = f"{FRONTEND_URL}/client_register?token={token}"
+    expires_at = timezone.now() + timedelta(days=7)
+    pending = ClientPendingSignup.objects.create(
+        email=email,
+        token=token,
+        admin=admin_identity,
+        sale_channel="admin_white_label" if admin_identity else "dta_direct",
+        offer_code="macro_calculator_free",
+        billing_cycle=offer["billing_cycle"],
+        trial_days=0,
+        amount_cents=int(offer["amount_cents"]),
+        includes_food_plan=bool(offer["includes_food_plan"]),
+        includes_coaching=bool(offer["includes_coaching"]),
+        registration_link=registration_link,
+        expires_at=expires_at,
+        status=ClientPendingSignup.STATUS_PENDING,
+        registration_link_printed_at=timezone.now(),
+        questionnaire_answers_json=answers or {},
+        questionnaire_results_json=results or {},
+    )
+
+    print("\n" + "=" * 60)
+    print("📩 Public macro calculator registration email (simulated):")
+    print(f"To: {email}")
+    print("Subject: Create your DTA account to view your macro results")
+    print(f"➡️ Click to register and view macros:\n{registration_link}")
+    print(f"Expires: {expires_at.isoformat()}")
+    print("=" * 60 + "\n")
+
+    return ok(
+        {
+            "message": "Check your email to create your account and view your macro results.",
+            "pending_signup": {
+                "email": pending.email,
+                "offer_code": pending.offer_code,
+                "expires_at": pending.expires_at,
+            },
+            **({"debug_registration_link": registration_link} if getattr(settings, "DEBUG", False) else {}),
+        },
+        http_status=201,
     )
 
 

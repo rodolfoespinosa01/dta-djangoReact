@@ -1,10 +1,11 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase
+from django.urls import resolve
 from unittest.mock import patch
 from rest_framework.test import APIClient
 
 from core.models import FoodLibraryItem, MealComboTemplate
-from users.client_area.models import ClientMealComboSelection, ClientProfile, ClientQuestionnaireProgress
+from users.client_area.models import ClientMealComboSelection, ClientPendingSignup, ClientProfile, ClientQuestionnaireProgress
 
 
 QUESTIONNAIRE_ANSWERS = {
@@ -94,6 +95,64 @@ class ClientOnboardingFlowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["onboarding"]["next_step"], "dashboard")
         self.assertFalse(response.data["onboarding"]["requires_food_preferences"])
+
+    def test_public_macro_calculator_creates_pending_signup_without_user_creation(self):
+        before_count = self.User.objects.count()
+
+        response = self.api.post(
+            "/api/v1/users/client/public/macro-calculator/",
+            {"email": "lead@example.com", "answers": QUESTIONNAIRE_ANSWERS},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["pending_signup"]["email"], "lead@example.com")
+        self.assertEqual(self.User.objects.count(), before_count)
+        pending = ClientPendingSignup.objects.get(email="lead@example.com")
+        self.assertEqual(pending.offer_code, "macro_calculator_free")
+        self.assertEqual(pending.questionnaire_answers_json["date_of_birth"], QUESTIONNAIRE_ANSWERS["date_of_birth"])
+        self.assertIn("weekly_days", pending.questionnaire_results_json)
+
+    def test_public_macro_calculator_validates_required_answers(self):
+        answers = dict(QUESTIONNAIRE_ANSWERS)
+        answers.pop("date_of_birth")
+
+        response = self.api.post(
+            "/api/v1/users/client/public/macro-calculator/",
+            {"email": "lead-missing@example.com", "answers": answers},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data["error"]["code"], "MISSING_REQUIRED_STEPS")
+        self.assertIn("date_of_birth", response.data["error"]["details"]["missing_steps"])
+
+    def test_client_registration_restores_public_macro_questionnaire(self):
+        submit = self.api.post(
+            "/api/v1/users/client/public/macro-calculator/",
+            {"email": "registered-lead@example.com", "answers": QUESTIONNAIRE_ANSWERS},
+            format="json",
+        )
+        self.assertEqual(submit.status_code, 201)
+        token = ClientPendingSignup.objects.get(email="registered-lead@example.com").token
+
+        response = self.api.post(
+            "/api/v1/users/client/register/",
+            {"email": "registered-lead@example.com", "password": "pass12345", "token": token},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        user = self.User.objects.get(email="registered-lead@example.com")
+        progress = ClientQuestionnaireProgress.objects.get(user=user)
+        self.assertEqual(progress.status, "completed")
+        self.assertEqual(progress.current_step, "training_schedule")
+        self.assertEqual(progress.answers_json["goal"], QUESTIONNAIRE_ANSWERS["goal"])
+
+    def test_public_macro_calculator_url_resolves_under_versioned_client_prefix(self):
+        match = resolve("/api/v1/users/client/public/macro-calculator/")
+
+        self.assertEqual(match.view_name, "public-macro-calculator")
 
     def test_food_preferences_submit_marks_completion(self):
         user, progress = self.create_client_user("foods@example.com", includes_food_plan=True)

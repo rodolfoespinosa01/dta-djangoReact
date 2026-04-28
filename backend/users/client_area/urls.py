@@ -10,6 +10,7 @@ from users.client_area.views.auth_flow import (
     macro_access_questionnaire,
     macro_access_questionnaire_submit,
     pending_signup_preview,
+    public_macro_calculator,
     public_signup_quote,
     questionnaire_status_or_draft,
     questionnaire_submit,
@@ -56,6 +57,7 @@ from users.client_area.views.food_overrides import (
 urlpatterns = [
     path('dashboard/', dashboard_view, name='dashboard'),
     path('public/admin-page/<slug:slug>/', admin_public_marketing_page, name='admin_public_marketing_page'),
+    path('public/macro-calculator/', public_macro_calculator, name='public-macro-calculator'),
     path('public/meal-combo-options/', meal_combo_slot_options, name='client_meal_combo_slot_options'),
     path('public/meal-combo-lookup/', meal_combo_lookup, name='client_meal_combo_lookup'),
     path('public/meal-combo-starter-templates/', meal_combo_starter_templates, name='client_meal_combo_starter_templates'),

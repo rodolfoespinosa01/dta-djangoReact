@@ -12,6 +12,7 @@ import noAi from '../../../assets/misc/noai.png';
 import mealplanImg from '../../../assets/misc/nutritionist_mealplan.png';
 import messagingImg from '../../../assets/misc/messagingbubbles.png';
 import trainerImg from '../../../assets/misc/personaltrainer.png';
+import FreeMacroCalculator from '../../../components/questionnaire/FreeMacroCalculator';
 
 const foodImagesContext = require.context('../../../assets/foods_png', false, /\.(png|jpe?g|webp)$/i);
 
@@ -145,6 +146,7 @@ function UserHomePage() {
   const [signupEmail, setSignupEmail] = useState('');
   const [signupMessage, setSignupMessage] = useState('');
   const [startingOfferCode, setStartingOfferCode] = useState('');
+  const [hasStartedMacroQuiz, setHasStartedMacroQuiz] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -197,6 +199,10 @@ function UserHomePage() {
 
   return (
     <div className="user-home-page">
+      {hasStartedMacroQuiz ? (
+        <FreeMacroCalculator focused onStart={() => setHasStartedMacroQuiz(true)} />
+      ) : (
+        <>
       <section className="user-story-header">
         <div className="user-brand-row">
           <img src={dtaLogo} alt="DTA logo" className="user-brand-logo" />
@@ -216,6 +222,8 @@ function UserHomePage() {
           </div>
         </div>
       </section>
+
+      <FreeMacroCalculator onStart={() => setHasStartedMacroQuiz(true)} />
 
       <section className="user-home-plans" aria-label="DTA plan signup options">
         <div className="user-home-plans-header">
@@ -339,6 +347,8 @@ function UserHomePage() {
           </button>
         </div>
       </section>
+        </>
+      )}
     </div>
   );
 }
