@@ -49,6 +49,8 @@ class ClientPendingSignup(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING, db_index=True)
     stripe_checkout_session_id = models.CharField(max_length=128, blank=True, default="", db_index=True)
     registration_link_printed_at = models.DateTimeField(null=True, blank=True)
+    questionnaire_answers_json = models.JSONField(default=dict, blank=True)
+    questionnaire_results_json = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

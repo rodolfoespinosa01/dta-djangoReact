@@ -49,7 +49,7 @@ def _normalize_height_cm(height_answer: Any):
         return None
     unit = (height_answer.get("unit") or "imperial").lower()
     if unit == "cm":
-        cm = _to_float(height_answer.get("cm"))
+        cm = _to_float(height_answer.get("cm") if height_answer.get("cm") is not None else height_answer.get("value"))
         return cm if cm > 0 else None
     feet = _to_float(height_answer.get("feet"))
     inches = _to_float(height_answer.get("inches"))
