@@ -17,3 +17,5 @@ dump.rdb
 # Virtual environments
 backend/venv/  # <-- Add this line
 venv/
+frontend/src/assets/transformations/
+frontend/src/assets/transformations/
