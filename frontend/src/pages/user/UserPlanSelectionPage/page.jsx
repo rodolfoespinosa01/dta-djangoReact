@@ -9,6 +9,7 @@ import mealplanImg from '../../../assets/misc/nutritionist_mealplan.png';
 import aiImg from '../../../assets/misc/ailogo.png';
 import messagingImg from '../../../assets/misc/messagingbubbles.png';
 import trainerImg from '../../../assets/misc/personaltrainer.png';
+import TransformationShowcase from '../../../components/TransformationShowcase';
 
 const DTA_DIRECT_PAGE = {
   admin_page: {
@@ -359,6 +360,7 @@ function UserPlanSelectionPage() {
         {ctaMessage && <p className="user-plan-inline-message">{ctaMessage}</p>}
       </div>
 
+      <TransformationShowcase compact />
 
       <div className="user-plan-grid">
         {freeOffer ? (

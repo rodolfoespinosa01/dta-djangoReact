@@ -13,6 +13,7 @@ import chickenMeal from '../../../assets/misc/chickenmeal.png';
 import salad from '../../../assets/misc/salad.png';
 import girlMealPlan from '../../../assets/misc/girlmealplan.png';
 import nutritionistMealPlan from '../../../assets/misc/nutritionist_mealplan.png';
+import TransformationShowcase from '../../../components/TransformationShowcase';
 
 function AdminHomePage() {
   const navigate = useNavigate();
@@ -52,6 +53,8 @@ function AdminHomePage() {
             <img src={animeTrainer} alt="Trainer avatar" className="admin-hero-side" />
           </div>
         </section>
+
+        <TransformationShowcase compact />
 
         <section className="admin-home-grid">
           <article className="admin-info-card">
