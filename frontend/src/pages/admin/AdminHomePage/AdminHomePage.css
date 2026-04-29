@@ -150,6 +150,37 @@
   gap: 1rem;
 }
 
+.admin-home-shell .transformation-showcase {
+  border: 1px solid rgba(172, 194, 255, 0.22);
+  background:
+    radial-gradient(520px 240px at 12% 0%, rgba(20, 184, 166, 0.14), transparent 70%),
+    radial-gradient(440px 220px at 100% 100%, rgba(240, 125, 255, 0.13), transparent 70%),
+    linear-gradient(150deg, rgba(9, 15, 20, 0.88), rgba(12, 19, 26, 0.78));
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.3);
+}
+
+.admin-home-shell .transformation-kicker {
+  color: #9ff1df;
+}
+
+.admin-home-shell .transformation-copy h2 {
+  color: #f4d8ff;
+}
+
+.admin-home-shell .transformation-copy p:last-child {
+  color: #d9e7ff;
+}
+
+.admin-home-shell .transformation-nav {
+  background: rgba(245, 250, 255, 0.1);
+  border-color: rgba(172, 194, 255, 0.28);
+  color: #f3dbff;
+}
+
+.admin-home-shell .transformation-thumb {
+  background: rgba(245, 250, 255, 0.08);
+}
+
 .admin-ops-copy h2 {
   margin: 0;
   color: #f3dbff;

@@ -13,6 +13,7 @@ import mealplanImg from '../../../assets/misc/nutritionist_mealplan.png';
 import messagingImg from '../../../assets/misc/messagingbubbles.png';
 import trainerImg from '../../../assets/misc/personaltrainer.png';
 import FreeMacroCalculator from '../../../components/questionnaire/FreeMacroCalculator';
+import TransformationShowcase from '../../../components/TransformationShowcase';
 
 const foodImagesContext = require.context('../../../assets/foods_png', false, /\.(png|jpe?g|webp)$/i);
 
@@ -224,6 +225,8 @@ function UserHomePage() {
       </section>
 
       <FreeMacroCalculator onStart={() => setHasStartedMacroQuiz(true)} />
+
+      <TransformationShowcase />
 
       <section className="user-home-plans" aria-label="DTA plan signup options">
         <div className="user-home-plans-header">
