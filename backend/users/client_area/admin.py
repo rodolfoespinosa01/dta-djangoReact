@@ -14,6 +14,8 @@ from .models import (
     ClientMealComboSelection,
     ClientPendingSignup,
     ClientProfile,
+    ClientProteinShakeIngredientSelection,
+    ClientProteinShakePreference,
     ClientProgressPhoto,
     ProductImageSubmission,
     ClientWeightEntry,
@@ -458,6 +460,48 @@ class ClientFoodOverrideAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+
+class ClientProteinShakeIngredientSelectionInline(admin.TabularInline):
+    model = ClientProteinShakeIngredientSelection
+    extra = 0
+    autocomplete_fields = ("slot", "selected_food_library_item", "selected_food_override")
+    readonly_fields = ("external_product_data_json", "created_at", "updated_at")
+    fields = (
+        "slot",
+        "selected_food_library_item",
+        "selected_food_override",
+        "serving_amount",
+        "serving_unit",
+        "excluded",
+        "external_product_data_json",
+        "created_at",
+        "updated_at",
+    )
+
+
+@admin.register(ClientProteinShakePreference)
+class ClientProteinShakePreferenceAdmin(admin.ModelAdmin):
+    list_display = ("user", "template", "enabled", "scoop_count", "updated_at")
+    list_filter = ("enabled", "template")
+    search_fields = ("user__email", "template__name", "template__slug")
+    autocomplete_fields = ("user", "template")
+    readonly_fields = ("created_at", "updated_at")
+    inlines = (ClientProteinShakeIngredientSelectionInline,)
+
+
+@admin.register(ClientProteinShakeIngredientSelection)
+class ClientProteinShakeIngredientSelectionAdmin(admin.ModelAdmin):
+    list_display = ("preference", "slot", "selected_food_library_item", "selected_food_override", "excluded", "serving_amount", "serving_unit")
+    list_filter = ("excluded", "slot__slot_key", "slot__template")
+    search_fields = (
+        "preference__user__email",
+        "slot__display_name",
+        "selected_food_library_item__name",
+        "selected_food_override__display_name",
+    )
+    autocomplete_fields = ("preference", "slot", "selected_food_library_item", "selected_food_override")
+    readonly_fields = ("external_product_data_json", "created_at", "updated_at")
 
 
 @admin.action(description="Approve selected product images")

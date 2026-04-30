@@ -140,3 +140,74 @@ class ComboMacroErrorLookup(models.Model):
 
     def __str__(self):
         return f"Error #{self.error_code}"
+
+
+class ProteinShakeTemplate(models.Model):
+    name = models.CharField(max_length=160)
+    slug = models.SlugField(max_length=180, unique=True, db_index=True)
+    description = models.TextField(blank=True, default="")
+    active = models.BooleanField(default=True, db_index=True)
+    default_scoop_count = models.PositiveSmallIntegerField(default=1)
+    min_scoop_count = models.PositiveSmallIntegerField(default=1)
+    max_scoop_count = models.PositiveSmallIntegerField(default=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("name",)
+        verbose_name = "Protein Shake Template"
+        verbose_name_plural = "Protein Shake Templates"
+
+    def __str__(self):
+        return self.name
+
+
+class ProteinShakeIngredientSlot(models.Model):
+    class SlotKey(models.TextChoices):
+        PROTEIN_POWDER = "protein_powder", "Protein Powder"
+        LIQUID = "liquid", "Liquid"
+        CARB = "carb", "Carb"
+        FAT_ADDIN = "fat_addin", "Fat / Add-in"
+        SWEETENER = "sweetener", "Sweetener"
+
+    class MacroRole(models.TextChoices):
+        PROTEIN = "protein", "Protein"
+        CARB = "carb", "Carb"
+        FAT = "fat", "Fat"
+        LIQUID = "liquid", "Liquid"
+        SWEETENER = "sweetener", "Sweetener"
+
+    template = models.ForeignKey(
+        ProteinShakeTemplate,
+        on_delete=models.CASCADE,
+        related_name="ingredient_slots",
+    )
+    slot_key = models.CharField(max_length=40, choices=SlotKey.choices)
+    display_name = models.CharField(max_length=120)
+    required = models.BooleanField(default=False)
+    default_food_library_item = models.ForeignKey(
+        FoodLibraryItem,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="protein_shake_default_slots",
+    )
+    default_serving_amount = models.DecimalField(max_digits=10, decimal_places=4, default=1)
+    default_serving_unit = models.CharField(max_length=40, blank=True, default="")
+    allow_user_override = models.BooleanField(default=True)
+    allow_exclude = models.BooleanField(default=True)
+    sort_order = models.PositiveSmallIntegerField(default=0)
+    macro_role = models.CharField(max_length=40, choices=MacroRole.choices)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("template_id", "sort_order", "id")
+        verbose_name = "Protein Shake Ingredient Slot"
+        verbose_name_plural = "Protein Shake Ingredient Slots"
+        constraints = [
+            models.UniqueConstraint(fields=["template", "slot_key"], name="core_unique_shake_template_slot"),
+        ]
+
+    def __str__(self):
+        return f"{self.template.name} | {self.display_name}"

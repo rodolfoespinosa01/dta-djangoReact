@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../../../api/client';
 import MealComboBuilderStep from '../../../components/MealComboBuilderStep';
+import ProteinShakePreferencesCard from '../../../components/protein-shakes/ProteinShakePreferencesCard';
 import { useAuth } from '../../../context/AuthContext';
 import '../../../styles/shared/client-app-shell.css';
 import './css.css';
@@ -33,6 +34,7 @@ function ClientFoodPreferencesPage() {
   const [builderValue, setBuilderValue] = useState({});
   const [mealScheduleDays, setMealScheduleDays] = useState({});
   const [proteinShake, setProteinShake] = useState({ enabled: false, counts_as_meal: true });
+  const [proteinShakePreferencesComplete, setProteinShakePreferencesComplete] = useState(true);
   const [weeklyResults, setWeeklyResults] = useState([]);
   const [settingsMeta, setSettingsMeta] = useState(null);
   const requestedDay = normalizeDay(searchParams.get('day'));
@@ -72,6 +74,10 @@ function ClientFoodPreferencesPage() {
   }, [load]);
 
   const handleSave = async () => {
+    if (proteinShake?.enabled === true && proteinShake?.counts_as_meal === true && !proteinShakePreferencesComplete) {
+      setError('Complete protein shake preferences before saving food preferences.');
+      return;
+    }
     setSaving(true);
     setError('');
     setMessage('');
@@ -134,6 +140,14 @@ function ClientFoodPreferencesPage() {
       ) : (
         <>
           {message ? <p className="client-q-message">{message}</p> : null}
+          {proteinShake?.enabled === true && proteinShake?.counts_as_meal === true ? (
+            <section className="client-dashboard-card">
+              <ProteinShakePreferencesCard
+                enabled
+                onCompletionChange={setProteinShakePreferencesComplete}
+              />
+            </section>
+          ) : null}
           <section className="client-dashboard-card">
             <MealComboBuilderStep
               value={builderValue}

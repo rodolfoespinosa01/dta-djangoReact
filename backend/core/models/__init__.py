@@ -1,5 +1,11 @@
 from .custom_user import CustomUser
-from .food_library import FoodLibraryItem, MealComboTemplate, ComboMacroErrorLookup
+from .food_library import (
+    ComboMacroErrorLookup,
+    FoodLibraryItem,
+    MealComboTemplate,
+    ProteinShakeIngredientSlot,
+    ProteinShakeTemplate,
+)
 from .message import Message, MessageAttachment
 from .admin_parameter_defaults import (
     CarbCyclingDefault,
@@ -14,6 +20,8 @@ __all__ = [
     "FoodLibraryItem",
     "MealComboTemplate",
     "ComboMacroErrorLookup",
+    "ProteinShakeTemplate",
+    "ProteinShakeIngredientSlot",
     "Message",
     "MessageAttachment",
     "GoalChoices",

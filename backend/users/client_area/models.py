@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
@@ -349,6 +350,90 @@ class ProductImageSubmission(models.Model):
 
     def __str__(self):
         return f"{self.provider} | {self.provider_product_id} | {self.status}"
+
+
+class ClientProteinShakePreference(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="protein_shake_preferences")
+    template = models.ForeignKey(
+        "core.ProteinShakeTemplate",
+        on_delete=models.PROTECT,
+        related_name="client_preferences",
+    )
+    enabled = models.BooleanField(default=True, db_index=True)
+    scoop_count = models.PositiveSmallIntegerField(null=True, blank=True, default=None)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("user_id", "template_id")
+        verbose_name = "Client Protein Shake Preference"
+        verbose_name_plural = "Client Protein Shake Preferences"
+        constraints = [
+            models.UniqueConstraint(fields=["user", "template"], name="client_unique_protein_shake_pref"),
+            models.CheckConstraint(
+                check=Q(scoop_count__isnull=True) | Q(scoop_count__in=[1, 2]),
+                name="client_protein_shake_scoop_count_1_or_2",
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.scoop_count is not None and self.scoop_count not in (1, 2):
+            raise ValidationError({"scoop_count": "Protein powder scoop count must be 1 or 2."})
+
+    def __str__(self):
+        return f"{self.user.email} | {self.template.name}"
+
+
+class ClientProteinShakeIngredientSelection(models.Model):
+    preference = models.ForeignKey(
+        ClientProteinShakePreference,
+        on_delete=models.CASCADE,
+        related_name="ingredient_selections",
+    )
+    slot = models.ForeignKey(
+        "core.ProteinShakeIngredientSlot",
+        on_delete=models.PROTECT,
+        related_name="client_ingredient_selections",
+    )
+    selected_food_library_item = models.ForeignKey(
+        "core.FoodLibraryItem",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="client_protein_shake_selections",
+    )
+    selected_food_override = models.ForeignKey(
+        "ClientFoodOverride",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="protein_shake_ingredient_selections",
+    )
+    external_product_data_json = models.JSONField(default=dict, blank=True)
+    serving_amount = models.DecimalField(max_digits=10, decimal_places=4, default=1)
+    serving_unit = models.CharField(max_length=40, blank=True, default="")
+    excluded = models.BooleanField(default=False, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("preference_id", "slot__sort_order", "slot_id")
+        verbose_name = "Client Protein Shake Ingredient Selection"
+        verbose_name_plural = "Client Protein Shake Ingredient Selections"
+        constraints = [
+            models.UniqueConstraint(fields=["preference", "slot"], name="client_unique_shake_pref_slot"),
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.slot_id and self.preference_id and self.slot.template_id != self.preference.template_id:
+            raise ValidationError({"slot": "Ingredient slot must belong to the selected shake template."})
+        if self.excluded and self.slot_id and (self.slot.required or not self.slot.allow_exclude):
+            raise ValidationError({"excluded": "This protein shake slot cannot be excluded."})
+
+    def __str__(self):
+        return f"{self.preference.user.email} | {self.slot.display_name}"
 
 
 class ClientQueuedPlanChange(models.Model):

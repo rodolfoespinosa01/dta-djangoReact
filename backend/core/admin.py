@@ -7,6 +7,8 @@ from core.models import (
     FoodLibraryItem,
     KetoDefault,
     MealComboTemplate,
+    ProteinShakeIngredientSlot,
+    ProteinShakeTemplate,
     StandardDefault,
     TDEEDefault,
 )  # 👉 imports the custom user model to customize how it appears in the admin
@@ -81,6 +83,42 @@ class ComboMacroErrorLookupAdmin(admin.ModelAdmin):
     list_display = ('error_code', 'protein_error', 'carbs_error', 'fats_error')
     search_fields = ('error_code',)
     ordering = ('error_code',)
+
+
+class ProteinShakeIngredientSlotInline(admin.TabularInline):
+    model = ProteinShakeIngredientSlot
+    extra = 0
+    autocomplete_fields = ("default_food_library_item",)
+    fields = (
+        "slot_key",
+        "display_name",
+        "required",
+        "default_food_library_item",
+        "default_serving_amount",
+        "default_serving_unit",
+        "allow_user_override",
+        "allow_exclude",
+        "macro_role",
+        "sort_order",
+    )
+
+
+@admin.register(ProteinShakeTemplate)
+class ProteinShakeTemplateAdmin(admin.ModelAdmin):
+    list_display = ("name", "slug", "active", "default_scoop_count", "min_scoop_count", "max_scoop_count", "updated_at")
+    list_filter = ("active",)
+    search_fields = ("name", "slug", "description")
+    readonly_fields = ("created_at", "updated_at")
+    prepopulated_fields = {"slug": ("name",)}
+    inlines = (ProteinShakeIngredientSlotInline,)
+
+
+@admin.register(ProteinShakeIngredientSlot)
+class ProteinShakeIngredientSlotAdmin(admin.ModelAdmin):
+    list_display = ("template", "slot_key", "display_name", "required", "macro_role", "default_food_library_item", "sort_order")
+    list_filter = ("slot_key", "required", "macro_role", "template")
+    search_fields = ("display_name", "template__name", "default_food_library_item__name", "default_food_library_item__category")
+    autocomplete_fields = ("template", "default_food_library_item")
 
 
 @admin.register(TDEEDefault)

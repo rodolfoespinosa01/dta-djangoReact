@@ -53,6 +53,10 @@ from users.client_area.views.food_overrides import (
     client_usda_food_detail,
     client_usda_food_search,
 )
+from users.client_area.views.protein_shakes import (
+    client_protein_shake_preference_save,
+    client_protein_shake_templates,
+)
 
 urlpatterns = [
     path('dashboard/', dashboard_view, name='dashboard'),
@@ -89,6 +93,8 @@ urlpatterns = [
     path('app/food-overrides/products/images/submit/', client_product_image_submission_upload, name='client_app_product_image_submission_upload'),
     path('app/food-overrides/usda/search/', client_usda_food_search, name='client_app_usda_food_search'),
     path('app/food-overrides/usda/details/<str:fdc_id>/', client_usda_food_detail, name='client_app_usda_food_detail'),
+    path('app/protein-shakes/templates/', client_protein_shake_templates, name='client_app_protein_shake_templates'),
+    path('app/protein-shakes/preference/', client_protein_shake_preference_save, name='client_app_protein_shake_preference_save'),
     path('app/meal-plan-generation/run/', client_meal_plan_generation_run_full, name='client_meal_plan_generation_run_full'),
     path('app/meal-plan-generation/run-week/', client_meal_plan_generation_run_week, name='client_meal_plan_generation_run_week'),
     path('app/meal-plan-generation/run-week/<str:batch_id>/status/', client_meal_plan_generation_run_week_status, name='client_meal_plan_generation_run_week_status'),
