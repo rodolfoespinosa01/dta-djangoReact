@@ -1,6 +1,6 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../../../api/client';
 import { useAuth } from '../../../context/AuthContext';
 import { getFoodImageUrl } from '../../../utils/foodImageLookup';
@@ -12,6 +12,11 @@ import './css.css';
 
 
 const WEEK_DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+function normalizeDay(value) {
+  const day = String(value || '').trim().toLowerCase();
+  return WEEK_DAYS.includes(day) ? day : null;
+}
 
 function prettyDay(day) {
   const value = (day || '').toLowerCase();
@@ -377,8 +382,9 @@ function RecipeIdeasMealCard({ meal, recipeMeal }) {
 
 function ClientMealPlanGenerationPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { logout } = useAuth();
-  const [dayOfWeek, setDayOfWeek] = useState('sunday');
+  const [dayOfWeek, setDayOfWeek] = useState(() => normalizeDay(searchParams.get('day')) || 'sunday');
   const [unitMode, setUnitMode] = useState('oz');
   const [running, setRunning] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -398,6 +404,13 @@ function ClientMealPlanGenerationPage() {
   const weekPollTimeoutRef = useRef(null);
   const [comboCoverage, setComboCoverage] = useState(null);
   const [coverageLoading, setCoverageLoading] = useState(true);
+  const editPreferencesPath = `/client_food_preferences?day=${encodeURIComponent(dayOfWeek)}&return=${encodeURIComponent(`/client_meal_generation?day=${dayOfWeek}`)}`;
+
+  const updateSelectedDay = (day) => {
+    const normalizedDay = normalizeDay(day) || 'sunday';
+    setDayOfWeek(normalizedDay);
+    setSearchParams({ day: normalizedDay });
+  };
 
   const loadLatestDetail = useCallback(async (day, jobId = null) => {
     setLoadingDetail(true);
@@ -785,7 +798,7 @@ function ClientMealPlanGenerationPage() {
           <div className="client-q-inline-grid">
             <label>
               Day
-              <select value={dayOfWeek} onChange={(e) => setDayOfWeek(e.target.value)} disabled={running}>
+              <select value={dayOfWeek} onChange={(e) => updateSelectedDay(e.target.value)} disabled={running}>
                 {WEEK_DAYS.map((day) => (
                   <option key={day} value={day}>{prettyDay(day)}</option>
                 ))}
@@ -809,6 +822,9 @@ function ClientMealPlanGenerationPage() {
             <button type="button" className="client-q-btn secondary" onClick={() => loadLatestDetail(dayOfWeek)} disabled={loadingDetail || running}>
               {loadingDetail ? 'Loading…' : 'Load Latest Detailed Plan'}
             </button>
+            <Link className="client-q-btn secondary" to={editPreferencesPath}>
+              Edit {prettyDay(dayOfWeek)} Foods
+            </Link>
           </div>
           {!coverageLoading && selectedDayCoverage && !selectedDayCoverage.isComplete ? (
             <p className="client-dash-muted" style={{ marginTop: '0.2rem' }}>
@@ -874,7 +890,7 @@ function ClientMealPlanGenerationPage() {
                         type="button"
                         className="client-q-btn secondary"
                         onClick={async () => {
-                          setDayOfWeek(row.day_of_week);
+                          updateSelectedDay(row.day_of_week);
                           await Promise.all([loadJobSnapshot(row.job_id), loadLatestDetail(row.day_of_week, row.job_id)]);
                         }}
                       >
@@ -916,6 +932,12 @@ function ClientMealPlanGenerationPage() {
             </div>
 
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'end' }}>
+              <Link className="client-q-btn" to={editPreferencesPath}>
+                Change {prettyDay(dayOfWeek)} Plan
+              </Link>
+              <button type="button" className="client-q-btn secondary" onClick={handleRunGeneration} disabled={runDayDisabled}>
+                Regenerate {prettyDay(dayOfWeek)}
+              </button>
               <label>
                 Recipe Provider
                 <select value={recipeIdeaProvider} onChange={(e) => setRecipeIdeaProvider(e.target.value)} disabled={recipeIdeasLoading}>

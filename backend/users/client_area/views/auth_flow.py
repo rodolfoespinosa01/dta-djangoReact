@@ -713,6 +713,13 @@ def _normalize_questionnaire_answer(step_key, answer, current_answers):
                 count = 3
             return count if count in (3, 4, 5, 6) else 3
 
+        def default_meal_count():
+            try:
+                count = int(((current_answers.get("meal_schedule") or {}).get("default_meals")) or meal_count_for_day(WEEK_DAYS[0]))
+            except (TypeError, ValueError):
+                count = meal_count_for_day(WEEK_DAYS[0])
+            return count if count in (3, 4, 5, 6) else meal_count_for_day(WEEK_DAYS[0])
+
         def training_meal_for_day(day):
             raw_value = str((training_schedule or {}).get(day) or "").strip().lower()
             if not raw_value.startswith("before_meal_"):
@@ -721,6 +728,28 @@ def _normalize_questionnaire_answer(step_key, answer, current_answers):
                 return int(raw_value.split("_")[-1])
             except (TypeError, ValueError):
                 return None
+
+        def workout_shake_meals(training_meal, meal_count):
+            if not training_meal:
+                return None, None
+            return (
+                _clamp_meal_number(training_meal - 1, meal_count),
+                _clamp_meal_number(training_meal + 1, meal_count),
+            )
+
+        def manual_options_for_day(day):
+            meal_count = meal_count_for_day(day)
+            options = list(range(1, meal_count + 1))
+            training_meal = training_meal_for_day(day)
+            if not training_meal:
+                return options
+            pre_workout_meal, post_workout_meal = workout_shake_meals(training_meal, meal_count)
+            filtered = [
+                meal_number
+                for meal_number in options
+                if meal_number not in {pre_workout_meal, post_workout_meal}
+            ]
+            return filtered or [1]
 
         def normalize_timing(value, fallback="other"):
             timing = str(value or "").strip().lower()
@@ -734,10 +763,18 @@ def _normalize_questionnaire_answer(step_key, answer, current_answers):
             if enabled is False:
                 return {"enabled": False, "timing": "other", "selected_meal": 1}
             if timing == "post_workout":
-                return {"enabled": True, "timing": timing, "selected_meal": _clamp_meal_number(training_meal, meal_count)}
+                _, post_workout_meal = workout_shake_meals(training_meal, meal_count)
+                return {"enabled": True, "timing": timing, "selected_meal": post_workout_meal}
             if timing == "pre_workout":
-                return {"enabled": True, "timing": timing, "selected_meal": _clamp_meal_number(max(1, training_meal - 1), meal_count)}
-            return {"enabled": True, "timing": "other", "selected_meal": _clamp_meal_number(raw_selected, meal_count)}
+                pre_workout_meal, _ = workout_shake_meals(training_meal, meal_count)
+                return {"enabled": True, "timing": timing, "selected_meal": pre_workout_meal}
+            manual_options = manual_options_for_day(day)
+            selected_meal = _clamp_meal_number(raw_selected, meal_count)
+            return {
+                "enabled": True,
+                "timing": "other",
+                "selected_meal": selected_meal if selected_meal in manual_options else manual_options[0],
+            }
 
         def timing_from_legacy(payload):
             if payload.get("mode") == "extra_shake":
@@ -753,7 +790,8 @@ def _normalize_questionnaire_answer(step_key, answer, current_answers):
         if schedule_mode not in {"same", "custom"}:
             schedule_mode = "custom" if isinstance(answer.get("days"), dict) or isinstance(answer.get("selected_meals_by_day"), dict) else "same"
 
-        default_timing = timing_from_legacy(answer)
+        has_new_shape = any(key in answer for key in ("schedule_mode", "default_timing", "days", "default_selected_meal"))
+        default_timing = normalize_timing(answer.get("default_timing") or answer.get("placement_mode"), "other") if has_new_shape else timing_from_legacy(answer)
         default_selected_meal = answer.get("default_selected_meal", answer.get("selected_meal", 1))
         raw_days = answer.get("days") if isinstance(answer.get("days"), dict) else {}
         legacy_by_day = answer.get("selected_meals_by_day") if isinstance(answer.get("selected_meals_by_day"), dict) else {}
@@ -783,7 +821,7 @@ def _normalize_questionnaire_answer(step_key, answer, current_answers):
         selected_meal_day = next((day for day in WEEK_DAYS if training_meal_for_day(day)), WEEK_DAYS[0])
         normalized_default_selected_meal = _clamp_meal_number(
             default_selected_meal,
-            meal_count_for_day(selected_meal_day),
+            default_meal_count(),
         )
 
         return {

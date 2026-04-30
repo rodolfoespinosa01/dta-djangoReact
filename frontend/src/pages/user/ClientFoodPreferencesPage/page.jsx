@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../../../api/client';
 import MealComboBuilderStep from '../../../components/MealComboBuilderStep';
 import { useAuth } from '../../../context/AuthContext';
@@ -15,8 +15,16 @@ function portalLabel(settings) {
   return settings.sale_channel === 'admin_white_label' ? 'Coach Portal' : 'DTA Direct Portal';
 }
 
+const WEEK_DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+function normalizeDay(value) {
+  const day = String(value || '').trim().toLowerCase();
+  return WEEK_DAYS.includes(day) ? day : null;
+}
+
 function ClientFoodPreferencesPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { logout } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -27,8 +35,11 @@ function ClientFoodPreferencesPage() {
   const [proteinShake, setProteinShake] = useState({ enabled: false, counts_as_meal: true });
   const [weeklyResults, setWeeklyResults] = useState([]);
   const [settingsMeta, setSettingsMeta] = useState(null);
+  const requestedDay = normalizeDay(searchParams.get('day'));
+  const returnTo = searchParams.get('return') || '';
+  const safeReturnTo = returnTo.startsWith('/client_') ? returnTo : '';
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError('');
     const res = await apiRequest('/api/v1/users/client/app/food-preferences/', { auth: true });
@@ -38,7 +49,10 @@ function ClientFoodPreferencesPage() {
       return;
     }
     const payload = res.data?.food_preferences || {};
-    setBuilderValue(payload.builder_value || {});
+    setBuilderValue({
+      ...(payload.builder_value || {}),
+      ...(requestedDay ? { active_day: requestedDay } : {}),
+    });
     setMealScheduleDays(payload.meal_schedule_days || {});
     setProteinShake(payload.protein_shake || { enabled: false, counts_as_meal: true });
     setWeeklyResults(payload.results?.weekly_days || []);
@@ -47,7 +61,7 @@ function ClientFoodPreferencesPage() {
       setSettingsMeta(settingsRes.data?.settings || null);
     }
     setLoading(false);
-  };
+  }, [requestedDay]);
 
   useEffect(() => {
     load().catch((err) => {
@@ -55,7 +69,7 @@ function ClientFoodPreferencesPage() {
       setError('Unable to load food preferences form.');
       setLoading(false);
     });
-  }, []);
+  }, [load]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -72,7 +86,7 @@ function ClientFoodPreferencesPage() {
         return;
       }
       setMessage(`${res.data?.message || 'Food preferences saved.'} ${res.data?.saved_meal_combo_selections ? `(${res.data.saved_meal_combo_selections} meals)` : ''}`);
-      navigate('/client_dashboard', { replace: true });
+      navigate(safeReturnTo || '/client_dashboard', { replace: true });
     } catch (err) {
       console.error(err);
       setError('Network error while saving food preferences.');
@@ -92,14 +106,17 @@ function ClientFoodPreferencesPage() {
             <span>{portalLabel(settingsMeta)}</span>
             <span>Source: {normalizeSubdomainLabel(settingsMeta?.associated_admin_slug)}</span>
           </div>
-          <p className="client-dash-muted">Pick visual meal templates for each day, then customize foods only when needed.</p>
+          <p className="client-dash-muted">
+            Pick visual meal templates for each day, then customize foods only when needed.
+            {requestedDay ? ` Editing ${requestedDay.charAt(0).toUpperCase() + requestedDay.slice(1)}.` : ''}
+          </p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <Link className="client-q-btn secondary" to="/client_dashboard">Back to Dashboard</Link>
           <Link className="client-q-btn secondary" to="/client_settings">Settings</Link>
-          <Link className="client-q-btn secondary" to="/client_meal_generation">Run Meal Generation</Link>
+          <Link className="client-q-btn secondary" to={requestedDay ? `/client_meal_generation?day=${requestedDay}` : '/client_meal_generation'}>Run Meal Generation</Link>
           <button type="button" className="client-q-btn" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving…' : 'Save Food Preferences'}
+            {saving ? 'Saving…' : safeReturnTo ? 'Save And Return' : 'Save Food Preferences'}
           </button>
           <button type="button" className="client-q-btn danger" onClick={() => logout('/client_login')} disabled={saving}>
             Log Out

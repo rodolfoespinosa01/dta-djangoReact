@@ -25,6 +25,16 @@ function mealCountForDay(mealSchedule, day) {
   return normalizeMealCount(mealSchedule?.days?.[day], 3);
 }
 
+function defaultMealCountForSchedule(mealSchedule) {
+  const firstDayCount = mealCountForDay(mealSchedule, PROTEIN_SHAKE_WEEK_DAYS[0].code);
+  return normalizeMealCount(mealSchedule?.default_meals, firstDayCount);
+}
+
+function hasCustomMealCounts(mealSchedule) {
+  const counts = PROTEIN_SHAKE_WEEK_DAYS.map((day) => mealCountForDay(mealSchedule, day.code));
+  return mealSchedule?.mode === 'custom' || counts.some((count) => count !== counts[0]);
+}
+
 function clampMeal(value, mealCount) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return 1;
@@ -34,6 +44,35 @@ function clampMeal(value, mealCount) {
 function trainingMealForDay(trainingSchedule, day) {
   const match = /^before_meal_(\d+)$/.exec(String(trainingSchedule?.[day] || '').trim().toLowerCase());
   return match ? Number(match[1]) : null;
+}
+
+function workoutShakeMeals(trainingMeal, mealCount) {
+  if (!trainingMeal) return { preWorkoutMeal: null, postWorkoutMeal: null };
+  const normalizedMealCount = normalizeMealCount(mealCount, 3);
+  return {
+    preWorkoutMeal: clampMeal(Number(trainingMeal) - 1, normalizedMealCount),
+    postWorkoutMeal: clampMeal(Number(trainingMeal) + 1, normalizedMealCount),
+  };
+}
+
+function manualMealOptionsForMeals(mealOptions, trainingMeal, mealCount) {
+  if (!trainingMeal) return mealOptions;
+  const { preWorkoutMeal, postWorkoutMeal } = workoutShakeMeals(trainingMeal, mealCount);
+  const filtered = mealOptions.filter((mealNumber) => mealNumber !== preWorkoutMeal && mealNumber !== postWorkoutMeal);
+  return filtered.length ? filtered : [1];
+}
+
+function didManualOptionsFallbackForMeals(mealOptions, trainingMeal, mealCount) {
+  if (!trainingMeal) return false;
+  const { preWorkoutMeal, postWorkoutMeal } = workoutShakeMeals(trainingMeal, mealCount);
+  return mealOptions.every((mealNumber) => mealNumber === preWorkoutMeal || mealNumber === postWorkoutMeal);
+}
+
+function trainingMealsForSameMode(trainingSchedule, mealCount) {
+  const normalizedMealCount = normalizeMealCount(mealCount, 3);
+  return PROTEIN_SHAKE_WEEK_DAYS
+    .map((day) => trainingMealForDay(trainingSchedule, day.code))
+    .filter((mealNumber) => mealNumber && mealNumber >= 1 && mealNumber <= normalizedMealCount);
 }
 
 function normalizeTiming(value) {
@@ -61,12 +100,18 @@ function deriveDaySelection({ timing, selectedMeal, mealSchedule, trainingSchedu
   }
   if (enabled === false) return { enabled: false, timing: 'other', selected_meal: 1 };
   if (timing === 'post_workout') {
-    return { enabled: true, timing, selected_meal: clampMeal(trainingMeal, mealCount) };
+    return { enabled: true, timing, selected_meal: workoutShakeMeals(trainingMeal, mealCount).postWorkoutMeal };
   }
   if (timing === 'pre_workout') {
-    return { enabled: true, timing, selected_meal: clampMeal(Math.max(1, trainingMeal - 1), mealCount) };
+    return { enabled: true, timing, selected_meal: workoutShakeMeals(trainingMeal, mealCount).preWorkoutMeal };
   }
-  return { enabled: true, timing: 'other', selected_meal: clampMeal(selectedMeal, mealCount) };
+  const manualOptions = manualMealOptionsForMeals(mealOptionsForDay(mealSchedule, day), trainingMeal, mealCount);
+  const clampedSelectedMeal = clampMeal(selectedMeal, mealCount);
+  return {
+    enabled: true,
+    timing: 'other',
+    selected_meal: manualOptions.includes(clampedSelectedMeal) ? clampedSelectedMeal : manualOptions[0],
+  };
 }
 
 export function normalizeProteinShakeValue(value, { mealSchedule, trainingSchedule } = {}) {
@@ -80,7 +125,7 @@ export function normalizeProteinShakeValue(value, { mealSchedule, trainingSchedu
   const hasNewShape = value.schedule_mode || value.days || value.default_timing;
   const explicitScheduleMode = String(value.schedule_mode || '').trim();
   const scheduleMode = explicitScheduleMode === 'custom' || (!hasNewShape && value.selected_meals_by_day) ? 'custom' : 'same';
-  const defaultTiming = hasNewShape ? normalizeTiming(value.default_timing) : legacyTiming(value);
+  const defaultTiming = hasNewShape ? normalizeTiming(value.default_timing || value.placement_mode) : legacyTiming(value);
   const legacySelectedByDay = value.selected_meals_by_day || {};
   const defaultSelectedMeal = clampMeal(value.default_selected_meal ?? value.selected_meal ?? 1, 6);
   const rawDays = value.days && typeof value.days === 'object' ? value.days : {};
@@ -111,13 +156,18 @@ export function normalizeProteinShakeValue(value, { mealSchedule, trainingSchedu
 
   const selectedMealSourceDay = PROTEIN_SHAKE_WEEK_DAYS.find((day) => trainingMealForDay(trainingSchedule, day.code))
     || PROTEIN_SHAKE_WEEK_DAYS[0];
+  const clampedDefaultSelectedMeal = clampMeal(defaultSelectedMeal, defaultMealCountForSchedule(mealSchedule));
+  const sameModeManualOptions = manualMealOptionsForSameMode(mealSchedule, trainingSchedule);
+  const normalizedDefaultSelectedMeal = defaultTiming === 'other' && !sameModeManualOptions.includes(clampedDefaultSelectedMeal)
+    ? sameModeManualOptions[0]
+    : clampedDefaultSelectedMeal;
 
   return {
     enabled: true,
     counts_as_meal: true,
     schedule_mode: scheduleMode,
     default_timing: defaultTiming,
-    default_selected_meal: clampMeal(defaultSelectedMeal, mealCountForDay(mealSchedule, selectedMealSourceDay.code)),
+    default_selected_meal: normalizedDefaultSelectedMeal,
     days,
     // Legacy fields remain for older consumers until every downstream reader uses days.
     placement_mode: scheduleMode === 'same' ? defaultTiming : 'other',
@@ -132,6 +182,40 @@ export function normalizeProteinShakeValue(value, { mealSchedule, trainingSchedu
 function mealOptionsForDay(mealSchedule, day) {
   const mealCount = mealCountForDay(mealSchedule, day);
   return Array.from({ length: mealCount }, (_, idx) => idx + 1);
+}
+
+function defaultMealOptions(mealSchedule) {
+  const mealCount = defaultMealCountForSchedule(mealSchedule);
+  return Array.from({ length: mealCount }, (_, idx) => idx + 1);
+}
+
+function manualMealOptionsForDay(mealSchedule, trainingSchedule, day) {
+  const mealOptions = mealOptionsForDay(mealSchedule, day);
+  return manualMealOptionsForMeals(mealOptions, trainingMealForDay(trainingSchedule, day), mealOptions.length);
+}
+
+function manualMealOptionsForSameMode(mealSchedule, trainingSchedule) {
+  const mealOptions = defaultMealOptions(mealSchedule);
+  const trainingMeals = trainingMealsForSameMode(trainingSchedule, mealOptions.length);
+  if (!trainingMeals.length) return mealOptions;
+  const excluded = trainingMeals.reduce((acc, trainingMeal) => {
+    const { preWorkoutMeal, postWorkoutMeal } = workoutShakeMeals(trainingMeal, mealOptions.length);
+    acc.add(preWorkoutMeal);
+    acc.add(postWorkoutMeal);
+    return acc;
+  }, new Set());
+  const filtered = mealOptions.filter((mealNumber) => !excluded.has(mealNumber));
+  return filtered.length ? filtered : [1];
+}
+
+function didManualOptionsFallbackForSameMode(mealSchedule, trainingSchedule) {
+  const mealOptions = defaultMealOptions(mealSchedule);
+  const trainingMeals = trainingMealsForSameMode(trainingSchedule, mealOptions.length);
+  if (!trainingMeals.length) return false;
+  return mealOptions.every((mealNumber) => trainingMeals.some((trainingMeal) => {
+    const { preWorkoutMeal, postWorkoutMeal } = workoutShakeMeals(trainingMeal, mealOptions.length);
+    return mealNumber === preWorkoutMeal || mealNumber === postWorkoutMeal;
+  }));
 }
 
 function SummaryDay({ day, mealCount, trainingMeal, shakeDay }) {
@@ -166,10 +250,15 @@ function SummaryDay({ day, mealCount, trainingMeal, shakeDay }) {
 
 function TimingControls({ timing, onTimingChange, selectedMeal, onMealChange, mealSchedule, trainingSchedule, dayCode = null, enabled = true, onEnabledChange = null }) {
   const trainingMeal = dayCode ? trainingMealForDay(trainingSchedule, dayCode) : null;
-  const mealOptions = dayCode ? mealOptionsForDay(mealSchedule, dayCode) : Array.from({
-    length: Math.max(...PROTEIN_SHAKE_WEEK_DAYS.map((day) => mealCountForDay(mealSchedule, day.code))),
-  }, (_, idx) => idx + 1);
+  const mealOptions = dayCode
+    ? manualMealOptionsForDay(mealSchedule, trainingSchedule, dayCode)
+    : manualMealOptionsForSameMode(mealSchedule, trainingSchedule);
   const forceManual = dayCode && !trainingMeal;
+  const hasOnlyFallbackOption = timing === 'other' && (
+    dayCode
+      ? didManualOptionsFallbackForMeals(mealOptionsForDay(mealSchedule, dayCode), trainingMeal, mealCountForDay(mealSchedule, dayCode))
+      : didManualOptionsFallbackForSameMode(mealSchedule, trainingSchedule)
+  );
   return (
     <div className="client-q-stack">
       {dayCode ? (
@@ -204,6 +293,7 @@ function TimingControls({ timing, onTimingChange, selectedMeal, onMealChange, me
         <p className="client-q-help">No workout is scheduled for this day, so choose a meal manually.</p>
       ) : null}
       {timing === 'other' || forceManual ? (
+        <>
         <div className="client-q-card-grid">
           {mealOptions.map((mealNumber) => (
             <button
@@ -216,6 +306,13 @@ function TimingControls({ timing, onTimingChange, selectedMeal, onMealChange, me
             </button>
           ))}
         </div>
+        {hasOnlyFallbackOption ? (
+          <p className="client-q-help">Every meal is adjacent to training, so Meal 1 is the only available manual fallback.</p>
+        ) : null}
+        </>
+      ) : null}
+      {!dayCode && timing === 'other' && hasCustomMealCounts(mealSchedule) ? (
+        <p className="client-q-help">Your meal count changes by day. Use customize by day if the shake meal should vary with each day's meal count.</p>
       ) : null}
       </>
       ) : null}
@@ -324,7 +421,12 @@ function ProteinShakeSelector({ value, mealSchedule, trainingSchedule, onChange 
           ) : (
             <div className="client-q-stack">
               {PROTEIN_SHAKE_WEEK_DAYS.map((day) => (
-                <div key={`shake-day-${day.code}`} className="client-q-stack" style={{ border: '1px solid rgba(20,40,74,0.1)', borderRadius: 12, padding: '0.75rem' }}>
+                <div
+                  key={`shake-day-${day.code}`}
+                  className="client-q-stack"
+                  aria-label={`${day.fullLabel} protein shake timing`}
+                  style={{ border: '1px solid rgba(20,40,74,0.1)', borderRadius: 12, padding: '0.75rem' }}
+                >
                   <strong>{day.fullLabel}</strong>
                   <TimingControls
                     timing={normalized.days?.[day.code]?.timing || 'other'}
