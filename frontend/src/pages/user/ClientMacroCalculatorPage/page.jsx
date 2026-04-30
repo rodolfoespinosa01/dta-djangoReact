@@ -7,6 +7,7 @@ import DOBSelector from '../../../components/questionnaire/DOBSelector';
 import GoalSelector from '../../../components/questionnaire/GoalSelector';
 import LifestyleSelector, { normalizeLifestyleCode } from '../../../components/questionnaire/LifestyleSelector';
 import MealPlanTypeSelector, { normalizeMealPlanTypeCode } from '../../../components/questionnaire/MealPlanTypeSelector';
+import ProteinShakeSelector, { normalizeProteinShakeValue } from '../../../components/questionnaire/ProteinShakeSelector';
 import maleSignImage from '../../../assets/questionnaire/1/malesign.png';
 import femaleSignImage from '../../../assets/questionnaire/1/femalesign.png';
 import '../../../styles/shared/client-app-shell.css';
@@ -24,6 +25,7 @@ const QUESTION_STEPS = [
   'workout_days',
   'meal_schedule',
   'training_schedule',
+  'protein_shake',
 ];
 
 const WEEK_DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -122,6 +124,12 @@ function ClientMacroCalculatorPage() {
           })
         );
       }
+      if (['meal_schedule', 'training_schedule'].includes(wizardStep) && nextAnswers.protein_shake) {
+        nextAnswers.protein_shake = normalizeProteinShakeValue(nextAnswers.protein_shake, {
+          mealSchedule: nextAnswers.meal_schedule,
+          trainingSchedule: nextAnswers.training_schedule,
+        });
+      }
       return nextAnswers;
     });
     setWizardMessage('');
@@ -161,10 +169,18 @@ function ClientMacroCalculatorPage() {
             && Number(selected.split('_').pop()) <= mealCount;
         });
       }
+      case 'protein_shake': {
+        const normalized = normalizeProteinShakeValue(value, {
+          mealSchedule: answers.meal_schedule,
+          trainingSchedule: answers.training_schedule,
+        });
+        if (!normalized.enabled) return true;
+        return ['pre_workout', 'post_workout', 'other'].includes(normalized.placement_mode);
+      }
       default:
         return value !== undefined && value !== null && value !== '';
     }
-  }, [wizardStep, activeAnswer, answers.workout_days, answers.meal_schedule]);
+  }, [wizardStep, activeAnswer, answers.workout_days, answers.meal_schedule, answers.training_schedule]);
 
   const saveDraft = async (stepToSave, answerValue, nextStep) => {
     setSavingDraft(true);
@@ -363,7 +379,7 @@ function ClientMacroCalculatorPage() {
 
         return (
           <div className="client-q-stack">
-            <p className="client-q-help">Choose one meal amount for all days, or customize each day of the week.</p>
+            <p className="client-q-help">If you choose a protein shake later, it will count as one of these meals.</p>
             <div className="client-q-toggle">
               <button type="button" className={value.mode === 'same' ? 'is-active' : ''} onClick={() => updateAnswer({ ...value, mode: 'same' })}>
                 Same for all days
@@ -473,6 +489,15 @@ function ClientMacroCalculatorPage() {
           </div>
         );
       }
+      case 'protein_shake':
+        return (
+          <ProteinShakeSelector
+            value={activeAnswer}
+            mealSchedule={answers.meal_schedule}
+            trainingSchedule={answers.training_schedule}
+            onChange={(nextValue) => updateAnswer(nextValue)}
+          />
+        );
       default:
         return <p>Question not configured.</p>;
     }
@@ -487,8 +512,9 @@ function ClientMacroCalculatorPage() {
     lifestyle: ['How active is your lifestyle?', 'This helps determine your TDEE category.'],
     meal_plan_type: ['Which meal plan type do you want?', 'Standard, carb cycling, or keto.'],
     workout_days: ['What days do you work out?', 'Select Sunday through Saturday.'],
-    meal_schedule: ['How many meals do you want each day?', 'Set one meal amount for all days or customize each day of the week.'],
+    meal_schedule: ['How many meals do you want per day?', 'If you choose a protein shake later, it will count as one of these meals.'],
     training_schedule: ['Before which meal do you train?', 'Choose the meal your workout happens before on each workout day.'],
+    protein_shake: ['Would you like one of your meals to be a protein shake?', 'Choose whether one meal slot should be reserved for a shake.'],
   };
   const weeklySchedule = useMemo(() => summarizeAnswers(questionnaire?.answers || {}), [questionnaire?.answers]);
   const results = context?.results;

@@ -52,6 +52,44 @@ function cloneMealsForCount(sourceMeals, count) {
   return ensureMealArray(normalized, count);
 }
 
+function clampMealNumber(value, mealCount) {
+  const count = [3, 4, 5, 6].includes(Number(mealCount)) ? Number(mealCount) : 3;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 1;
+  return Math.max(1, Math.min(count, Math.round(parsed)));
+}
+
+function proteinShakeMealsByDay(proteinShake = {}, mealCounts = {}) {
+  if (proteinShake?.enabled !== true || proteinShake?.counts_as_meal !== true) return {};
+  const selectedByDay = proteinShake?.selected_meals_by_day || {};
+  const fallback = proteinShake?.selected_meal || 1;
+  return WEEK_DAYS.reduce((acc, day) => {
+    acc[day] = clampMealNumber(selectedByDay[day] ?? fallback, mealCounts[day]);
+    return acc;
+  }, {});
+}
+
+function createProteinShakeMeal(source = {}) {
+  return {
+    ...createEmptyMeal(),
+    ...(source || {}),
+    meal_type: 'protein_shake',
+    is_protein_shake: true,
+    protein_1: '-',
+    protein_2: '-',
+    carbs_1: '-',
+    carbs_2: '-',
+    fats_1: '-',
+    fats_2: '-',
+    combo_id: null,
+    combo_match: 'protein_shake',
+  };
+}
+
+function isProteinShakeMeal(meal) {
+  return meal?.is_protein_shake === true || meal?.meal_type === 'protein_shake';
+}
+
 function normalizeSlotValue(value) {
   const normalized = String(value || '').trim();
   return normalized || '-';
@@ -92,7 +130,14 @@ function getMealContextLabel(dayResult, mealNumber) {
   return 'Workout Day Meal';
 }
 
-function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMacroResults = [] }) {
+function proteinShakePlacementLabel(proteinShake = {}) {
+  if (proteinShake?.enabled !== true || proteinShake?.counts_as_meal !== true) return '';
+  if (proteinShake.placement_mode === 'pre_workout') return 'pre-workout';
+  if (proteinShake.placement_mode === 'post_workout') return 'post-workout';
+  return `Meal ${proteinShake.selected_meal || 1}`;
+}
+
+function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMacroResults = [], proteinShake = {} }) {
   const [slotOptions, setSlotOptions] = useState(null);
   const [optionsError, setOptionsError] = useState('');
   const [lookupBusy, setLookupBusy] = useState({});
@@ -156,10 +201,16 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
       acc[day] = [3, 4, 5, 6].includes(Number(mealScheduleDays?.[day])) ? Number(mealScheduleDays[day]) : 3;
       return acc;
     }, {});
+    const shakeMeals = proteinShakeMealsByDay(proteinShake, weekCounts);
     const defaultCount = Number(value?.default_day_meal_count || weekCounts.sunday || 3);
     const defaultMeals = ensureMealArray(value?.default_day_meals, defaultCount);
     const weekly = WEEK_DAYS.reduce((acc, day) => {
-      acc[day] = ensureMealArray(value?.weekly_days?.[day], weekCounts[day]);
+      const meals = ensureMealArray(value?.weekly_days?.[day], weekCounts[day]);
+      const shakeMealNumber = shakeMeals[day];
+      if (shakeMealNumber) {
+        meals[shakeMealNumber - 1] = createProteinShakeMeal(meals[shakeMealNumber - 1]);
+      }
+      acc[day] = meals;
       return acc;
     }, {});
     return {
@@ -168,10 +219,11 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
       default_day_meals: defaultMeals,
       weekly_days: weekly,
       week_counts: weekCounts,
+      protein_shake_meals: shakeMeals,
       saved_templates: normalizeSavedTemplates(value?.saved_templates),
       next_template_number: Math.max(1, Number(value?.next_template_number || 1)),
     };
-  }, [value, mealScheduleDays]);
+  }, [value, mealScheduleDays, proteinShake]);
 
   const normalizedRef = useRef(normalized);
 
@@ -278,6 +330,7 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
 
   const triggerAutoLookupForMeals = ({ scope, day, meals }) => {
     (Array.isArray(meals) ? meals : []).forEach((meal, mealIndex) => {
+      if (isProteinShakeMeal(meal)) return;
       lookupComboForRow({ row: meal, scope, day, mealIndex });
     });
   };
@@ -291,6 +344,7 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
   };
 
   const updateWeeklyMealSlot = (day, mealIndex, slotKey, slotValue) => {
+    if (isProteinShakeMeal(normalized.weekly_days?.[day]?.[mealIndex])) return;
     const dayMeals = [...normalized.weekly_days[day]];
     const nextMeal = { ...dayMeals[mealIndex], [slotKey]: slotValue, combo_id: null, combo_match: 'unknown' };
     dayMeals[mealIndex] = nextMeal;
@@ -307,6 +361,7 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
   }, [weeklyMacroResults]);
 
   function applyMacroThresholdsToMeal(meal, mealSplit) {
+    if (isProteinShakeMeal(meal)) return createProteinShakeMeal(meal);
     const next = { ...(meal || {}) };
     const beforeSignature = rowSignature(next);
     const proteinG = Number(mealSplit?.grams?.protein_g || 0);
@@ -682,7 +737,7 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
     WEEK_DAYS.forEach((day) => {
       const meals = normalized.weekly_days?.[day] || [];
       const total = meals.length;
-      const matched = meals.filter((meal) => Number(meal?.combo_id) > 0).length;
+      const matched = meals.filter((meal) => isProteinShakeMeal(meal) || Number(meal?.combo_id) > 0).length;
       statuses[day] = {
         total,
         matched,
@@ -746,6 +801,8 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
 
   const applyStarterTemplateToActiveDay = (template) => {
     const cloned = cloneMealsForCount(template?.default_day_meals, normalized.week_counts[activeDay]);
+    const shakeMealNumber = normalized.protein_shake_meals?.[activeDay];
+    if (shakeMealNumber) cloned[shakeMealNumber - 1] = createProteinShakeMeal(cloned[shakeMealNumber - 1]);
     emit({
       weekly_days: {
         ...normalized.weekly_days,
@@ -755,6 +812,7 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
   };
 
   const applyStarterMealToActiveDay = (meal, mealIndex) => {
+    if (normalized.protein_shake_meals?.[activeDay] === mealIndex + 1) return;
     const dayMeals = [...(normalized.weekly_days[activeDay] || [])];
     dayMeals[mealIndex] = {
       ...createEmptyMeal(),
@@ -770,7 +828,9 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
   };
 
   const starterMealOptionsForIndex = (mealIndex) => (
-    (starterTemplates || [])
+    normalized.protein_shake_meals?.[activeDay] === mealIndex + 1
+      ? []
+      : (starterTemplates || [])
       .map((template) => ({
         template,
         meal: Array.isArray(template?.default_day_meals) ? template.default_day_meals[mealIndex] : null,
@@ -1003,6 +1063,29 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
     const customizeKey = `${activeDay}-${idx}`;
     const isOpen = Boolean(expandedCustomize[customizeKey]);
     const options = starterMealOptionsForIndex(idx);
+    if (isProteinShakeMeal(meal)) {
+      return (
+        <article key={`${activeDay}-shake-${idx}`} className="visual-meal-card">
+          <div className="visual-meal-card__body">
+            <div className="visual-meal-card__header">
+              <div>
+                <span className="visual-meal-card__eyebrow">Meal {idx + 1}</span>
+                <strong>Protein Shake</strong>
+              </div>
+              <span className="client-q-chip ok">Reserved</span>
+            </div>
+            <p className="visual-meal-card__description">
+              This meal is reserved for your protein shake.
+            </p>
+            <div className="visual-meal-card__badges">
+              <span className="client-q-chip">No meal combo required</span>
+              {mealContext ? <span className="client-q-chip">{mealContext}</span> : null}
+              {dayResult?.training_before_meal ? <span className="client-q-chip">{dayResult.training_before_meal.replace('before_meal_', 'Train before meal ')}</span> : null}
+            </div>
+          </div>
+        </article>
+      );
+    }
     return (
       <article key={`${activeDay}-visual-${idx}`} className="visual-meal-card">
         <div className="visual-meal-card__image">
@@ -1090,6 +1173,14 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
         </div>
       </div>
       {optionsError ? <p className="client-q-error">{optionsError}</p> : null}
+      {proteinShake?.enabled === true && proteinShake?.counts_as_meal === true ? (
+        <div className="client-q-stack" style={{ border: '1px solid rgba(20,40,74,0.1)', borderRadius: 12, padding: '0.75rem' }}>
+          <strong>Protein Shake</strong>
+          <p className="client-q-help">
+            One meal is reserved for a protein shake ({proteinShakePlacementLabel(proteinShake)}). Food meals still need combo selections.
+          </p>
+        </div>
+      ) : null}
 
       <ProductSearchPicker
         picker={usdaPicker}
@@ -1315,7 +1406,7 @@ function MealComboBuilderStep({ value, onChange, mealScheduleDays = {}, weeklyMa
         </div>
         <div className="client-q-stack">
           {(normalized.weekly_days[activeDay] || []).map((meal, idx) =>
-            renderMealRow({
+            isProteinShakeMeal(meal) ? renderSelectedMealCard(meal, idx) : renderMealRow({
               meal,
               mealIndex: idx,
               scopeLabel: activeDay,

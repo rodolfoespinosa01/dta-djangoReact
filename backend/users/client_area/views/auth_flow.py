@@ -59,9 +59,11 @@ QUESTIONNAIRE_STEPS = [
     "workout_days",
     "meal_schedule",
     "training_schedule",
+    "protein_shake",
 ]
 WEEK_DAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
 MEAL_COMBO_SLOT_KEYS = ["protein_1", "protein_2", "carbs_1", "carbs_2", "fats_1", "fats_2"]
+QUESTIONNAIRE_OPTIONAL_STEPS = {"protein_shake"}
 QUESTIONNAIRE_IMMUTABLE_AFTER_COMPLETION = {"gender", "height"}
 QUESTIONNAIRE_REQUIRES_REGEN_FIELDS = {
     "weight",
@@ -72,6 +74,7 @@ QUESTIONNAIRE_REQUIRES_REGEN_FIELDS = {
     "workout_days",
     "meal_schedule",
     "training_schedule",
+    "protein_shake",
 }
 QUESTIONNAIRE_ALLOWED_VALUES = {
     "gender": {"male", "female"},
@@ -81,6 +84,10 @@ QUESTIONNAIRE_ALLOWED_VALUES = {
 }
 
 TRIAL_ADMIN_CLIENT_LIMIT = 5
+
+
+def _required_questionnaire_steps():
+    return [step for step in QUESTIONNAIRE_STEPS if step not in QUESTIONNAIRE_OPTIONAL_STEPS]
 
 def _is_gmail_email(value):
     email = (value or "").strip().lower()
@@ -321,7 +328,68 @@ def _normalize_meal_combo_payload(meal, supported_slot_values=None):
     }
 
 
-def _normalize_food_preference_builder(builder_value):
+def _meal_count_for_day_from_answers(answers, day):
+    meal_days = ((answers.get("meal_schedule") or {}).get("days") or {}) if isinstance(answers, dict) else {}
+    try:
+        meal_count = int(meal_days.get(day) or 3)
+    except (TypeError, ValueError):
+        meal_count = 3
+    return meal_count if meal_count in (3, 4, 5, 6) else 3
+
+
+def _clamp_meal_number(value, meal_count):
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        parsed = 1
+    return max(1, min(meal_count, parsed))
+
+
+def _protein_shake_meals_by_day(answers):
+    protein_shake = answers.get("protein_shake") if isinstance(answers, dict) else {}
+    if (
+        not isinstance(protein_shake, dict)
+        or protein_shake.get("enabled") is not True
+        or protein_shake.get("counts_as_meal") is not True
+    ):
+        return {}
+    days_payload = protein_shake.get("days") if isinstance(protein_shake.get("days"), dict) else {}
+    selected_by_day = {}
+    if days_payload:
+        for day, payload in days_payload.items():
+            if isinstance(payload, dict) and payload.get("enabled", True) is True:
+                selected_by_day[day] = payload.get("selected_meal")
+    else:
+        selected_by_day = protein_shake.get("selected_meals_by_day") if isinstance(protein_shake.get("selected_meals_by_day"), dict) else {}
+    fallback = protein_shake.get("selected_meal") or 1
+    return {
+        day: _clamp_meal_number(value, _meal_count_for_day_from_answers(answers, day))
+        for day, value in selected_by_day.items()
+        if day in WEEK_DAYS
+    } if days_payload else {
+        day: _clamp_meal_number(selected_by_day.get(day, fallback), _meal_count_for_day_from_answers(answers, day))
+        for day in WEEK_DAYS
+    }
+
+
+def _protein_shake_meal_payload(source=None):
+    source = source if isinstance(source, dict) else {}
+    return {
+        **source,
+        "meal_type": "protein_shake",
+        "is_protein_shake": True,
+        "protein_1": "-",
+        "protein_2": "-",
+        "carbs_1": "-",
+        "carbs_2": "-",
+        "fats_1": "-",
+        "fats_2": "-",
+        "combo_id": None,
+        "combo_match": "protein_shake",
+    }
+
+
+def _normalize_food_preference_builder(builder_value, answers=None):
     if not isinstance(builder_value, dict):
         return {}
 
@@ -418,11 +486,12 @@ def _combo_id_from_meal(meal):
         return 0
 
 
-def _apply_combo_shape_policy_to_food_preferences(builder_value, results):
+def _apply_combo_shape_policy_to_food_preferences(builder_value, results, answers=None):
     if not isinstance(builder_value, dict) or not isinstance(results, dict):
         return builder_value
 
     weekly_days = builder_value.get("weekly_days")
+    shake_meals = _protein_shake_meals_by_day(answers if isinstance(answers, dict) else {})
     result_days = {
         (row or {}).get("day"): row
         for row in (results.get("weekly_days") or [])
@@ -454,6 +523,9 @@ def _apply_combo_shape_policy_to_food_preferences(builder_value, results):
         for idx, meal in enumerate(meals, start=1):
             if not isinstance(meal, dict):
                 patched_meals.append(meal)
+                continue
+            if shake_meals.get(day) == idx or meal.get("is_protein_shake") is True:
+                patched_meals.append(_protein_shake_meal_payload(meal))
                 continue
             saved_combo = templates.get(_combo_id_from_meal(meal))
             target = targets.get(idx)
@@ -516,6 +588,7 @@ def _extract_weekly_combo_selection_rows(answers):
     meal_days = meal_schedule.get("days") or {}
     food_preferences = answers.get("food_preferences") or {}
     weekly_days = food_preferences.get("weekly_days") or {}
+    shake_meals = _protein_shake_meals_by_day(answers)
 
     rows = []
     missing = []
@@ -539,6 +612,8 @@ def _extract_weekly_combo_selection_rows(answers):
             continue
 
         for idx, meal in enumerate(day_meals, start=1):
+            if shake_meals.get(day) == idx or (isinstance(meal, dict) and meal.get("is_protein_shake") is True):
+                continue
             normalized_meal = _normalize_meal_combo_payload(meal, supported_slot_values)
             combo_id = normalized_meal.get("combo_id")
             if not combo_id:
@@ -620,6 +695,109 @@ def _normalize_questionnaire_answer(step_key, answer, current_answers):
             normalized[day] = f"before_meal_{meal_num}"
         return normalized, None
 
+    if step_key == "protein_shake":
+        disabled_value = {"enabled": False, "counts_as_meal": True}
+        if answer in (None, "", []) or (isinstance(answer, dict) and answer.get("enabled") is not True):
+            return disabled_value, None
+        if not isinstance(answer, dict):
+            return None, {"reason": "protein_shake_must_be_object"}
+
+        meal_days = ((current_answers.get("meal_schedule") or {}).get("days") or {})
+        training_schedule = current_answers.get("training_schedule") or {}
+        valid_timings = {"pre_workout", "post_workout", "other"}
+
+        def meal_count_for_day(day):
+            try:
+                count = int(meal_days.get(day) or 3)
+            except (TypeError, ValueError):
+                count = 3
+            return count if count in (3, 4, 5, 6) else 3
+
+        def training_meal_for_day(day):
+            raw_value = str((training_schedule or {}).get(day) or "").strip().lower()
+            if not raw_value.startswith("before_meal_"):
+                return None
+            try:
+                return int(raw_value.split("_")[-1])
+            except (TypeError, ValueError):
+                return None
+
+        def normalize_timing(value, fallback="other"):
+            timing = str(value or "").strip().lower()
+            return timing if timing in valid_timings else fallback
+
+        def selected_for_day(day, timing, raw_selected, enabled=None):
+            meal_count = meal_count_for_day(day)
+            training_meal = training_meal_for_day(day)
+            if not training_meal and timing in {"pre_workout", "post_workout"}:
+                return {"enabled": True, "timing": "other", "selected_meal": 1} if enabled is True else {"enabled": False, "timing": "other", "selected_meal": 1}
+            if enabled is False:
+                return {"enabled": False, "timing": "other", "selected_meal": 1}
+            if timing == "post_workout":
+                return {"enabled": True, "timing": timing, "selected_meal": _clamp_meal_number(training_meal, meal_count)}
+            if timing == "pre_workout":
+                return {"enabled": True, "timing": timing, "selected_meal": _clamp_meal_number(max(1, training_meal - 1), meal_count)}
+            return {"enabled": True, "timing": "other", "selected_meal": _clamp_meal_number(raw_selected, meal_count)}
+
+        def timing_from_legacy(payload):
+            if payload.get("mode") == "extra_shake":
+                timing_mode = str(payload.get("timing_mode") or "").strip().lower()
+                if timing_mode == "pre_workout":
+                    return "pre_workout"
+                if timing_mode in {"post_workout", "recommended"}:
+                    return "post_workout"
+                return "other"
+            return normalize_timing(payload.get("placement_mode") or payload.get("default_timing"), "post_workout")
+
+        schedule_mode = str(answer.get("schedule_mode") or "").strip().lower()
+        if schedule_mode not in {"same", "custom"}:
+            schedule_mode = "custom" if isinstance(answer.get("days"), dict) or isinstance(answer.get("selected_meals_by_day"), dict) else "same"
+
+        default_timing = timing_from_legacy(answer)
+        default_selected_meal = answer.get("default_selected_meal", answer.get("selected_meal", 1))
+        raw_days = answer.get("days") if isinstance(answer.get("days"), dict) else {}
+        legacy_by_day = answer.get("selected_meals_by_day") if isinstance(answer.get("selected_meals_by_day"), dict) else {}
+        has_legacy_by_day = not raw_days and bool(legacy_by_day)
+
+        days = {}
+        for day in WEEK_DAYS:
+            raw_day = raw_days.get(day) if isinstance(raw_days.get(day), dict) else {}
+            training_meal = training_meal_for_day(day)
+            if schedule_mode == "custom":
+                timing = normalize_timing(raw_day.get("timing") or answer.get("placement_mode"), default_timing)
+                raw_selected = raw_day.get("selected_meal", legacy_by_day.get(day, default_selected_meal))
+                enabled = raw_day.get("enabled")
+                if enabled is None:
+                    enabled = bool(training_meal or has_legacy_by_day)
+            else:
+                timing = default_timing
+                raw_selected = default_selected_meal
+                enabled = default_timing == "other" or bool(training_meal)
+            days[day] = selected_for_day(day, timing, raw_selected, enabled)
+
+        selected_by_day = {
+            day: days[day]["selected_meal"]
+            for day in WEEK_DAYS
+            if days[day].get("enabled") is True
+        }
+        selected_meal_day = next((day for day in WEEK_DAYS if training_meal_for_day(day)), WEEK_DAYS[0])
+        normalized_default_selected_meal = _clamp_meal_number(
+            default_selected_meal,
+            meal_count_for_day(selected_meal_day),
+        )
+
+        return {
+            "enabled": True,
+            "counts_as_meal": True,
+            "schedule_mode": schedule_mode,
+            "default_timing": default_timing,
+            "default_selected_meal": normalized_default_selected_meal,
+            "days": days,
+            "placement_mode": default_timing if schedule_mode == "same" else "other",
+            "selected_meal": selected_by_day.get(selected_meal_day, 1),
+            "selected_meals_by_day": selected_by_day,
+        }, None
+
     if step_key in {"goal", "lifestyle", "meal_plan_type", "gender"} and isinstance(answer, str):
         return answer.strip().lower(), None
 
@@ -647,7 +825,10 @@ def _normalize_public_questionnaire_answers(raw_answers):
             continue
         normalized[step] = normalized_answer
 
-    missing = [step for step in QUESTIONNAIRE_STEPS if step not in normalized or normalized.get(step) in (None, "", [])]
+    if "protein_shake" not in normalized:
+        normalized["protein_shake"], _ = _normalize_questionnaire_answer("protein_shake", None, normalized)
+
+    missing = [step for step in _required_questionnaire_steps() if step not in normalized or normalized.get(step) in (None, "", [])]
     return normalized, missing, invalid
 
 
@@ -1129,7 +1310,17 @@ def macro_access_questionnaire(request, token):
         return error("INVALID_STEP", "Unknown questionnaire step.", http_status=400)
 
     answers = dict(link.questionnaire_answers_json or {})
-    answers[step_key] = answer
+    normalized_answer, normalize_error = _normalize_questionnaire_answer(step_key, answer, answers)
+    if normalize_error:
+        return error(
+            "INVALID_STEP_ANSWER",
+            "The provided answer is invalid for this questionnaire step.",
+            http_status=400,
+            details={"step_key": step_key, **normalize_error},
+        )
+    answers[step_key] = normalized_answer
+    if step_key in {"meal_schedule", "training_schedule"} and "protein_shake" in answers:
+        answers["protein_shake"], _ = _normalize_questionnaire_answer("protein_shake", answers.get("protein_shake"), answers)
     link.questionnaire_answers_json = answers
     link.questionnaire_status = "in_progress"
     link.questionnaire_current_step = next_step if next_step in QUESTIONNAIRE_STEPS else step_key
@@ -1145,7 +1336,21 @@ def macro_access_questionnaire_submit(request, token):
         return error("INVALID_TOKEN", "Invalid or expired macro calculator link.", http_status=404)
 
     answers = dict(link.questionnaire_answers_json or {})
-    missing = [step for step in QUESTIONNAIRE_STEPS if step not in answers or answers.get(step) in (None, "", [])]
+    if "protein_shake" not in answers:
+        answers["protein_shake"], _ = _normalize_questionnaire_answer("protein_shake", None, answers)
+        link.questionnaire_answers_json = answers
+    else:
+        normalized_shake, normalize_error = _normalize_questionnaire_answer("protein_shake", answers.get("protein_shake"), answers)
+        if normalize_error:
+            return error(
+                "INVALID_STEP_ANSWER",
+                "The provided answer is invalid for this questionnaire step.",
+                http_status=400,
+                details={"step_key": "protein_shake", **normalize_error},
+            )
+        answers["protein_shake"] = normalized_shake
+        link.questionnaire_answers_json = answers
+    missing = [step for step in _required_questionnaire_steps() if step not in answers or answers.get(step) in (None, "", [])]
     if missing:
         return error(
             "MISSING_REQUIRED_STEPS",
@@ -1156,7 +1361,7 @@ def macro_access_questionnaire_submit(request, token):
     link.questionnaire_status = "completed"
     link.questionnaire_current_step = QUESTIONNAIRE_STEPS[-1]
     link.questionnaire_completed_at = timezone.now()
-    link.save(update_fields=["questionnaire_status", "questionnaire_current_step", "questionnaire_completed_at"])
+    link.save(update_fields=["questionnaire_answers_json", "questionnaire_status", "questionnaire_current_step", "questionnaire_completed_at"])
     return ok(
         {
             "message": "Questionnaire submitted.",
@@ -1436,14 +1641,19 @@ def client_food_preferences(request):
         return error("QUESTIONNAIRE_REQUIRED", "Complete the onboarding questionnaire first.", http_status=400)
 
     if request.method == "GET":
+        answers = dict(progress.answers_json or {})
+        normalized_shake, _ = _normalize_questionnaire_answer("protein_shake", answers.get("protein_shake"), answers)
+        if answers.get("protein_shake") != normalized_shake:
+            answers["protein_shake"] = normalized_shake
+            progress.answers_json = answers
+            progress.save(update_fields=["answers_json", "updated_at"])
         builder_value = _serialize_food_preference_builder(progress)
         if not builder_value:
             builder_value = {
                 "weekly_days": _serialize_saved_weekly_combo_rows(request.user),
             }
-        normalized_builder_value = _normalize_food_preference_builder(builder_value)
+        normalized_builder_value = _normalize_food_preference_builder(builder_value, answers=answers)
         if normalized_builder_value != builder_value:
-            answers = dict(progress.answers_json or {})
             answers["food_preferences"] = normalized_builder_value
             progress.answers_json = answers
             progress.save(update_fields=["answers_json", "updated_at"])
@@ -1453,6 +1663,10 @@ def client_food_preferences(request):
                 "food_preferences": {
                     "builder_value": builder_value,
                     "meal_schedule_days": (progress.answers_json or {}).get("meal_schedule", {}).get("days", {}),
+                    "protein_shake": (progress.answers_json or {}).get(
+                        "protein_shake",
+                        {"enabled": False, "counts_as_meal": True},
+                    ),
                     "results": build_questionnaire_results(
                         BuildResultsContext(
                             answers=progress.answers_json or {},
@@ -1470,16 +1684,18 @@ def client_food_preferences(request):
     builder_value = payload.get("builder_value")
     if not isinstance(builder_value, dict):
         return error("INVALID_PAYLOAD", "builder_value must be an object.", http_status=400)
-    builder_value = _normalize_food_preference_builder(builder_value)
+    answers = dict(progress.answers_json or {})
+    normalized_shake, _ = _normalize_questionnaire_answer("protein_shake", answers.get("protein_shake"), answers)
+    answers["protein_shake"] = normalized_shake
+    builder_value = _normalize_food_preference_builder(builder_value, answers=answers)
     results = build_questionnaire_results(
         BuildResultsContext(
             answers=progress.answers_json or {},
             admin_identity=profile.associated_admin if profile else None,
         )
     )
-    builder_value = _apply_combo_shape_policy_to_food_preferences(builder_value, results)
+    builder_value = _apply_combo_shape_policy_to_food_preferences(builder_value, results, answers=answers)
 
-    answers = dict(progress.answers_json or {})
     previous_food_preferences = answers.get("food_preferences") if isinstance(answers.get("food_preferences"), dict) else {}
     answers["food_preferences"] = builder_value
     progress.answers_json = answers
@@ -1554,13 +1770,15 @@ def questionnaire_status_or_draft(request):
         )
     previous_value = answers.get(step_key)
     answers[step_key] = normalized_answer
+    if step_key in {"meal_schedule", "training_schedule"} and "protein_shake" in answers:
+        answers["protein_shake"], _ = _normalize_questionnaire_answer("protein_shake", answers.get("protein_shake"), answers)
     inputs_changed = previous_value != normalized_answer
 
     food_preferences_removed = False
     if (
         was_completed
         and inputs_changed
-        and step_key in {"meal_plan_type", "workout_days", "meal_schedule", "training_schedule"}
+        and step_key in {"meal_plan_type", "workout_days", "meal_schedule", "training_schedule", "protein_shake"}
     ):
         previous_food_preferences = answers.get("food_preferences")
         if isinstance(previous_food_preferences, dict) and previous_food_preferences:
@@ -1609,7 +1827,21 @@ def questionnaire_submit(request):
     )
     answers = dict(progress.answers_json or {})
 
-    missing = [step for step in QUESTIONNAIRE_STEPS if step not in answers or answers.get(step) in (None, "", [])]
+    if "protein_shake" not in answers:
+        answers["protein_shake"], _ = _normalize_questionnaire_answer("protein_shake", None, answers)
+        progress.answers_json = answers
+    else:
+        normalized_shake, normalize_error = _normalize_questionnaire_answer("protein_shake", answers.get("protein_shake"), answers)
+        if normalize_error:
+            return error(
+                "INVALID_STEP_ANSWER",
+                "The provided answer is invalid for this questionnaire step.",
+                http_status=400,
+                details={"step_key": "protein_shake", **normalize_error},
+            )
+        answers["protein_shake"] = normalized_shake
+        progress.answers_json = answers
+    missing = [step for step in _required_questionnaire_steps() if step not in answers or answers.get(step) in (None, "", [])]
     if missing:
         return error(
             "MISSING_REQUIRED_STEPS",
@@ -1622,7 +1854,7 @@ def questionnaire_submit(request):
     progress.status = "completed"
     progress.current_step = QUESTIONNAIRE_STEPS[-1]
     progress.completed_at = progress.completed_at or timezone.now()
-    progress.save(update_fields=["status", "current_step", "completed_at", "updated_at"])
+    progress.save(update_fields=["answers_json", "status", "current_step", "completed_at", "updated_at"])
     profile = ClientProfile.objects.filter(user=request.user).select_related("associated_admin").first()
     return ok(
         {

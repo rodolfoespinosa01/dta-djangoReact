@@ -24,6 +24,7 @@ function ClientFoodPreferencesPage() {
   const [saving, setSaving] = useState(false);
   const [builderValue, setBuilderValue] = useState({});
   const [mealScheduleDays, setMealScheduleDays] = useState({});
+  const [proteinShake, setProteinShake] = useState({ enabled: false, counts_as_meal: true });
   const [weeklyResults, setWeeklyResults] = useState([]);
   const [settingsMeta, setSettingsMeta] = useState(null);
 
@@ -39,6 +40,7 @@ function ClientFoodPreferencesPage() {
     const payload = res.data?.food_preferences || {};
     setBuilderValue(payload.builder_value || {});
     setMealScheduleDays(payload.meal_schedule_days || {});
+    setProteinShake(payload.protein_shake || { enabled: false, counts_as_meal: true });
     setWeeklyResults(payload.results?.weekly_days || []);
     const settingsRes = await apiRequest('/api/v1/users/client/app/settings/', { auth: true });
     if (settingsRes.ok) {
@@ -121,6 +123,7 @@ function ClientFoodPreferencesPage() {
               onChange={setBuilderValue}
               mealScheduleDays={mealScheduleDays}
               weeklyMacroResults={weeklyResults}
+              proteinShake={proteinShake}
             />
           </section>
         </>

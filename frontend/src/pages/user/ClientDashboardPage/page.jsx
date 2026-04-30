@@ -12,6 +12,7 @@ import MealPlanTypeSelector, { normalizeMealPlanTypeCode } from '../../../compon
 import MealFrequencySelector from '../../../components/questionnaire/MealFrequencySelector';
 import TrainingMealTimingSelector from '../../../components/questionnaire/TrainingMealTimingSelector';
 import WorkoutScheduleSelector from '../../../components/questionnaire/WorkoutScheduleSelector';
+import ProteinShakeSelector, { normalizeProteinShakeValue } from '../../../components/questionnaire/ProteinShakeSelector';
 import {
   BACKEND_DAY_TO_WORKOUT_CODE,
   WORKOUT_DAYS,
@@ -41,6 +42,7 @@ const QUESTION_STEPS = [
   'workout_days',
   'meal_schedule',
   'training_schedule',
+  'protein_shake',
 ];
 const EDITABLE_QUESTION_STEPS = [
   'weight',
@@ -51,6 +53,7 @@ const EDITABLE_QUESTION_STEPS = [
   'workout_days',
   'meal_schedule',
   'training_schedule',
+  'protein_shake',
 ];
 
 const WEEK_DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -342,10 +345,18 @@ function ClientDashboardPage() {
             && Number(selected.split('_').pop()) <= mealCount;
         });
       }
+      case 'protein_shake': {
+        const normalized = normalizeProteinShakeValue(value, {
+          mealSchedule: answers.meal_schedule,
+          trainingSchedule: answers.training_schedule,
+        });
+        if (!normalized.enabled) return true;
+        return ['pre_workout', 'post_workout', 'other'].includes(normalized.placement_mode);
+      }
       default:
         return value !== undefined && value !== null && value !== '';
     }
-  }, [wizardStep, activeAnswer, answers.workout_days, answers.meal_schedule]);
+  }, [wizardStep, activeAnswer, answers.workout_days, answers.meal_schedule, answers.training_schedule]);
 
   const updateAnswer = (value) => {
     setAnswers((prev) => {
@@ -371,6 +382,12 @@ function ClientDashboardPage() {
             return Boolean(match) && Number(match[1]) <= mealCount;
           })
         );
+      }
+      if (['meal_schedule', 'training_schedule'].includes(wizardStep) && nextAnswers.protein_shake) {
+        nextAnswers.protein_shake = normalizeProteinShakeValue(nextAnswers.protein_shake, {
+          mealSchedule: nextAnswers.meal_schedule,
+          trainingSchedule: nextAnswers.training_schedule,
+        });
       }
       return nextAnswers;
     });
@@ -630,6 +647,15 @@ function ClientDashboardPage() {
           />
         );
       }
+      case 'protein_shake':
+        return (
+          <ProteinShakeSelector
+            value={activeAnswer}
+            mealSchedule={answers.meal_schedule}
+            trainingSchedule={answers.training_schedule}
+            onChange={(nextValue) => updateAnswer(nextValue)}
+          />
+        );
       default:
         return <p>Question not configured.</p>;
     }
@@ -644,8 +670,9 @@ function ClientDashboardPage() {
     lifestyle: ['How active is your lifestyle?', 'This helps determine your TDEE category.'],
     meal_plan_type: ['Which meal plan type do you want?', 'Standard, carb cycling, or keto.'],
     workout_days: ['What days do you work out?', 'Workout and off days drive calorie totals and macro splitting.'],
-    meal_schedule: ['How many meals do you want each day?', 'Choose a realistic meal pattern for your calorie target, either same every day or custom by day.'],
+    meal_schedule: ['How many meals do you want per day?', 'If you choose a protein shake later, it will count as one of these meals.'],
     training_schedule: ['Before which meal do you train?', 'Your workout timing helps us customize calorie and macro placement around training for each day.'],
+    protein_shake: ['Would you like one of your meals to be a protein shake?', 'Choose whether one meal slot should be reserved for a shake.'],
   };
 
   const weeklySchedule = useMemo(() => summarizeAnswers(questionnaire?.answers || {}), [questionnaire?.answers]);

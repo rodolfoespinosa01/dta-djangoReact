@@ -7,6 +7,7 @@ import GoalSelector from './GoalSelector';
 import LifestyleSelector, { normalizeLifestyleCode } from './LifestyleSelector';
 import MealPlanTypeSelector, { normalizeMealPlanTypeCode } from './MealPlanTypeSelector';
 import TrainingMealTimingSelector from './TrainingMealTimingSelector';
+import ProteinShakeSelector, { normalizeProteinShakeValue } from './ProteinShakeSelector';
 import maleSignImage from '../../assets/questionnaire/1/malesign.png';
 import femaleSignImage from '../../assets/questionnaire/1/femalesign.png';
 import '../../styles/shared/client-app-shell.css';
@@ -23,6 +24,7 @@ const QUESTION_STEPS = [
   'workout_days',
   'meal_schedule',
   'training_schedule',
+  'protein_shake',
   'email',
 ];
 const WEEK_DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -133,6 +135,12 @@ function FreeMacroCalculator({ adminSlug = null, focused = false, onStart }) {
           })
         );
       }
+      if (['meal_schedule', 'training_schedule'].includes(step) && nextAnswers.protein_shake) {
+        nextAnswers.protein_shake = normalizeProteinShakeValue(nextAnswers.protein_shake, {
+          mealSchedule: nextAnswers.meal_schedule,
+          trainingSchedule: nextAnswers.training_schedule,
+        });
+      }
       return nextAnswers;
     });
     setMessage('');
@@ -177,10 +185,18 @@ function FreeMacroCalculator({ adminSlug = null, focused = false, onStart }) {
             && Number(selected.split('_').pop()) <= mealCount;
         });
       }
+      case 'protein_shake': {
+        const normalized = normalizeProteinShakeValue(value, {
+          mealSchedule: answers.meal_schedule,
+          trainingSchedule: answers.training_schedule,
+        });
+        if (!normalized.enabled) return true;
+        return ['pre_workout', 'post_workout', 'other'].includes(normalized.placement_mode);
+      }
       default:
         return value !== undefined && value !== null && value !== '';
     }
-  }, [activeStep, activeAnswer, email, answers.workout_days, answers.meal_schedule]);
+  }, [activeStep, activeAnswer, email, answers.workout_days, answers.meal_schedule, answers.training_schedule]);
 
   const startQuestionnaire = () => {
     if (!initialStepValid) return;
@@ -327,7 +343,7 @@ function FreeMacroCalculator({ adminSlug = null, focused = false, onStart }) {
         });
         return (
           <div className="client-q-stack">
-            <p className="client-q-help">Choose one meal amount for all days, or customize each day of the week.</p>
+            <p className="client-q-help">If you choose a protein shake later, it will count as one of these meals.</p>
             <div className="client-q-toggle">
               <button type="button" className={value.mode === 'same' ? 'is-active' : ''} onClick={() => updateAnswer(activeStep, { ...value, mode: 'same' })}>Same for all days</button>
               <button type="button" className={value.mode === 'custom' ? 'is-active' : ''} onClick={() => updateAnswer(activeStep, { ...value, mode: 'custom' })}>Customize by day</button>
@@ -382,6 +398,15 @@ function FreeMacroCalculator({ adminSlug = null, focused = false, onStart }) {
           />
         );
       }
+      case 'protein_shake':
+        return (
+          <ProteinShakeSelector
+            value={activeAnswer}
+            mealSchedule={answers.meal_schedule}
+            trainingSchedule={answers.training_schedule}
+            onChange={(nextValue) => updateAnswer(activeStep, nextValue)}
+          />
+        );
       case 'email':
         return (
           <div className="free-macro-email-step">
@@ -413,8 +438,9 @@ function FreeMacroCalculator({ adminSlug = null, focused = false, onStart }) {
     lifestyle: ['How active is your lifestyle?', 'This helps determine your TDEE category.'],
     meal_plan_type: ['Which macro plan type do you want?', 'Standard, carb cycling, or keto.'],
     workout_days: ['What days do you work out?', 'Select Sunday through Saturday.'],
-    meal_schedule: ['How many meals do you want each day?', 'Set one meal amount for all days or customize each day.'],
+    meal_schedule: ['How many meals do you want per day?', 'If you choose a protein shake later, it will count as one of these meals.'],
     training_schedule: ['Before which meal do you train?', 'Choose the meal your workout happens before on each workout day.'],
+    protein_shake: ['Would you like one of your meals to be a protein shake?', 'Choose whether one meal slot should be reserved for a shake.'],
     email: ['Where should we send your results link?', 'Create your account from the secure link to view your macro results.'],
   };
 

@@ -146,7 +146,7 @@ class ClientOnboardingFlowTests(TestCase):
         user = self.User.objects.get(email="registered-lead@example.com")
         progress = ClientQuestionnaireProgress.objects.get(user=user)
         self.assertEqual(progress.status, "completed")
-        self.assertEqual(progress.current_step, "training_schedule")
+        self.assertEqual(progress.current_step, "protein_shake")
         self.assertEqual(progress.answers_json["goal"], QUESTIONNAIRE_ANSWERS["goal"])
 
     def test_public_macro_calculator_url_resolves_under_versioned_client_prefix(self):
