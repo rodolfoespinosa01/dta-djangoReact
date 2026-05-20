@@ -58,6 +58,10 @@ const translations = {
     'user_home.carbs_desc': 'Fuel energy demands with precise carb targets from quality sources.',
     'user_home.fats_desc': 'Support hormones and satiety with planned healthy fat portions.',
 
+    'free_macro_calculator.aria_label': 'Free macro calculator',
+    'free_macro_calculator.title': 'FREE MACRO CALCULATOR',
+    'free_macro_calculator.subtitle': 'Fill out the form below.',
+
     'superadmin_login.title': 'SuperAdmin Login',
     'superadmin_login.username_placeholder': 'Username',
     'superadmin_login.password_placeholder': 'Password',
@@ -320,6 +324,10 @@ const translations = {
     'user_home.protein_desc': 'Construye y recupera con la cantidad adecuada de opciones de proteína.',
     'user_home.carbs_desc': 'Impulsa la energía con metas precisas de carbohidratos desde fuentes de calidad.',
     'user_home.fats_desc': 'Apoya hormonas y saciedad con porciones planificadas de grasas saludables.',
+
+    'free_macro_calculator.aria_label': 'Calculadora de macros gratis',
+    'free_macro_calculator.title': 'CALCULADORA DE MACROS GRATIS',
+    'free_macro_calculator.subtitle': 'Llena el formulario de abajo.',
 
     'superadmin_login.title': 'Ingreso SuperAdmin',
     'superadmin_login.username_placeholder': 'Usuario',

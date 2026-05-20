@@ -216,11 +216,6 @@ function UserHomePage() {
         <div className="user-story-copy">
           <h1>{t('user_home.hero_title')}</h1>
           <p>{t('user_home.hero_subtitle')}</p>
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.75rem' }}>
-            <button type="button" className="user-home-button" onClick={() => navigate('/welcome')}>
-              Back to Main Page
-            </button>
-          </div>
         </div>
       </section>
 

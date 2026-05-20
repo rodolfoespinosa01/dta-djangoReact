@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { apiRequest } from '../../api/client';
+import { useLanguage } from '../../context/LanguageContext';
 import BodyVisualizationSelector, { normalizeHeightCmValue } from './BodyVisualizationSelector';
 import WeightSelector, { lbsToKg, normalizeWeightLbsValue } from './WeightSelector';
 import DOBSelector from './DOBSelector';
@@ -92,6 +93,7 @@ function normalizeTrainingComponentValue(trainingSchedule = {}, workoutDays = []
 }
 
 function FreeMacroCalculator({ adminSlug = null, focused = false, onStart }) {
+  const { t } = useLanguage();
   const [phase, setPhase] = useState(() => (focused ? 'questionnaire' : 'initial'));
   const [stepIndex, setStepIndex] = useState(0);
   const [answers, setAnswers] = useState(() => readStoredAnswers());
@@ -445,11 +447,10 @@ function FreeMacroCalculator({ adminSlug = null, focused = false, onStart }) {
   };
 
   return (
-    <section className={`free-macro-calculator ${focused ? 'is-focused' : ''}`} aria-label="Free macro calculator">
+    <section className={`free-macro-calculator ${focused ? 'is-focused' : ''}`} aria-label={t('free_macro_calculator.aria_label')}>
       <div className="free-macro-header">
-        <p>Free Macro Calculator</p>
-        <h2>Get your free macros now.</h2>
-        <span>{phase === 'initial' ? 'Start with gender and weight.' : 'Complete the questionnaire to receive your secure results link.'}</span>
+        <p>{t('free_macro_calculator.title')}</p>
+        <h2>{t('free_macro_calculator.subtitle')}</h2>
       </div>
 
       {phase === 'initial' ? (
