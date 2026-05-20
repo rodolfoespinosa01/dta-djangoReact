@@ -1,21 +1,93 @@
-# macOS
+# Public repo safety: never commit secrets, local runtime state, generated files,
+# private solver logic, or private algorithm data.
+
+# macOS / editor
 .DS_Store
+.AppleDouble
+.LSOverride
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+.certs/
+credentials*.json
+client_secret*.json
+service-account*.json
+google-oauth*.json
 
 # Python
-backend/env/
-env/
 __pycache__/
-*.pyc
-
-# Node
-node_modules/
-build/
-
-# Redis
-dump.rdb
-
-# Virtual environments
-backend/venv/  # <-- Add this line
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.venv/
 venv/
-frontend/src/assets/transformations/
+env/
+backend/venv/
+backend/env/
+
+# Django runtime files
+*.sqlite3
+*.db
+backend/db.sqlite3
+backend/media/
+backend/staticfiles/
+media/
+staticfiles/
+
+# Node / React
+node_modules/
+frontend/node_modules/
+build/
+frontend/build/
+coverage/
+frontend/coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Redis / local service dumps
+dump.rdb
+*.rdb
+
+# Local scratch commands and generated exports
+commands.txt
+*.log
+*.tmp
+
+# Private meal-plan solver implementation and proprietary algorithm inputs.
+backend/private_meal_solver/
+backend/users/client_area/services/private_solver/
+backend/users/client_area/services/meal_plan_generation/solver/
+backend/core/management/commands/debug_legacy_solver_samples.py
+backend/core/management/commands/audit_food_library_quality.py
+backend/users/client_area/tests_solver_engine.py
+backend/users/client_area/tests_meal_generation_pipeline.py
+table_defaults/c_1_new.csv
+table_defaults/errorid_453030.csv
+table_defaults/standard_table.csv
+table_defaults/ProteinSmoothie/
+
+# Private/generated transformation media
 frontend/src/assets/transformations/

@@ -7,6 +7,35 @@ DTA is a Django + React nutrition platform for:
 
 This repository is actively in development. The local development workflow is stable enough for day-to-day feature work, but several product areas are still being hardened.
 
+## Public Repository Safety Notes
+
+This repo is prepared for a public GitHub version with private runtime data and proprietary meal-plan solving logic excluded.
+
+Intentionally excluded:
+- Local environment files: `backend/.env`, `frontend/.env`, and all `.env.*` files except `.env.example`.
+- Credentials and machine-specific files: local TLS certs, Google client secret files, service-account JSON, `.vscode/`, and scratch command files.
+- Runtime/generated files: Redis dumps, SQLite/local DBs, media uploads, static build output, cache folders, virtual environments, and `node_modules`.
+- Private meal-plan solver code: `backend/private_meal_solver/`, `backend/users/client_area/services/private_solver/`, and `backend/users/client_area/services/meal_plan_generation/solver/`.
+- Proprietary algorithm data: private combo/error tables and ProteinSmoothie spreadsheets under `table_defaults`.
+
+Local env setup:
+- Copy `backend/.env.example` to `backend/.env` on each machine and fill in local values.
+- Copy `frontend/.env.example` to `frontend/.env` if frontend env values are needed.
+- Never commit real secrets, API keys, OAuth client secrets, webhook secrets, database passwords, or local host-specific values.
+
+Working across laptop and desktop:
+- Use Git branches for code changes and keep private values in each machine's local `.env` files.
+- Restore private solver code locally into `backend/private_meal_solver/` from a private repo, private archive, or private submodule that is not committed to this public repository.
+- Restore private algorithm tables locally when running full meal-plan generation.
+- The tracked public adapter at `backend/users/client_area/services/meal_plan_generation/pipeline.py` keeps imports stable and raises a clear error if the private solver is not installed.
+
+Do not commit private solver logic or proprietary meal-combo/macro-matching tables. Before pushing public changes, run:
+
+```bash
+git status --ignored
+git ls-files | grep -E '(^backend/\.env$|^frontend/\.env$|private_meal_solver|meal_plan_generation/solver|table_defaults/(c_1_new|errorid_453030|standard_table|ProteinSmoothie)|dump\.rdb|^\.certs/)'
+```
+
 ## Current Status
 
 - Client, admin, and superadmin areas are all present in the repo.
@@ -122,14 +151,14 @@ nvm use
 npm install --legacy-peer-deps
 ```
 
-## Seed Data / Algorithm Tables
+## Seed Data / Private Algorithm Tables
 
-The canonical local seed source is the root `table_defaults` directory.
+The canonical local seed source is the root `table_defaults` directory, but the proprietary combo/error tables are intentionally ignored for the public repository.
 
 Current preferred filenames:
-- `MYSQL_food_lib.csv`
-- `c_1_new.csv`
-- `errorid_453030.csv`
+- `MYSQL_food_lib.csv` may remain public if the food library is approved for sharing.
+- `c_1_new.csv` is private algorithm data and is ignored.
+- `errorid_453030.csv` is private algorithm data and is ignored.
 
 Refresh the defaults manually:
 
@@ -150,7 +179,8 @@ Notes:
 - `refresh_food_library_from_root` prefers `table_defaults` and falls back to `backend/algorithmtables` if needed
 - `reset_all` now calls this command automatically
 - the importer excludes placeholder and category-reference rows from user-facing food options
-- `standard_table.csv` is present in `table_defaults` but is not part of the food/combo/error refresh command
+- `standard_table.csv` and `table_defaults/ProteinSmoothie/` are private/proprietary and ignored
+- full meal-plan generation requires restoring private solver code and private algorithm tables locally
 
 ## Meal Combo + Food Library Behavior
 
