@@ -1,0 +1,137 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run Django Server (Stable)",
+      "type": "shell",
+      "command": "zsh -lc 'source venv/bin/activate && python manage.py runserver 0.0.0.0:8000 --noreload --nothreading'",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Run React App",
+      "type": "shell",
+      "command": "zsh -lc 'export NVM_DIR=\"$HOME/.nvm\"; if [ -s \"$NVM_DIR/nvm.sh\" ]; then . \"$NVM_DIR/nvm.sh\"; elif [ -s \"/opt/homebrew/opt/nvm/nvm.sh\" ]; then . \"/opt/homebrew/opt/nvm/nvm.sh\"; else echo \"nvm not found\"; exit 1; fi; nvm install && nvm use && HOST=0.0.0.0 HTTPS=false PORT=3000 npm start'",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Run Redis Server",
+      "type": "shell",
+      "command": "zsh -lc 'redis-cli ping >/dev/null 2>&1 && echo \"Redis already running on :6379\" || redis-server'",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Run Celery Worker",
+      "type": "shell",
+      "command": "source venv/bin/activate && celery -A core worker -l info",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Run Stripe Webhook (Client)",
+      "type": "shell",
+      "command": "stripe listen --skip-verify --forward-to http://localhost:8000/api/v1/users/client/stripe_webhook/",
+      "options": { "cwd": "${workspaceFolder}" }
+    },
+    {
+      "label": "Run Stripe Webhook (Admin)",
+      "type": "shell",
+      "command": "stripe listen --skip-verify --forward-to http://localhost:8000/api/v1/users/admin/stripe_webhook/",
+      "options": { "cwd": "${workspaceFolder}" }
+    },
+    {
+      "label": "Run Stripe Webhook",
+      "type": "shell",
+      "command": "stripe listen --skip-verify --forward-to http://localhost:8000/api/v1/users/stripe_webhook/",
+      "options": { "cwd": "${workspaceFolder}" }
+    },
+    {
+      "label": "Start All Services",
+      "dependsOn": [
+        "Run Redis Server",
+        "Run Celery Worker",
+        "Run Django Server (Stable)",
+        "Run React App",
+        "Run Stripe Webhook"
+      ],
+      "dependsOrder": "parallel"
+    },
+    {
+      "label": "Kill All Services",
+      "type": "shell",
+      "command": "zsh -lc 'pkill -f \"python manage.py runserver\" >/dev/null 2>&1 || true; pkill -f \"celery -A core worker\" >/dev/null 2>&1 || true; pkill -f \"react-scripts start\" >/dev/null 2>&1 || true; pkill -f \"stripe listen --forward-to\" >/dev/null 2>&1 || true; for p in $(lsof -tiTCP:8000 -sTCP:LISTEN 2>/dev/null); do kill \"$p\" >/dev/null 2>&1 || true; done; for p in $(lsof -tiTCP:3000 -sTCP:LISTEN 2>/dev/null); do kill \"$p\" >/dev/null 2>&1 || true; done; for p in $(lsof -tiTCP:6379 -sTCP:LISTEN 2>/dev/null); do kill \"$p\" >/dev/null 2>&1 || true; done; echo \"Stopped local dev services (if running).\"'",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "close": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Run Machine Update Script",
+      "type": "shell",
+      "command": "./machineupdate.sh",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Setup Dev",
+      "type": "shell",
+      "command": "zsh -lc './setup_dev.sh'",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Run Django Tests",
+      "type": "shell",
+      "command": "source venv/bin/activate && python manage.py test",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Reset All",
+      "type": "shell",
+      "command": "zsh -lc './reset_dev.sh'",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Full Reset DB",
+      "type": "shell",
+      "command": "source venv/bin/activate && python manage.py full_reset_db",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": []
+    }
+  ]
+}
